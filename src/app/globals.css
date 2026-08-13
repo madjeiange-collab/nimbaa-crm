@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ==== Nimbaa brand palette ====
+     Leaf/lime green (wordmark + shorts) · golden amber (shirt + fur) · warm brown.
+     Green is the primary (white text passes contrast for sunlight); amber is an
+     accent only, never used as button text. */
+  :root {
+    --background: 48 33% 99%;
+    --foreground: 25 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 25 25% 15%;
+
+    /* Primary — Nimbaa leaf green, dark enough for white text outdoors */
+    --primary: 96 58% 33%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary — soft amber wash (badges, chips) */
+    --secondary: 45 85% 93%;
+    --secondary-foreground: 28 48% 24%;
+
+    --muted: 42 30% 95%;
+    --muted-foreground: 30 12% 40%;
+
+    /* Accent — soft green tint for hovers */
+    --accent: 90 42% 92%;
+    --accent-foreground: 96 58% 22%;
+
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 40 22% 86%;
+    --input: 40 22% 80%;
+    --ring: 96 58% 33%;
+
+    --radius: 0.6rem;
+
+    /* Brand tokens (logo-matching accents) */
+    --brand-green: 88 54% 46%;
+    --brand-amber: 42 92% 55%;
+    --brand-brown: 28 55% 30%;
+
+    /* Disposition palette — turf pins and charts, aligned to brand */
+    --knock-grey: 30 8% 46%;
+    --knock-red: 0 72% 48%;
+    --knock-yellow: 42 92% 50%;
+    --knock-green: 96 56% 38%;
+  }
+
+  .dark {
+    --background: 30 16% 9%;
+    --foreground: 42 30% 96%;
+    --card: 30 15% 12%;
+    --card-foreground: 42 30% 96%;
+    --primary: 90 52% 48%;
+    --primary-foreground: 30 30% 8%;
+    --secondary: 30 14% 18%;
+    --secondary-foreground: 42 30% 96%;
+    --muted: 30 14% 18%;
+    --muted-foreground: 40 12% 66%;
+    --accent: 96 30% 22%;
+    --accent-foreground: 42 30% 96%;
+    --destructive: 0 63% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 14% 24%;
+    --input: 30 14% 24%;
+    --ring: 90 52% 48%;
+
+    --brand-green: 88 54% 52%;
+    --brand-amber: 42 92% 58%;
+    --brand-brown: 28 45% 45%;
+
+    --knock-grey: 30 8% 60%;
+    --knock-red: 0 70% 58%;
+    --knock-yellow: 42 92% 58%;
+    --knock-green: 96 50% 52%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Prevent iOS/Android zoom-on-focus for inputs (keeps field UX tight) */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Leaflet map container needs an explicit height wherever it is used */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 0;
+}
