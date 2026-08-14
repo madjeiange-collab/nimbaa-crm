@@ -251,8 +251,8 @@ export default async function StatsPage({
               </span>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <StatTile label={t('today')} value={knocksToday} />
-              <StatTile label={t('thisWeek')} value={knocksWeek} accent="green" />
+              <StatTile label={t('today')} value={knocksToday} href="/turf" />
+              <StatTile label={t('thisWeek')} value={knocksWeek} accent="green" href="/turf" />
               <StatTile label={t('lastWeek')} value={knocksPrevWeek} accent="muted" />
             </div>
             <div>
@@ -264,9 +264,9 @@ export default async function StatsPage({
 
         {/* Pipeline outcomes + funnel */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <StatTile label={t('leads')} value={leads} accent="amber" />
-          <StatTile label={t('customers')} value={customers} accent="green" />
-          <StatTile label={t('lost')} value={lost} accent="red" />
+          <StatTile label={t('leads')} value={leads} accent="amber" href="/contacts?tab=lead" />
+          <StatTile label={t('customers')} value={customers} accent="green" href="/contacts?tab=customer" />
+          <StatTile label={t('lost')} value={lost} accent="red" href="/contacts?tab=lost" />
           <StatTile label={t('conversion')} value={`${conversion}%`} accent="primary" />
         </div>
 

@@ -6,13 +6,21 @@ import { ContactsList, type ContactRow } from '@/components/contacts/contacts-li
 
 export default async function ContactsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { locale } = await params;
+  const { tab } = await searchParams;
   setRequestLocale(locale);
   await requireUser();
   const t = await getTranslations('contacts');
+
+  const validTabs = ['all', 'lead', 'customer', 'lost'] as const;
+  const initialTab = (validTabs as readonly string[]).includes(tab ?? '')
+    ? (tab as (typeof validTabs)[number])
+    : 'all';
 
   const supabase = await createClient();
 
@@ -60,7 +68,7 @@ export default async function ContactsPage({
   return (
     <>
       <AppHeader title={t('title')} />
-      <ContactsList rows={rows} territories={territoryList} />
+      <ContactsList rows={rows} territories={territoryList} initialTab={initialTab} />
     </>
   );
 }

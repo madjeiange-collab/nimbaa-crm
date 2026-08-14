@@ -38,14 +38,16 @@ const LIFECYCLE_CLASS: Record<ContactLifecycle, string> = {
 export function ContactsList({
   rows,
   territories = [],
+  initialTab = 'all',
 }: {
   rows: ContactRow[];
   territories?: { id: string; name: string }[];
+  initialTab?: Tab;
 }) {
   const t = useTranslations('contacts');
   const tLife = useTranslations('lifecycle');
   const tPrio = useTranslations('priority');
-  const [tab, setTab] = useState<Tab>('all');
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [q, setQ] = useState('');
   const [territorySel, setTerritorySel] = useState<string[]>([]);
 
