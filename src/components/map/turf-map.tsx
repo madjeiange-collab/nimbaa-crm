@@ -18,6 +18,7 @@ import {
   colorForDisposition,
   type DispositionColor,
 } from '@/lib/visits/dispositions';
+import { haversineMeters } from '@/lib/geo';
 import type { DispositionType } from '@/types/database';
 
 const ABIDJAN: [number, number] = [5.348, -4.008];
@@ -206,10 +207,37 @@ function spotIcon(spot: Spot): L.DivIcon {
 
 const FOCUS_RADIUS_KM = 50;
 
+function median(nums: number[]): number {
+  if (nums.length === 0) return 0;
+  const s = [...nums].sort((a, b) => a - b);
+  const n = s.length;
+  return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+}
+
 /**
- * Default view: centre on the user's live position and frame a ~50 km radius.
- * If geolocation is denied/unavailable, fall back to fitting the turf + knocks.
- * Runs once on mount.
+ * Bounds that frame the *main cluster* of points, ignoring far-flung outliers
+ * (e.g. a knock logged with a stray GPS fix in another country). Without this,
+ * a single distant point drags the auto-fit out to a whole-world view and the
+ * map opens unfocused. Keeps points within 4× the median distance from the
+ * median centre (min 3 km), so a real neighbourhood stays intact.
+ */
+function focusBounds(pts: [number, number][]): L.LatLngBounds | null {
+  if (pts.length === 0) return null;
+  if (pts.length <= 3) return L.latLngBounds(pts);
+  const medLat = median(pts.map((p) => p[0]));
+  const medLng = median(pts.map((p) => p[1]));
+  const dists = pts.map((p) => haversineMeters(medLat, medLng, p[0], p[1]));
+  const threshold = Math.max(median(dists) * 4, 3000);
+  const inliers = pts.filter((_, i) => dists[i] <= threshold);
+  return L.latLngBounds(inliers.length >= 2 ? inliers : pts);
+}
+
+/**
+ * Opening view. Frames the data (turf outlines + knocks' main cluster) so the
+ * map opens focused on the sales area regardless of where the device is — this
+ * is what a manager/rep wants when reviewing. Only when there is no data does
+ * it centre on the device's location (helps a fresh rep get started). The
+ * "Ma position" button still recentres on live GPS on demand. Runs once.
  */
 function InitialView({
   polygons,
@@ -225,18 +253,21 @@ function InitialView({
     if (done.current) return;
     done.current = true;
 
-    const fitLocal = () => {
-      const pts: [number, number][] = [];
-      polygons.forEach((poly) => toLatLngRing(poly).forEach((p) => pts.push(p)));
-      knocks.forEach((k) => pts.push([k.lat, k.lng]));
-      if (pts.length > 0) map.fitBounds(L.latLngBounds(pts).pad(0.15));
-    };
+    const pts: [number, number][] = [];
+    polygons.forEach((poly) => toLatLngRing(poly).forEach((p) => pts.push(p)));
+    knocks.forEach((k) => {
+      if (k.lat != null && k.lng != null) pts.push([k.lat, k.lng]);
+    });
 
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      fitLocal();
+    // Data present → frame it (outlier-robust), no geolocation needed.
+    const bounds = focusBounds(pts);
+    if (bounds) {
+      map.fitBounds(bounds.pad(0.15), { maxZoom: 16 });
       return;
     }
 
+    // No data → centre on the device to help a fresh rep start knocking.
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
@@ -245,7 +276,6 @@ function InitialView({
         map.fitBounds(
           L.latLngBounds([latitude - latDelta, longitude - lngDelta], [latitude + latDelta, longitude + lngDelta]),
         );
-        // Persistent "you are here" marker.
         L.circleMarker([latitude, longitude], {
           radius: 8,
           color: '#fff',
@@ -254,7 +284,7 @@ function InitialView({
           fillOpacity: 1,
         }).addTo(map);
       },
-      () => fitLocal(),
+      () => {},
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 },
     );
   }, [map, polygons, knocks]);
