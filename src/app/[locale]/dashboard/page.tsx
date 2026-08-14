@@ -37,7 +37,7 @@ export default async function DashboardPage({
       supabase.rpc('territories_geojson'),
       supabase
         .from('visits')
-        .select('id, lat, lng, disposition, rep_id')
+        .select('id, lat, lng, disposition, rep_id, contact_id, contacts(name, lifecycle)')
         .eq('visit_type', 'd2d_knock')
         .not('lat', 'is', null)
         .limit(2000),
@@ -66,7 +66,7 @@ export default async function DashboardPage({
         visits={(visits ?? []) as DashboardOverviewProps['visits']}
         contacts={(contacts ?? []) as DashboardOverviewProps['contacts']}
         flagged={(flagged ?? []) as DashboardOverviewProps['flagged']}
-        coverage={(coverage ?? []) as DashboardOverviewProps['coverage']}
+        coverage={(coverage ?? []) as unknown as DashboardOverviewProps['coverage']}
       />
     </>
   );

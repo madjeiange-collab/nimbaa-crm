@@ -47,16 +47,18 @@ export function PipelineBoard({
   stages,
   reps,
   territories,
+  initialLife = 'all',
 }: {
   contacts: PipelineContact[];
   stages: PipelineStage[];
   reps: PipelineRep[];
   territories: PipelineTerritory[];
+  initialLife?: LifeFilter;
 }) {
   const t = useTranslations('dashboard');
   const tC = useTranslations('contacts');
   const tLife = useTranslations('lifecycle');
-  const [life, setLife] = useState<LifeFilter>('all');
+  const [life, setLife] = useState<LifeFilter>(initialLife);
   const [repIds, setRepIds] = useState<string[]>([]);
   const [terrIds, setTerrIds] = useState<string[]>([]);
 

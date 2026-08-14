@@ -14,13 +14,21 @@ import {
 
 export default async function PipelinePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ life?: string }>;
 }) {
   const { locale } = await params;
+  const { life } = await searchParams;
   setRequestLocale(locale);
   await requireRole(['manager', 'admin']);
   const t = await getTranslations('dashboard');
+
+  const validLife = ['all', 'lead', 'customer', 'lost'] as const;
+  const initialLife = (validLife as readonly string[]).includes(life ?? '')
+    ? (life as (typeof validLife)[number])
+    : 'all';
 
   const supabase = await createClient();
   const [{ data: contacts }, { data: stages }, { data: users }, { data: turfs }] =
@@ -98,6 +106,7 @@ export default async function PipelinePage({
           stages={stageRows}
           reps={reps}
           territories={territories}
+          initialLife={initialLife}
         />
       </main>
     </>

@@ -40,6 +40,8 @@ interface OverviewCoverage {
   lng: number | null;
   disposition: string | null;
   rep_id: string;
+  contact_id?: string | null;
+  contacts?: { name: string | null; lifecycle: string } | null;
 }
 interface OverviewTerritory {
   id: string;
@@ -117,6 +119,9 @@ export function DashboardOverview({
           lat: k.lat as number,
           lng: k.lng as number,
           disposition: k.disposition as TurfKnock['disposition'],
+          contactId: k.contact_id ?? null,
+          name: k.contacts?.name ?? null,
+          lifecycle: k.contacts?.lifecycle ?? null,
         })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [coverage, repIds, terrIds, selectedPolys],
@@ -191,8 +196,8 @@ export function DashboardOverview({
         <StatTile label={t('knocksToday')} value={knocksToday} />
         <StatTile label={t('knocksWeek')} value={knocksWeek} accent="green" />
         <StatTile label={t('activeReps')} value={activeReps} />
-        <StatTile label={t('leads')} value={leads} accent="amber" />
-        <StatTile label={t('customers')} value={customers.length} accent="green" />
+        <StatTile label={t('leads')} value={leads} accent="amber" href="/dashboard/pipeline?life=lead" />
+        <StatTile label={t('customers')} value={customers.length} accent="green" href="/dashboard/pipeline?life=customer" />
         <StatTile label={t('conversion')} value={`${conversion}%`} />
       </div>
 
