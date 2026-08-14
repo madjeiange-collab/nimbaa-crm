@@ -233,11 +233,11 @@ function focusBounds(pts: [number, number][]): L.LatLngBounds | null {
 }
 
 /**
- * Opening view. Frames the data (turf outlines + knocks' main cluster) so the
- * map opens focused on the sales area regardless of where the device is — this
- * is what a manager/rep wants when reviewing. Only when there is no data does
- * it centre on the device's location (helps a fresh rep get started). The
- * "Ma position" button still recentres on live GPS on demand. Runs once.
+ * Opening view. Centres on the device's current position (with a "you are
+ * here" marker) when location is allowed. If location is denied/unavailable,
+ * falls back to framing the data's main cluster (outlier-robust) so the map
+ * never opens at a useless world zoom. The "Ma position" button recentres on
+ * live GPS on demand. Runs once.
  */
 function InitialView({
   polygons,
@@ -253,21 +253,25 @@ function InitialView({
     if (done.current) return;
     done.current = true;
 
-    const pts: [number, number][] = [];
-    polygons.forEach((poly) => toLatLngRing(poly).forEach((p) => pts.push(p)));
-    knocks.forEach((k) => {
-      if (k.lat != null && k.lng != null) pts.push([k.lat, k.lng]);
-    });
+    // Fallback: frame the data's main cluster (outlier-robust) so a denied /
+    // unavailable location never leaves the map at a useless world zoom.
+    const fitData = () => {
+      const pts: [number, number][] = [];
+      polygons.forEach((poly) => toLatLngRing(poly).forEach((p) => pts.push(p)));
+      knocks.forEach((k) => {
+        if (k.lat != null && k.lng != null) pts.push([k.lat, k.lng]);
+      });
+      const bounds = focusBounds(pts);
+      if (bounds) map.fitBounds(bounds.pad(0.15), { maxZoom: 16 });
+    };
 
-    // Data present → frame it (outlier-robust), no geolocation needed.
-    const bounds = focusBounds(pts);
-    if (bounds) {
-      map.fitBounds(bounds.pad(0.15), { maxZoom: 16 });
+    // Preferred: centre on the device's current position and drop a marker.
+    // Requires the user to have allowed location for this site; if it is
+    // denied/unavailable we fall back to framing the data.
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      fitData();
       return;
     }
-
-    // No data → centre on the device to help a fresh rep start knocking.
-    if (typeof navigator === 'undefined' || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
@@ -284,7 +288,7 @@ function InitialView({
           fillOpacity: 1,
         }).addTo(map);
       },
-      () => {},
+      () => fitData(),
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 },
     );
   }, [map, polygons, knocks]);
