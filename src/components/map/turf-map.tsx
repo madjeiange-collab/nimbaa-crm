@@ -94,6 +94,10 @@ export interface TurfKnock {
   lat: number;
   lng: number;
   disposition: DispositionType | null;
+  /** Linked contact name (engaged knocks only), for the spot popup. */
+  name?: string | null;
+  /** Linked contact lifecycle: 'lead' | 'customer' | 'lost'. */
+  lifecycle?: string | null;
 }
 
 /** GeoJSON Polygon coords ([lng,lat]) → Leaflet positions ([lat,lng]). */
@@ -101,30 +105,65 @@ function toLatLngRing(coordinates: number[][][]): [number, number][] {
   return (coordinates[0] ?? []).map(([lng, lat]) => [lat, lng]);
 }
 
+type NamedContact = { name: string; lifecycle: string | null };
+
 type Spot = {
   lat: number;
   lng: number;
   total: number;
   counts: Record<DispositionColor, number>;
+  /** Distinct linked contacts (leads/customers) at this spot. */
+  named: NamedContact[];
 };
 
 const COLOR_ORDER: DispositionColor[] = ['green', 'yellow', 'red', 'grey'];
 
 /** Group knocks landing on the same spot (~11 m grid) for per-spot counts. */
 function groupBySpot(knocks: TurfKnock[]): Spot[] {
-  const map = new Map<string, Spot>();
+  const map = new Map<
+    string,
+    {
+      lat: number;
+      lng: number;
+      total: number;
+      counts: Record<DispositionColor, number>;
+      names: Map<string, string | null>;
+    }
+  >();
   for (const k of knocks) {
     if (k.lat == null || k.lng == null) continue;
     const key = `${k.lat.toFixed(4)},${k.lng.toFixed(4)}`;
     let g = map.get(key);
     if (!g) {
-      g = { lat: k.lat, lng: k.lng, total: 0, counts: { grey: 0, red: 0, yellow: 0, green: 0 } };
+      g = {
+        lat: k.lat,
+        lng: k.lng,
+        total: 0,
+        counts: { grey: 0, red: 0, yellow: 0, green: 0 },
+        names: new Map(),
+      };
       map.set(key, g);
     }
     g.counts[colorForDisposition(k.disposition)]++;
     g.total++;
+    const nm = k.name?.trim();
+    if (nm && !g.names.has(nm)) g.names.set(nm, k.lifecycle ?? null);
   }
-  return [...map.values()];
+  return [...map.values()].map((g) => ({
+    lat: g.lat,
+    lng: g.lng,
+    total: g.total,
+    counts: g.counts,
+    named: [...g.names.entries()].map(([name, lifecycle]) => ({ name, lifecycle })),
+  }));
+}
+
+/** Pin colour for a contact's lifecycle (customer = won, lead = in-progress). */
+function lifecycleColor(lifecycle: string | null): DispositionColor {
+  if (lifecycle === 'customer') return 'green';
+  if (lifecycle === 'lead') return 'yellow';
+  if (lifecycle === 'lost') return 'red';
+  return 'grey';
 }
 
 /** Dominant (most frequent) disposition colour, ties broken toward best outcome. */
@@ -224,6 +263,7 @@ export default function TurfMap({
   showLocate?: boolean;
 }) {
   const t = useTranslations('turf');
+  const tLife = useTranslations('lifecycle');
   const spots = useMemo(() => groupBySpot(knocks), [knocks]);
 
   return (
@@ -250,6 +290,22 @@ export default function TurfMap({
                 {s.counts.yellow > 0 && <p>🟡 {t('legendYellow')}: {s.counts.yellow}</p>}
                 {s.counts.red > 0 && <p>🔴 {t('legendRed')}: {s.counts.red}</p>}
                 {s.counts.grey > 0 && <p>⚫ {t('legendGrey')}: {s.counts.grey}</p>}
+                {s.named.length > 0 && (
+                  <div className="mt-1 space-y-0.5 border-t pt-1">
+                    {s.named.map((n, j) => (
+                      <p key={j} className="flex items-center gap-1.5">
+                        <span
+                          className="inline-block h-2 w-2 shrink-0 rounded-full"
+                          style={{ background: dispositionCssColor(lifecycleColor(n.lifecycle)) }}
+                        />
+                        <span className="font-medium">{n.name}</span>
+                        {n.lifecycle && (
+                          <span className="text-[10px] text-gray-500">{tLife(n.lifecycle)}</span>
+                        )}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             </Popup>
           </Marker>

@@ -43,7 +43,7 @@ export default async function StatsPage({
     await Promise.all([
       supabase
         .from('visits')
-        .select('id, visited_at, disposition, lat, lng')
+        .select('id, visited_at, disposition, lat, lng, contact_id, contacts(name, lifecycle)')
         .eq('rep_id', user.id)
         .gte('visited_at', d30.toISOString()),
       supabase.from('contacts').select('lifecycle').eq('assigned_rep_id', user.id),
@@ -64,7 +64,14 @@ export default async function StatsPage({
       supabase.rpc('territories_geojson'),
     ]);
 
-  const vs = (visits ?? []) as { id: string; visited_at: string; disposition: string | null; lat: number | null; lng: number | null }[];
+  const vs = (visits ?? []) as unknown as {
+    id: string;
+    visited_at: string;
+    disposition: string | null;
+    lat: number | null;
+    lng: number | null;
+    contacts: { name: string | null; lifecycle: string } | null;
+  }[];
   const inWin = (from: Date, to?: Date) =>
     vs.filter((v) => {
       const at = new Date(v.visited_at);
@@ -109,7 +116,14 @@ export default async function StatsPage({
   // Coverage knocks (with GPS)
   const coverageKnocks: TurfKnock[] = vs
     .filter((v) => v.lat != null && v.lng != null)
-    .map((v) => ({ id: v.id, lat: v.lat as number, lng: v.lng as number, disposition: v.disposition as TurfKnock['disposition'] }));
+    .map((v) => ({
+      id: v.id,
+      lat: v.lat as number,
+      lng: v.lng as number,
+      disposition: v.disposition as TurfKnock['disposition'],
+      name: v.contacts?.name ?? null,
+      lifecycle: v.contacts?.lifecycle ?? null,
+    }));
   const polygons: number[][][][] = ((turfs ?? []) as { geojson?: { coordinates?: number[][][] } }[])
     .map((row) => row.geojson?.coordinates)
     .filter(Boolean) as number[][][][];
