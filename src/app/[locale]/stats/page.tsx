@@ -70,6 +70,7 @@ export default async function StatsPage({
     disposition: string | null;
     lat: number | null;
     lng: number | null;
+    contact_id: string | null;
     contacts: { name: string | null; lifecycle: string } | null;
   }[];
   const inWin = (from: Date, to?: Date) =>
@@ -121,6 +122,7 @@ export default async function StatsPage({
       lat: v.lat as number,
       lng: v.lng as number,
       disposition: v.disposition as TurfKnock['disposition'],
+      contactId: v.contact_id,
       name: v.contacts?.name ?? null,
       lifecycle: v.contacts?.lifecycle ?? null,
     }));

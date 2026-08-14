@@ -12,6 +12,7 @@ import {
 import { useTranslations } from 'next-intl';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { Link } from '@/i18n/navigation';
 import {
   dispositionCssColor,
   colorForDisposition,
@@ -94,7 +95,9 @@ export interface TurfKnock {
   lat: number;
   lng: number;
   disposition: DispositionType | null;
-  /** Linked contact name (engaged knocks only), for the spot popup. */
+  /** Linked contact id — makes the spot popup entry a link to the contact. */
+  contactId?: string | null;
+  /** Linked contact name (may be null for a nameless lead). */
   name?: string | null;
   /** Linked contact lifecycle: 'lead' | 'customer' | 'lost'. */
   lifecycle?: string | null;
@@ -105,7 +108,7 @@ function toLatLngRing(coordinates: number[][][]): [number, number][] {
   return (coordinates[0] ?? []).map(([lng, lat]) => [lat, lng]);
 }
 
-type NamedContact = { name: string; lifecycle: string | null };
+type NamedContact = { contactId: string | null; name: string | null; lifecycle: string | null };
 
 type Spot = {
   lat: number;
@@ -127,7 +130,7 @@ function groupBySpot(knocks: TurfKnock[]): Spot[] {
       lng: number;
       total: number;
       counts: Record<DispositionColor, number>;
-      names: Map<string, string | null>;
+      contacts: Map<string, NamedContact>;
     }
   >();
   for (const k of knocks) {
@@ -140,21 +143,27 @@ function groupBySpot(knocks: TurfKnock[]): Spot[] {
         lng: k.lng,
         total: 0,
         counts: { grey: 0, red: 0, yellow: 0, green: 0 },
-        names: new Map(),
+        contacts: new Map(),
       };
       map.set(key, g);
     }
     g.counts[colorForDisposition(k.disposition)]++;
     g.total++;
-    const nm = k.name?.trim();
-    if (nm && !g.names.has(nm)) g.names.set(nm, k.lifecycle ?? null);
+    // Any knock that links a contact contributes a popup entry (even nameless).
+    const cid = k.contactId ?? null;
+    const nm = k.name?.trim() || null;
+    if (cid || nm) {
+      const dedupe = cid ?? `name:${nm}`;
+      if (!g.contacts.has(dedupe))
+        g.contacts.set(dedupe, { contactId: cid, name: nm, lifecycle: k.lifecycle ?? null });
+    }
   }
   return [...map.values()].map((g) => ({
     lat: g.lat,
     lng: g.lng,
     total: g.total,
     counts: g.counts,
-    named: [...g.names.entries()].map(([name, lifecycle]) => ({ name, lifecycle })),
+    named: [...g.contacts.values()],
   }));
 }
 
@@ -264,6 +273,7 @@ export default function TurfMap({
 }) {
   const t = useTranslations('turf');
   const tLife = useTranslations('lifecycle');
+  const tC = useTranslations('contacts');
   const spots = useMemo(() => groupBySpot(knocks), [knocks]);
 
   return (
@@ -292,18 +302,35 @@ export default function TurfMap({
                 {s.counts.grey > 0 && <p>⚫ {t('legendGrey')}: {s.counts.grey}</p>}
                 {s.named.length > 0 && (
                   <div className="mt-1 space-y-0.5 border-t pt-1">
-                    {s.named.map((n, j) => (
-                      <p key={j} className="flex items-center gap-1.5">
+                    {s.named.map((n, j) => {
+                      const dot = (
                         <span
                           className="inline-block h-2 w-2 shrink-0 rounded-full"
                           style={{ background: dispositionCssColor(lifecycleColor(n.lifecycle)) }}
                         />
-                        <span className="font-medium">{n.name}</span>
-                        {n.lifecycle && (
-                          <span className="text-[10px] text-gray-500">{tLife(n.lifecycle)}</span>
-                        )}
-                      </p>
-                    ))}
+                      );
+                      const label = n.name ?? tC('noName');
+                      const life = n.lifecycle ? (
+                        <span className="text-[10px] text-gray-500">{tLife(n.lifecycle)}</span>
+                      ) : null;
+                      return n.contactId ? (
+                        <Link
+                          key={j}
+                          href={`/contacts/${n.contactId}`}
+                          className="flex items-center gap-1.5 text-primary"
+                        >
+                          {dot}
+                          <span className="font-medium underline">{label}</span>
+                          {life}
+                        </Link>
+                      ) : (
+                        <p key={j} className="flex items-center gap-1.5">
+                          {dot}
+                          <span className="font-medium">{label}</span>
+                          {life}
+                        </p>
+                      );
+                    })}
                   </div>
                 )}
               </div>
