@@ -16,13 +16,14 @@ export default async function ContactsPage({
 
   const supabase = await createClient();
 
-  const [{ data: contacts }, { data: stages }] = await Promise.all([
+  const [{ data: contacts }, { data: stages }, { data: territories }] = await Promise.all([
     supabase
       .from('contacts')
-      .select('id, name, lifecycle, priority, address, updated_at, pipeline_stage_id')
+      .select('id, name, lifecycle, priority, address, updated_at, pipeline_stage_id, territory_id')
       .order('updated_at', { ascending: false })
       .limit(500),
     supabase.from('pipeline_stages').select('id, name'),
+    supabase.from('territories').select('id, name').order('name'),
   ]);
 
   const stageName = new Map<string, string>(
@@ -38,6 +39,7 @@ export default async function ContactsPage({
       address: string | null;
       updated_at: string;
       pipeline_stage_id: string | null;
+      territory_id: string | null;
     }) => ({
       id: c.id,
       name: c.name,
@@ -46,13 +48,19 @@ export default async function ContactsPage({
       address: c.address,
       updatedAt: c.updated_at,
       stageName: c.pipeline_stage_id ? (stageName.get(c.pipeline_stage_id) ?? null) : null,
+      territoryId: c.territory_id,
     }),
   );
+
+  const territoryList = ((territories ?? []) as { id: string; name: string }[]).map((tr) => ({
+    id: tr.id,
+    name: tr.name,
+  }));
 
   return (
     <>
       <AppHeader title={t('title')} />
-      <ContactsList rows={rows} />
+      <ContactsList rows={rows} territories={territoryList} />
     </>
   );
 }

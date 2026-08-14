@@ -7,6 +7,7 @@ import { Link } from '@/i18n/navigation';
 import type { ContactLifecycle, PriorityLevel } from '@/types/database';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { TerritoryFilter } from '@/components/dashboard/rep-multi-filter';
 
 export interface ContactRow {
   id: string;
@@ -16,6 +17,7 @@ export interface ContactRow {
   address: string | null;
   updatedAt: string;
   stageName: string | null;
+  territoryId: string | null;
 }
 
 type Tab = 'all' | 'lead' | 'customer' | 'lost';
@@ -33,21 +35,30 @@ const LIFECYCLE_CLASS: Record<ContactLifecycle, string> = {
   lost: 'bg-destructive/10 text-destructive',
 };
 
-export function ContactsList({ rows }: { rows: ContactRow[] }) {
+export function ContactsList({
+  rows,
+  territories = [],
+}: {
+  rows: ContactRow[];
+  territories?: { id: string; name: string }[];
+}) {
   const t = useTranslations('contacts');
   const tLife = useTranslations('lifecycle');
   const tPrio = useTranslations('priority');
   const [tab, setTab] = useState<Tab>('all');
   const [q, setQ] = useState('');
+  const [territorySel, setTerritorySel] = useState<string[]>([]);
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
     return rows.filter((r) => {
       if (tab !== 'all' && r.lifecycle !== tab) return false;
       if (query && !(r.name ?? '').toLowerCase().includes(query)) return false;
+      if (territorySel.length > 0 && !(r.territoryId && territorySel.includes(r.territoryId)))
+        return false;
       return true;
     });
-  }, [rows, tab, q]);
+  }, [rows, tab, q, territorySel]);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'all', label: t('tabAll') },
@@ -85,6 +96,17 @@ export function ContactsList({ rows }: { rows: ContactRow[] }) {
           className="pl-9"
         />
       </div>
+
+      {/* Secteur (territory) filter — hidden when no territories exist */}
+      {territories.length > 0 && (
+        <div className="flex">
+          <TerritoryFilter
+            territories={territories}
+            selected={territorySel}
+            onChange={setTerritorySel}
+          />
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <Card className="p-6 text-center text-sm text-muted-foreground">{t('empty')}</Card>
