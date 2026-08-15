@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { DISPOSITION_BY_KEY, type KnockDisposition } from '@/lib/visits/dispositions';
+import { ensurePendingInstallation } from '@/lib/installations/seed';
 
 export interface SaveVisitInput {
   clientUuid: string;
@@ -141,6 +142,10 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
     if (contact) {
       contactId = contact.id;
       await supabase.from('visits').update({ contact_id: contactId }).eq('id', visit.id);
+      // A door that closes as "sold" becomes a customer awaiting installation.
+      if (meta.lifecycle === 'customer') {
+        await ensurePendingInstallation(supabase, contact.id, user.id);
+      }
     }
   }
 

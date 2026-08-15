@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { ensurePendingInstallation } from '@/lib/installations/seed';
 import type { ActivityType, PriorityLevel } from '@/types/database';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -65,6 +66,15 @@ export async function setStage(contactId: string, stageId: string): Promise<Acti
 
   const { error } = await supabase.from('contacts').update(patch).eq('id', contactId);
   if (error) return { ok: false, error: 'save_failed' };
+
+  // A freshly won customer gets a pending installation job (idempotent).
+  if (stage?.is_won) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    await ensurePendingInstallation(supabase, contactId, user?.id ?? null);
+  }
+
   revalidateContact(contactId);
   return { ok: true };
 }
@@ -115,6 +125,12 @@ export async function convertToCustomer(contactId: string): Promise<ActionResult
     })
     .eq('id', contactId);
   if (error) return { ok: false, error: 'save_failed' };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  await ensurePendingInstallation(supabase, contactId, user?.id ?? null);
+
   revalidateContact(contactId);
   return { ok: true };
 }

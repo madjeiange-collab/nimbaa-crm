@@ -451,3 +451,50 @@ create policy visits_read on visits for select using (auth.uid() is not null);
 -- Photos de visite : lecture partagée (miniatures dans le fil).
 drop policy if exists photos_read on visit_photos;
 create policy photos_read on visit_photos for select using (auth.uid() is not null);
+
+
+-- ====== 0005_technicians.sql ======
+
+-- =============================================================================
+-- Technicians + installation protocol. A technician installs the product on
+-- site once a customer is won. Installation trips reuse `visits`
+-- (visit_type='installation'); the protocol lives in `installations`.
+-- =============================================================================
+
+alter type user_role  add value if not exists 'technician';
+alter type visit_type add value if not exists 'installation';
+
+do $$ begin
+  create type install_status as enum
+    ('pending','scheduled','in_progress','done','needs_revisit');
+exception when duplicate_object then null; end $$;
+
+create table if not exists installations (
+  id              uuid primary key default uuid_generate_v4(),
+  contact_id      uuid not null references contacts(id) on delete cascade,
+  title           text,
+  installer_id    uuid references users(id),
+  status          install_status not null default 'pending',
+  checklist       jsonb not null default '[]',
+  equipment       jsonb not null default '[]',
+  scheduled_date  date,
+  started_at      timestamptz,
+  completed_at    timestamptz,
+  next_visit_date date,
+  notes           text,
+  created_by      uuid references users(id),
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+create index if not exists installations_contact_ix   on installations (contact_id);
+create index if not exists installations_installer_ix on installations (installer_id);
+create index if not exists installations_status_ix    on installations (status);
+
+alter table installations enable row level security;
+
+drop policy if exists installations_read on installations;
+create policy installations_read on installations for select using (auth.uid() is not null);
+drop policy if exists installations_ins on installations;
+create policy installations_ins on installations for insert with check (auth.uid() is not null);
+drop policy if exists installations_upd on installations;
+create policy installations_upd on installations for update using (auth.uid() is not null);

@@ -14,6 +14,11 @@ import {
   updateContact,
   assignContact,
 } from '@/lib/contacts/actions';
+import {
+  InstallationsSection,
+  type InstallJob,
+  type TechOption,
+} from '@/components/contacts/installation-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -84,11 +89,17 @@ export function ContactDetail({
   stages,
   timeline,
   reps,
+  technicians,
+  installJobs,
+  canInstall,
 }: {
   contact: ContactFull;
   stages: Stage[];
   timeline: TimelineItem[];
   reps: RepOption[];
+  technicians: TechOption[];
+  installJobs: InstallJob[];
+  canInstall: boolean;
 }) {
   const t = useTranslations('contacts');
   const tLife = useTranslations('lifecycle');
@@ -326,6 +337,16 @@ export function ContactDetail({
           )}
         </CardContent>
       </Card>
+
+      {/* Installations (customers only) */}
+      {contact.lifecycle === 'customer' && (
+        <InstallationsSection
+          contactId={contact.id}
+          jobs={installJobs}
+          technicians={technicians}
+          canInstall={canInstall}
+        />
+      )}
 
       {/* Activity composer */}
       <Card>

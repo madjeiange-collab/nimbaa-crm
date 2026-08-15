@@ -6,6 +6,7 @@ import {
   BarChart3,
   ShieldCheck,
   Settings,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
@@ -52,8 +53,10 @@ export default async function HomePage({
 
   const isManager = user.role === 'manager' || user.role === 'admin';
   const isAdmin = user.role === 'admin';
+  const isTechnician = user.role === 'technician';
   const displayName = user.full_name ?? user.username ?? '';
-  const hasNoCapability = !user.can_do_b2b && !user.can_do_d2d && user.role === 'rep';
+  const hasNoCapability =
+    !user.can_do_b2b && !user.can_do_d2d && user.role === 'rep';
 
   return (
     <>
@@ -89,6 +92,24 @@ export default async function HomePage({
             title={t('myStats')}
             hint={t('myStatsHint')}
           />
+        )}
+
+        {/* Technician: installation queue + customer lookup. */}
+        {isTechnician && (
+          <>
+            <HomeCard
+              href="/installs"
+              icon={Wrench}
+              title={t('installs')}
+              hint={t('installsHint')}
+            />
+            <HomeCard
+              href="/contacts"
+              icon={Users}
+              title={t('myContacts')}
+              hint={t('myContactsHint')}
+            />
+          </>
         )}
 
         {hasNoCapability && (

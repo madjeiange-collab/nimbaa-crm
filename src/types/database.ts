@@ -8,9 +8,15 @@
  *   supabase gen types typescript --project-id <ref> --schema public > src/types/database.ts
  */
 
-export type UserRole = 'rep' | 'manager' | 'admin';
+export type UserRole = 'rep' | 'manager' | 'admin' | 'technician';
 export type TerritoryType = 'b2b' | 'd2d' | 'mixed';
-export type VisitType = 'b2b_visit' | 'd2d_knock';
+export type VisitType = 'b2b_visit' | 'd2d_knock' | 'installation';
+export type InstallStatus =
+  | 'pending'
+  | 'scheduled'
+  | 'in_progress'
+  | 'done'
+  | 'needs_revisit';
 export type DispositionType =
   | 'no_answer'
   | 'not_home'
@@ -29,6 +35,19 @@ export type ContactSource =
   | 'import'
   | 'manual';
 export type ActivityType = 'call' | 'whatsapp' | 'note';
+
+/** One installation-checklist step (stored per-job in installations.checklist). */
+export interface ChecklistItem {
+  key: string;
+  label: string;
+  done: boolean;
+}
+
+/** One installed unit (stored in installations.equipment). */
+export interface EquipmentItem {
+  label: string;
+  serial: string;
+}
 
 export interface Database {
   // supabase-js ≥2.48 reads this marker to derive result types; without it the
@@ -162,6 +181,44 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['contacts']['Insert']>;
+        Relationships: [];
+      };
+      installations: {
+        Row: {
+          id: string;
+          contact_id: string;
+          title: string | null;
+          installer_id: string | null;
+          status: InstallStatus;
+          checklist: ChecklistItem[];
+          equipment: EquipmentItem[];
+          scheduled_date: string | null;
+          started_at: string | null;
+          completed_at: string | null;
+          next_visit_date: string | null;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          contact_id: string;
+          title?: string | null;
+          installer_id?: string | null;
+          status?: InstallStatus;
+          checklist?: ChecklistItem[];
+          equipment?: EquipmentItem[];
+          scheduled_date?: string | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+          next_visit_date?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['installations']['Insert']>;
         Relationships: [];
       };
       visits: {
@@ -336,6 +393,7 @@ export interface Database {
       priority_level: PriorityLevel;
       contact_source: ContactSource;
       activity_type: ActivityType;
+      install_status: InstallStatus;
     };
     CompositeTypes: Record<string, never>;
   };
