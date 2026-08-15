@@ -14,6 +14,7 @@ import { CoverageMap } from '@/components/charts/coverage-map';
 import { Card, CardContent } from '@/components/ui/card';
 import { dispositionCssColor } from '@/lib/visits/dispositions';
 import type { TurfKnock } from '@/components/map/turf-map';
+import { TechnicianStats } from '@/components/stats/technician-stats';
 
 const DAILY_GOAL = 30; // admin-settable per rep in Phase 6
 
@@ -26,6 +27,17 @@ export default async function StatsPage({
   setRequestLocale(locale);
   const user = await requireUser();
   const t = await getTranslations('stats');
+
+  // Technicians get an installation-focused statistics view.
+  if (user.role === 'technician') {
+    return (
+      <>
+        <AppHeader title={t('title')} />
+        <TechnicianStats userId={user.id} />
+      </>
+    );
+  }
+
   const tDisp = await getTranslations('dispositions');
   const tC = await getTranslations('contacts');
   const tCommon = await getTranslations('common');

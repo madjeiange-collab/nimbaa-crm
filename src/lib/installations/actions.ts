@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { freshChecklist } from '@/lib/installations/protocol';
+import { getTemplateChecklist } from '@/lib/installations/template';
 import type {
   ChecklistItem,
   EquipmentItem,
@@ -29,13 +29,14 @@ export async function createInstallation(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
+  const checklist = await getTemplateChecklist(supabase);
   const { data, error } = await supabase
     .from('installations')
     .insert({
       contact_id: contactId,
       title: title?.trim() || null,
       status: 'pending',
-      checklist: freshChecklist(),
+      checklist,
       created_by: user.id,
     })
     .select('id')

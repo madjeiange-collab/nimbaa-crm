@@ -72,6 +72,17 @@ export default async function HomePage({
           />
         )}
 
+        {/* Record an installation — sits right after "Enregistrer une visite".
+            Technician's queue, or all open jobs for a manager. */}
+        {(isTechnician || isManager) && (
+          <HomeCard
+            href="/installs"
+            icon={Wrench}
+            title={t('logInstall')}
+            hint={t('logInstallHint')}
+          />
+        )}
+
         {user.can_do_d2d && (
           <HomeCard href="/turf" icon={MapIcon} title={t('myTurf')} hint={t('myTurfHint')} />
         )}
@@ -89,25 +100,35 @@ export default async function HomePage({
           <HomeCard
             href="/stats"
             icon={BarChart3}
-            title={t('myStats')}
+            title={t('commercialStats')}
             hint={t('myStatsHint')}
           />
         )}
 
-        {/* Technician: installation queue + customer lookup. */}
+        {/* Technician team statistics — right after "Statistiques commerciaux". */}
+        {isManager && (
+          <HomeCard
+            href="/stats/technicians"
+            icon={Wrench}
+            title={t('techStats')}
+            hint={t('techStatsHint')}
+          />
+        )}
+
+        {/* Technician: customer lookup + own installation stats. */}
         {isTechnician && (
           <>
-            <HomeCard
-              href="/installs"
-              icon={Wrench}
-              title={t('installs')}
-              hint={t('installsHint')}
-            />
             <HomeCard
               href="/contacts"
               icon={Users}
               title={t('myContacts')}
               hint={t('myContactsHint')}
+            />
+            <HomeCard
+              href="/stats"
+              icon={BarChart3}
+              title={t('myStats')}
+              hint={t('myStatsHint')}
             />
           </>
         )}

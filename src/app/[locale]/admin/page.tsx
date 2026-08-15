@@ -1,5 +1,5 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
-import { Map as MapIcon, Users, ListChecks, Upload, Ban, type LucideIcon } from 'lucide-react';
+import { Map as MapIcon, Users, ListChecks, Upload, Ban, Wrench, type LucideIcon } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { requireRole } from '@/lib/auth/session';
 import { AppHeader } from '@/components/shared/app-header';
@@ -52,6 +52,7 @@ export default async function AdminPage({
       <main className="mx-auto max-w-3xl space-y-3 p-4">
         {/* Phase 1: territories are live; the rest arrive in Phase 6. */}
         <AdminLink href="/admin/territories" icon={MapIcon} label={t('territories')} ready />
+        <AdminLink href="/admin/protocol" icon={Wrench} label={t('protocol')} ready />
         <AdminLink href="/admin/users" icon={Users} label={t('users')} ready={false} />
         <AdminLink href="/admin/stages" icon={ListChecks} label={t('stages')} ready={false} />
         <AdminLink href="/admin/import" icon={Upload} label={t('import')} ready={false} />

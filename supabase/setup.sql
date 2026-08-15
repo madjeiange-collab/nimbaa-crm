@@ -498,3 +498,35 @@ drop policy if exists installations_ins on installations;
 create policy installations_ins on installations for insert with check (auth.uid() is not null);
 drop policy if exists installations_upd on installations;
 create policy installations_upd on installations for update using (auth.uid() is not null);
+
+
+-- ====== 0006_install_protocol.sql ======
+
+create table if not exists install_protocol_steps (
+  id         uuid primary key default uuid_generate_v4(),
+  key        text not null,
+  label      text not null,
+  sort_order int  not null default 0,
+  is_active  boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index if not exists install_protocol_order_ix on install_protocol_steps (sort_order);
+
+alter table install_protocol_steps enable row level security;
+
+drop policy if exists ips_read on install_protocol_steps;
+create policy ips_read on install_protocol_steps for select using (auth.uid() is not null);
+drop policy if exists ips_admin on install_protocol_steps;
+create policy ips_admin on install_protocol_steps for all
+  using (current_user_role() = 'admin') with check (current_user_role() = 'admin');
+
+insert into install_protocol_steps (key, label, sort_order)
+select * from (values
+  ('site_ready',        'Site préparé',        1),
+  ('unit_mounted',      'Unité montée',        2),
+  ('wiring',            'Câblage effectué',    3),
+  ('power_on',          'Mise sous tension',   4),
+  ('function_test',     'Test fonctionnel',    5),
+  ('customer_training', 'Formation client',    6)
+) as v(key, label, sort_order)
+where not exists (select 1 from install_protocol_steps);

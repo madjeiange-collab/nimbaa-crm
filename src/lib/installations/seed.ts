@@ -1,7 +1,8 @@
 import 'server-only';
 
 import type { createClient } from '@/lib/supabase/server';
-import { freshChecklist, OPEN_INSTALL_STATUSES } from '@/lib/installations/protocol';
+import { OPEN_INSTALL_STATUSES } from '@/lib/installations/protocol';
+import { getTemplateChecklist } from '@/lib/installations/template';
 
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -24,10 +25,11 @@ export async function ensurePendingInstallation(
     .limit(1);
   if (open && open.length > 0) return;
 
+  const checklist = await getTemplateChecklist(supabase);
   await supabase.from('installations').insert({
     contact_id: contactId,
     status: 'pending',
-    checklist: freshChecklist(),
+    checklist,
     created_by: createdBy,
   });
 }

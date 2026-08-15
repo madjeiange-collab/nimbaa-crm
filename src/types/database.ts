@@ -221,6 +221,26 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['installations']['Insert']>;
         Relationships: [];
       };
+      install_protocol_steps: {
+        Row: {
+          id: string;
+          key: string;
+          label: string;
+          sort_order: number;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          key: string;
+          label: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['install_protocol_steps']['Insert']>;
+        Relationships: [];
+      };
       visits: {
         Row: {
           id: string;
