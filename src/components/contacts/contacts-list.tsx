@@ -18,6 +18,11 @@ export interface ContactRow {
   updatedAt: string;
   stageName: string | null;
   territoryId: string | null;
+  visits: number;
+  lastVisitAt: string | null;
+  openDeals: number;
+  wonDeals: number;
+  wonValueXof: number;
 }
 
 type Tab = 'all' | 'lead' | 'customer' | 'lost';
@@ -69,8 +74,53 @@ export function ContactsList({
     { key: 'lost', label: t('tabLost') },
   ];
 
+  // Summary of the current selection (search + secteur, across all tabs).
+  const summary = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    const base = rows.filter((r) => {
+      if (query && !(r.name ?? '').toLowerCase().includes(query)) return false;
+      if (territorySel.length > 0 && !(r.territoryId && territorySel.includes(r.territoryId)))
+        return false;
+      return true;
+    });
+    const leads = base.filter((r) => r.lifecycle === 'lead').length;
+    const customers = base.filter((r) => r.lifecycle === 'customer').length;
+    const lost = base.filter((r) => r.lifecycle === 'lost').length;
+    const total = leads + customers + lost;
+    return {
+      leads,
+      customers,
+      conversion: total > 0 ? Math.round((customers / total) * 100) : 0,
+      value: base.reduce((s, r) => s + r.wonValueXof, 0),
+    };
+  }, [rows, q, territorySel]);
+
+  const shortDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+
   return (
     <main className="mx-auto max-w-3xl space-y-3 p-4">
+      {/* Summary strip for the current selection */}
+      <div className="grid grid-cols-4 gap-2">
+        {[
+          { label: t('kpiLeads'), value: String(summary.leads), cls: 'text-brand-brown' },
+          { label: t('kpiCustomers'), value: String(summary.customers), cls: 'text-knock-green' },
+          { label: t('kpiConversion'), value: `${summary.conversion}%`, cls: 'text-primary' },
+          {
+            label: t('kpiValue'),
+            value: summary.value >= 1_000_000
+              ? `${(summary.value / 1_000_000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} M`
+              : summary.value.toLocaleString('fr-FR'),
+            cls: 'text-primary',
+          },
+        ].map((k) => (
+          <Card key={k.label} className="p-2.5 text-center">
+            <p className={`text-lg font-bold leading-tight ${k.cls}`}>{k.value}</p>
+            <p className="text-[11px] text-muted-foreground">{k.label}</p>
+          </Card>
+        ))}
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto">
         {tabs.map((tb) => (
@@ -129,6 +179,19 @@ export function ContactsList({
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                     {r.stageName && <span>{r.stageName}</span>}
                     {r.address && <span className="truncate">· {r.address}</span>}
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                    <span>{t('rowVisits', { n: r.visits })}</span>
+                    {r.lastVisitAt && <span>· {t('rowLastVisit', { date: shortDate(r.lastVisitAt) })}</span>}
+                    {r.openDeals > 0 && (
+                      <span className="text-brand-brown">· {t('rowOpenDeals', { n: r.openDeals })}</span>
+                    )}
+                    {r.wonDeals > 0 && (
+                      <span className="text-knock-green">
+                        · {t('rowWonDeals', { n: r.wonDeals })}
+                        {r.wonValueXof > 0 && ` (${r.wonValueXof.toLocaleString('fr-FR')} F)`}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <span
