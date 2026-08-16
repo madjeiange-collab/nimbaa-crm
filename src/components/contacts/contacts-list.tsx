@@ -44,10 +44,13 @@ export function ContactsList({
   rows,
   territories = [],
   initialTab = 'all',
+  showMoney = false,
 }: {
   rows: ContactRow[];
   territories?: { id: string; name: string }[];
   initialTab?: Tab;
+  /** FCFA amounts are manager/admin-only. */
+  showMoney?: boolean;
 }) {
   const t = useTranslations('contacts');
   const tLife = useTranslations('lifecycle');
@@ -100,19 +103,24 @@ export function ContactsList({
 
   return (
     <main className="mx-auto max-w-3xl space-y-3 p-4">
-      {/* Summary strip for the current selection */}
-      <div className="grid grid-cols-4 gap-2">
+      {/* Summary strip for the current selection (revenue: managers only) */}
+      <div className={`grid gap-2 ${showMoney ? 'grid-cols-4' : 'grid-cols-3'}`}>
         {[
           { label: t('kpiLeads'), value: String(summary.leads), cls: 'text-brand-brown' },
           { label: t('kpiCustomers'), value: String(summary.customers), cls: 'text-knock-green' },
           { label: t('kpiConversion'), value: `${summary.conversion}%`, cls: 'text-primary' },
-          {
-            label: t('kpiValue'),
-            value: summary.value >= 1_000_000
-              ? `${(summary.value / 1_000_000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} M`
-              : summary.value.toLocaleString('fr-FR'),
-            cls: 'text-primary',
-          },
+          ...(showMoney
+            ? [
+                {
+                  label: t('kpiValue'),
+                  value:
+                    summary.value >= 1_000_000
+                      ? `${(summary.value / 1_000_000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} M`
+                      : summary.value.toLocaleString('fr-FR'),
+                  cls: 'text-primary',
+                },
+              ]
+            : []),
         ].map((k) => (
           <Card key={k.label} className="p-2.5 text-center">
             <p className={`text-lg font-bold leading-tight ${k.cls}`}>{k.value}</p>
@@ -189,7 +197,9 @@ export function ContactsList({
                     {r.wonDeals > 0 && (
                       <span className="text-knock-green">
                         · {t('rowWonDeals', { n: r.wonDeals })}
-                        {r.wonValueXof > 0 && ` (${r.wonValueXof.toLocaleString('fr-FR')} F)`}
+                        {showMoney &&
+                          r.wonValueXof > 0 &&
+                          ` (${r.wonValueXof.toLocaleString('fr-FR')} F)`}
                       </span>
                     )}
                   </div>

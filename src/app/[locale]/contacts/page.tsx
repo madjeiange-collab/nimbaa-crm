@@ -29,6 +29,7 @@ export default async function ContactsPage({
   // whole team. Managers/admins default to everything. (?mine=1 is the legacy
   // param from the stats drill-downs.)
   const isField = user.role === 'rep' || user.role === 'technician';
+  const isManagerView = user.role === 'manager' || user.role === 'admin';
   const scope: 'mine' | 'all' =
     scopeParam === 'all' ? 'all' : scopeParam === 'mine' || mine || isField ? 'mine' : 'all';
 
@@ -113,7 +114,8 @@ export default async function ContactsPage({
       lastVisitAt: visitAgg.get(c.id)?.last || null,
       openDeals: dealAgg.get(c.id)?.open ?? 0,
       wonDeals: dealAgg.get(c.id)?.won ?? 0,
-      wonValueXof: dealAgg.get(c.id)?.value ?? 0,
+      // Money is manager/admin-only — stripped server-side, never sent to reps.
+      wonValueXof: isManagerView ? (dealAgg.get(c.id)?.value ?? 0) : 0,
     }),
   );
 
@@ -142,7 +144,12 @@ export default async function ContactsPage({
           </div>
         </div>
       )}
-      <ContactsList rows={rows} territories={territoryList} initialTab={initialTab} />
+      <ContactsList
+        rows={rows}
+        territories={territoryList}
+        initialTab={initialTab}
+        showMoney={isManagerView}
+      />
     </>
   );
 }
