@@ -20,15 +20,20 @@ interface JobRow {
   scheduled_date: string | null;
   next_visit_date: string | null;
   contact_id: string;
+  installer_id: string | null;
   contacts: { id: string; name: string | null; address: string | null } | null;
+  installer: { full_name: string | null; username: string | null } | null;
 }
 
 export default async function InstallsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ scope?: string }>;
 }) {
   const { locale } = await params;
+  const { scope: scopeParam } = await searchParams;
   setRequestLocale(locale);
   const user = await requireUser();
   const t = await getTranslations('installation');
@@ -40,13 +45,17 @@ export default async function InstallsPage({
   const now = new Date();
   const startOfWeek = new Date(now.getTime() - 7 * 864e5);
 
-  // Open jobs (queue). Technicians see their own; managers see all.
+  // Open jobs (queue). Technicians land on THEIR jobs; the toggle widens to
+  // every open job (to take over or help out). Managers always see all.
+  const scope: 'mine' | 'all' = isManager || scopeParam === 'all' ? 'all' : 'mine';
   let jobsQuery = supabase
     .from('installations')
-    .select('id, title, status, scheduled_date, next_visit_date, contact_id, contacts(id, name, address)')
+    .select(
+      'id, title, status, scheduled_date, next_visit_date, contact_id, installer_id, contacts(id, name, address), installer:users!installer_id(full_name, username)',
+    )
     .in('status', OPEN_INSTALL_STATUSES)
     .order('scheduled_date', { ascending: true, nullsFirst: false });
-  if (!isManager) jobsQuery = jobsQuery.eq('installer_id', user.id);
+  if (scope === 'mine') jobsQuery = jobsQuery.eq('installer_id', user.id);
 
   const { data: rawJobs } = await jobsQuery;
   const jobs = (rawJobs ?? []) as unknown as JobRow[];
@@ -67,6 +76,23 @@ export default async function InstallsPage({
     <>
       <AppHeader title={t('queueTitle')} />
       <main className="mx-auto max-w-3xl space-y-4 p-4">
+        {/* Mine ↔ team toggle (technicians) */}
+        {!isManager && (
+          <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+            {(['mine', 'all'] as const).map((s) => (
+              <Link
+                key={s}
+                href={`/installs${s === 'all' ? '?scope=all' : ''}`}
+                className={`rounded-md px-3 py-1.5 text-center text-sm font-medium ${
+                  scope === s ? 'bg-background shadow' : 'text-muted-foreground'
+                }`}
+              >
+                {s === 'mine' ? t('scopeMine') : t('scopeAll')}
+              </Link>
+            ))}
+          </div>
+        )}
+
         {/* Compact stats strip */}
         <div className="grid grid-cols-3 gap-2">
           <StatTile label={t('kpiPending')} value={pending} accent="primary" />
@@ -111,6 +137,19 @@ export default async function InstallsPage({
                         <p className="flex items-center gap-1 text-xs text-muted-foreground">
                           <CalendarClock className="h-3 w-3 shrink-0" />
                           {when}
+                        </p>
+                      )}
+                      {scope === 'all' && !isManager && (
+                        <p className="mt-0.5 text-xs">
+                          {job.installer_id === user.id ? (
+                            <span className="font-medium text-primary">{t('scopeMine')}</span>
+                          ) : job.installer ? (
+                            <span className="text-muted-foreground">
+                              {job.installer.full_name ?? job.installer.username}
+                            </span>
+                          ) : (
+                            <span className="font-medium text-brand-brown">{t('unassigned')}</span>
+                          )}
                         </p>
                       )}
                     </div>
