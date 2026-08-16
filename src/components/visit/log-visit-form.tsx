@@ -130,10 +130,12 @@ export function LogVisitForm({
       .slice(0, 5);
   }, [hasFix, geo.lat, geo.lng, contacts, linked]);
 
+  // Combobox behaviour: no query → droplist of all contacts (most recently
+  // active first, capped for DOM weight); typing filters it down.
   const searchResults = useMemo(() => {
     const q = contactQuery.trim().toLowerCase();
-    if (!q) return [];
-    return contacts.filter((c) => (c.name ?? '').toLowerCase().includes(q)).slice(0, 8);
+    if (!q) return contacts.slice(0, 100);
+    return contacts.filter((c) => (c.name ?? '').toLowerCase().includes(q)).slice(0, 20);
   }, [contactQuery, contacts]);
 
   const meta = disposition ? DISPOSITION_BY_KEY[disposition] : null;
@@ -355,31 +357,29 @@ export function LogVisitForm({
                   placeholder={t('searchContact')}
                   autoFocus
                 />
-                {contactQuery.trim() && (
-                  <div className="max-h-48 overflow-y-auto rounded-md border">
-                    {searchResults.length === 0 ? (
-                      <p className="px-3 py-2 text-sm text-muted-foreground">{t('noMatch')}</p>
-                    ) : (
-                      searchResults.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => {
-                            setLinked({ id: c.id, name: c.name });
-                            setShowPicker(false);
-                            setContactQuery('');
-                          }}
-                          className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent"
-                        >
-                          <span className="truncate">{c.name ?? '—'}</span>
-                          <span className="ml-2 shrink-0 text-xs text-muted-foreground">
-                            {tLife(c.lifecycle as never)}
-                          </span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
+                <div className="max-h-64 overflow-y-auto rounded-md border">
+                  {searchResults.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-muted-foreground">{t('noMatch')}</p>
+                  ) : (
+                    searchResults.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setLinked({ id: c.id, name: c.name });
+                          setShowPicker(false);
+                          setContactQuery('');
+                        }}
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent"
+                      >
+                        <span className="truncate">{c.name ?? '—'}</span>
+                        <span className="ml-2 shrink-0 text-xs text-muted-foreground">
+                          {tLife(c.lifecycle as never)}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
             )}
             <p className="text-xs text-muted-foreground">{t('linkNew')}</p>
