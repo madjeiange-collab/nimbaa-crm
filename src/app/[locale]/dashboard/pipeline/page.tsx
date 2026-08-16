@@ -10,6 +10,7 @@ import {
   type PipelineStage,
   type PipelineRep,
   type PipelineTerritory,
+  type WonPeriod,
 } from '@/components/dashboard/pipeline-board';
 import type { DealStatus } from '@/types/database';
 
@@ -18,24 +19,28 @@ export default async function PipelinePage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ life?: string }>;
+  searchParams: Promise<{ life?: string; rep?: string; terr?: string; won?: string }>;
 }) {
   const { locale } = await params;
-  const { life } = await searchParams;
+  const { life, rep, terr, won } = await searchParams;
   setRequestLocale(locale);
   await requireRole(['manager', 'admin']);
   const t = await getTranslations('dashboard');
 
-  // Map the legacy ?life= link (from dashboard KPIs) onto deal status.
+  // Map the ?life= link (from dashboard KPIs) onto deal status; carry the
+  // dashboard's rep/secteur filter + an optional won-date scope.
   const initialStatus: 'all' | DealStatus =
     life === 'lead' ? 'open' : life === 'customer' ? 'won' : life === 'lost' ? 'lost' : 'all';
+  const initialRepIds = rep ? rep.split(',').filter(Boolean) : [];
+  const initialTerrIds = terr ? terr.split(',').filter(Boolean) : [];
+  const initialWonPeriod: WonPeriod = won === 'week' || won === 'month' ? won : 'all';
 
   const supabase = await createClient();
   const [{ data: dealRows }, { data: stages }, { data: users }, { data: turfs }] =
     await Promise.all([
       supabase
         .from('deals')
-        .select('id, title, value_xof, status, pipeline_stage_id, assigned_rep_id, contacts(id, name, territory_id)')
+        .select('id, title, value_xof, status, pipeline_stage_id, won_at, assigned_rep_id, contacts(id, name, territory_id)')
         .order('updated_at', { ascending: false })
         .limit(2000),
       supabase.from('pipeline_stages').select('id, name, sort_order, is_active').order('sort_order'),
@@ -60,6 +65,7 @@ export default async function PipelinePage({
     value_xof: number | null;
     status: DealStatus;
     pipeline_stage_id: string | null;
+    won_at: string | null;
     assigned_rep_id: string | null;
     contacts: { id: string; name: string | null; territory_id: string | null } | null;
   };
@@ -71,6 +77,7 @@ export default async function PipelinePage({
     value: d.value_xof,
     stageId: d.pipeline_stage_id,
     status: d.status,
+    wonAt: d.won_at,
     repId: d.assigned_rep_id,
     repName: d.assigned_rep_id ? (repName.get(d.assigned_rep_id) ?? '—') : null,
     territoryId: d.contacts?.territory_id ?? null,
@@ -104,6 +111,9 @@ export default async function PipelinePage({
           reps={reps}
           territories={territories}
           initialStatus={initialStatus}
+          initialRepIds={initialRepIds}
+          initialTerrIds={initialTerrIds}
+          initialWonPeriod={initialWonPeriod}
         />
       </main>
     </>

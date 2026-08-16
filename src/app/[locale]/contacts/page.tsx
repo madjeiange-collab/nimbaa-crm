@@ -9,12 +9,12 @@ export default async function ContactsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; mine?: string }>;
 }) {
   const { locale } = await params;
-  const { tab } = await searchParams;
+  const { tab, mine } = await searchParams;
   setRequestLocale(locale);
-  await requireUser();
+  const user = await requireUser();
   const t = await getTranslations('contacts');
 
   const validTabs = ['all', 'lead', 'customer', 'lost'] as const;
@@ -24,12 +24,17 @@ export default async function ContactsPage({
 
   const supabase = await createClient();
 
+  // ?mine=1 (from « Mes statistiques » drill-downs) → only the rep's contacts,
+  // so the list matches the personal KPI count.
+  let contactsQuery = supabase
+    .from('contacts')
+    .select('id, name, lifecycle, priority, address, updated_at, pipeline_stage_id, territory_id')
+    .order('updated_at', { ascending: false })
+    .limit(500);
+  if (mine) contactsQuery = contactsQuery.eq('assigned_rep_id', user.id);
+
   const [{ data: contacts }, { data: stages }, { data: territories }] = await Promise.all([
-    supabase
-      .from('contacts')
-      .select('id, name, lifecycle, priority, address, updated_at, pipeline_stage_id, territory_id')
-      .order('updated_at', { ascending: false })
-      .limit(500),
+    contactsQuery,
     supabase.from('pipeline_stages').select('id, name'),
     supabase.from('territories').select('id, name').order('name'),
   ]);

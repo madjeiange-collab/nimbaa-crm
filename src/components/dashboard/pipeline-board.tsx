@@ -17,10 +17,13 @@ export interface PipelineDeal {
   value: number | null;
   stageId: string | null;
   status: DealStatus;
+  wonAt: string | null; // when the deal was won (for the won-date filter)
   repId: string | null;
   repName: string | null;
   territoryId: string | null;
 }
+
+export type WonPeriod = 'all' | 'week' | 'month';
 export interface PipelineStage {
   id: string;
   name: string;
@@ -42,29 +45,44 @@ export function PipelineBoard({
   reps,
   territories,
   initialStatus = 'all',
+  initialRepIds = [],
+  initialTerrIds = [],
+  initialWonPeriod = 'all',
 }: {
   deals: PipelineDeal[];
   stages: PipelineStage[];
   reps: PipelineRep[];
   territories: PipelineTerritory[];
   initialStatus?: StatusFilter;
+  initialRepIds?: string[];
+  initialTerrIds?: string[];
+  initialWonPeriod?: WonPeriod;
 }) {
   const t = useTranslations('dashboard');
   const tD = useTranslations('deals');
   const [status, setStatus] = useState<StatusFilter>(initialStatus);
-  const [repIds, setRepIds] = useState<string[]>([]);
-  const [terrIds, setTerrIds] = useState<string[]>([]);
+  const [repIds, setRepIds] = useState<string[]>(initialRepIds);
+  const [terrIds, setTerrIds] = useState<string[]>(initialTerrIds);
+  const [wonPeriod, setWonPeriod] = useState<WonPeriod>(initialWonPeriod);
 
-  const filtered = useMemo(
-    () =>
-      deals.filter(
-        (d) =>
-          (status === 'all' || d.status === status) &&
-          (repIds.length === 0 || (!!d.repId && repIds.includes(d.repId))) &&
-          (terrIds.length === 0 || (!!d.territoryId && terrIds.includes(d.territoryId))),
-      ),
-    [deals, status, repIds, terrIds],
-  );
+  const filtered = useMemo(() => {
+    // Won-date cutoff (only constrains won deals; open/lost are unaffected).
+    const cutoff =
+      wonPeriod === 'week'
+        ? Date.now() - 7 * 864e5
+        : wonPeriod === 'month'
+          ? Date.now() - 30 * 864e5
+          : null;
+    return deals.filter(
+      (d) =>
+        (status === 'all' || d.status === status) &&
+        (repIds.length === 0 || (!!d.repId && repIds.includes(d.repId))) &&
+        (terrIds.length === 0 || (!!d.territoryId && terrIds.includes(d.territoryId))) &&
+        (cutoff === null ||
+          d.status !== 'won' ||
+          (!!d.wonAt && new Date(d.wonAt).getTime() >= cutoff)),
+    );
+  }, [deals, status, repIds, terrIds, wonPeriod]);
 
   const byStage = useMemo(() => {
     const m = new Map<string, PipelineDeal[]>();
@@ -120,6 +138,27 @@ export function PipelineBoard({
       <div className="flex flex-col gap-2 sm:flex-row">
         <RepMultiFilter reps={reps} selected={repIds} onChange={setRepIds} />
         <TerritoryFilter territories={territories} selected={terrIds} onChange={setTerrIds} />
+      </div>
+
+      {/* Won-date filter — narrows won deals to a recent period. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground">{tD('wonPeriodLabel')}</span>
+        <div className="flex gap-1">
+          {(['all', 'week', 'month'] as WonPeriod[]).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setWonPeriod(p)}
+              className={`min-h-touch whitespace-nowrap rounded-lg px-3 text-sm font-medium ${
+                wonPeriod === p
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground'
+              }`}
+            >
+              {tD(p === 'all' ? 'wonAll' : p === 'week' ? 'wonWeek' : 'wonMonth')}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-2">

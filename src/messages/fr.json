@@ -101,7 +101,11 @@
     "productPlaceholder": "Produit / service",
     "add": "Ajouter",
     "delete": "Supprimer",
-    "filterAll": "Toutes"
+    "filterAll": "Toutes",
+    "wonPeriodLabel": "Gagné",
+    "wonAll": "Tout",
+    "wonWeek": "Cette semaine",
+    "wonMonth": "Ce mois"
   },
   "installation": {
     "title": "Installation",

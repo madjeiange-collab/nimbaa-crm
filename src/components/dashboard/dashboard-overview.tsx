@@ -163,6 +163,15 @@ export function DashboardOverview({
     { href: '/dashboard/photos', icon: Images, label: t('photos') },
   ];
 
+  // Carry the active rep/secteur filter into the pipeline drill-down so its
+  // list matches the KPI count.
+  const pipelineHref = (life: 'lead' | 'customer') => {
+    const p = new URLSearchParams({ life });
+    if (repIds.length) p.set('rep', repIds.join(','));
+    if (terrIds.length) p.set('terr', terrIds.join(','));
+    return `/dashboard/pipeline?${p.toString()}`;
+  };
+
   return (
     <div className="space-y-4">
       {/* Global filters — searchable multi-select for reps and territories */}
@@ -196,8 +205,8 @@ export function DashboardOverview({
         <StatTile label={t('knocksToday')} value={knocksToday} />
         <StatTile label={t('knocksWeek')} value={knocksWeek} accent="green" />
         <StatTile label={t('activeReps')} value={activeReps} />
-        <StatTile label={t('leads')} value={leads} accent="amber" href="/dashboard/pipeline?life=lead" />
-        <StatTile label={t('customers')} value={customers.length} accent="green" href="/dashboard/pipeline?life=customer" />
+        <StatTile label={t('leads')} value={leads} accent="amber" href={pipelineHref('lead')} />
+        <StatTile label={t('customers')} value={customers.length} accent="green" href={pipelineHref('customer')} />
         <StatTile label={t('conversion')} value={`${conversion}%`} />
       </div>
 
