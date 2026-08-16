@@ -25,16 +25,17 @@ export default async function InstallPhotosPage({
       .eq('visits.visit_type', 'installation')
       .order('taken_at', { ascending: false })
       .limit(120),
-    supabase.from('users').select('id, full_name, username'),
+    supabase.from('users').select('id, full_name, username, role'),
     supabase.rpc('territories_geojson'),
   ]);
 
+  type UserRow = { id: string; full_name: string | null; username: string | null; role?: string };
   const name = new Map<string, string>(
-    (users ?? []).map((u: { id: string; full_name: string | null; username: string | null }) => [
-      u.id,
-      u.full_name ?? u.username ?? '—',
-    ]),
+    (users ?? []).map((u: UserRow) => [u.id, u.full_name ?? u.username ?? '—']),
   );
+  const technicians = ((users ?? []) as UserRow[])
+    .filter((u) => u.role === 'technician')
+    .map((u) => ({ id: u.id, name: u.full_name ?? u.username ?? '—' }));
 
   const territories = (
     (turfs ?? []) as { id: string; name: string; geojson?: { coordinates?: number[][][] } }[]
@@ -87,7 +88,7 @@ export default async function InstallPhotosPage({
           <ArrowLeft className="h-4 w-4" />
           {t('title')}
         </Link>
-        <PhotoAudit items={items} territories={territories} variant="technician" />
+        <PhotoAudit items={items} territories={territories} variant="technician" people={technicians} />
       </main>
     </>
   );

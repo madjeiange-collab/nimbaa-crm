@@ -68,11 +68,15 @@ export function PhotoAudit({
   items,
   territories,
   variant = 'commercial',
+  people,
 }: {
   items: PhotoItem[];
   territories: PhotoTerritory[];
   /** 'technician' swaps the person filter + labels for installation photos. */
   variant?: 'commercial' | 'technician';
+  /** Full person list for the filter; falls back to deriving from `items`
+      (so the filter still shows when there are no photos yet). */
+  people?: { id: string; name: string }[];
 }) {
   const t = useTranslations('dashboard');
   const tDisp = useTranslations('dispositions');
@@ -84,10 +88,11 @@ export function PhotoAudit({
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const reps = useMemo(() => {
+    if (people && people.length > 0) return people;
     const m = new Map<string, string>();
     items.forEach((i) => m.set(i.repId, i.repName));
     return [...m.entries()].map(([id, name]) => ({ id, name }));
-  }, [items]);
+  }, [items, people]);
 
   const selectedPolys = useMemo(
     () =>
