@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Download, ChevronDown } from 'lucide-react';
 import { downloadCsv } from '@/lib/csv';
-import { RepMultiFilter, TerritoryFilter } from '@/components/dashboard/rep-multi-filter';
+import { RepMultiFilter, TechMultiFilter, TerritoryFilter } from '@/components/dashboard/rep-multi-filter';
 import { pointInAnyPolygon } from '@/lib/geo';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,8 @@ export interface PhotoItem {
   at: string;
   lat: number | null;
   lng: number | null;
+  /** Optional caption (e.g. the customer name for installation photos). */
+  subtitle?: string | null;
 }
 
 export interface PhotoTerritory {
@@ -65,13 +67,17 @@ function groupOf(i: PhotoItem, mode: GroupBy, locale: string): { key: string; la
 export function PhotoAudit({
   items,
   territories,
+  variant = 'commercial',
 }: {
   items: PhotoItem[];
   territories: PhotoTerritory[];
+  /** 'technician' swaps the person filter + labels for installation photos. */
+  variant?: 'commercial' | 'technician';
 }) {
   const t = useTranslations('dashboard');
   const tDisp = useTranslations('dispositions');
   const locale = useLocale();
+  const isTech = variant === 'technician';
   const [repIds, setRepIds] = useState<string[]>([]);
   const [terrIds, setTerrIds] = useState<string[]>([]);
   const [groupBy, setGroupBy] = useState<GroupBy>('day');
@@ -130,22 +136,30 @@ export function PhotoAudit({
 
   function exportCsv() {
     downloadCsv('audit-photos.csv', [
-      ['Commercial', 'Date', 'Résultat'],
-      ...filtered.map((i) => [i.repName, fmt(i.at, locale), i.disposition ?? '']),
+      isTech ? ['Technicien', 'Client', 'Date'] : ['Commercial', 'Date', 'Résultat'],
+      ...filtered.map((i) =>
+        isTech
+          ? [i.repName, i.subtitle ?? '', fmt(i.at, locale)]
+          : [i.repName, fmt(i.at, locale), i.disposition ?? ''],
+      ),
     ]);
   }
 
   const modes: { key: GroupBy; label: string }[] = [
     { key: 'day', label: t('groupByDay') },
     { key: 'month', label: t('groupByMonth') },
-    { key: 'rep', label: t('groupByRep') },
+    { key: 'rep', label: isTech ? t('groupByTechnician') : t('groupByRep') },
   ];
 
   return (
     <div className="space-y-3">
       <div className="space-y-2">
         <div className="flex flex-col gap-2 sm:flex-row">
-          <RepMultiFilter reps={reps} selected={repIds} onChange={setRepIds} />
+          {isTech ? (
+            <TechMultiFilter technicians={reps} selected={repIds} onChange={setRepIds} />
+          ) : (
+            <RepMultiFilter reps={reps} selected={repIds} onChange={setRepIds} />
+          )}
           <TerritoryFilter territories={territories} selected={terrIds} onChange={setTerrIds} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -208,6 +222,7 @@ export function PhotoAudit({
                           </div>
                           <div className="p-2 text-xs">
                             <p className="truncate font-medium">{i.repName}</p>
+                            {i.subtitle && <p className="truncate text-muted-foreground">{i.subtitle}</p>}
                             <p className="text-muted-foreground">{fmt(i.at, locale)}</p>
                             {i.disposition && (
                               <p className="text-muted-foreground">{tDisp(i.disposition as never)}</p>

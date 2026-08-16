@@ -1,28 +1,21 @@
-import { getTranslations } from 'next-intl/server';
-import { CalendarClock, RotateCcw, ArrowUp, ArrowDown, Minus } from 'lucide-react';
+'use client';
+
+import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { CalendarClock, RotateCcw, ArrowUp, ArrowDown, Minus, KanbanSquare, Images } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { StatTile } from '@/components/charts/stat-tile';
 import { BarDays } from '@/components/charts/bar-days';
 import { Donut } from '@/components/charts/donut';
 import { Funnel } from '@/components/charts/funnel';
 import { CoverageMap } from '@/components/charts/coverage-map';
+import { TechMultiFilter, TerritoryFilter } from '@/components/dashboard/rep-multi-filter';
+import { pointInAnyPolygon } from '@/lib/geo';
 import { Card, CardContent } from '@/components/ui/card';
 import { INSTALL_STATUSES } from '@/lib/installations/protocol';
 import type { InstallStatus, DispositionType } from '@/types/database';
 import type { TurfKnock } from '@/components/map/turf-map';
-
-interface Row {
-  id: string;
-  status: InstallStatus;
-  installer_id: string | null;
-  completed_at: string | null;
-  scheduled_date: string | null;
-  next_visit_date: string | null;
-  title: string | null;
-  contact_id: string | null;
-  contacts: { name: string | null; lat: number | null; lng: number | null } | null;
-}
+import type { ManagerInstallRow, ManagerTerritory } from '@/lib/installations/manager-data';
 
 const STATUS_CSS: Record<string, string> = {
   grey: 'hsl(var(--knock-grey))',
@@ -40,29 +33,49 @@ const STATUS_TO_DISPOSITION: Record<InstallStatus, DispositionType> = {
   done: 'sold', // green
 };
 
-/** Rich team-wide installation statistics for managers (models "Mes statistiques"). */
-export async function TechnicianTeamStats() {
-  const t = await getTranslations('installation');
-  const tStatus = await getTranslations('installation.status');
-  const tS = await getTranslations('stats');
+/** Rich, filterable team-wide installation statistics for managers. */
+export function TechnicianTeamStats({
+  nowIso,
+  installations,
+  technicians,
+  territories,
+  showNav = true,
+}: {
+  nowIso: string;
+  installations: ManagerInstallRow[];
+  technicians: { id: string; name: string }[];
+  territories: ManagerTerritory[];
+  /** Show the nav cards to the pipeline + photo sub-pages (manager area only). */
+  showNav?: boolean;
+}) {
+  const t = useTranslations('installation');
+  const tStatus = useTranslations('installation.status');
+  const tS = useTranslations('stats');
+  const tD = useTranslations('dashboard');
 
-  const supabase = await createClient();
-  const [{ data: rawRows }, { data: users }] = await Promise.all([
-    supabase
-      .from('installations')
-      .select('id, status, installer_id, completed_at, scheduled_date, next_visit_date, title, contact_id, contacts(name, lat, lng)')
-      .limit(5000),
-    supabase.from('users').select('id, full_name, username, role'),
-  ]);
-  const rows = (rawRows ?? []) as unknown as Row[];
+  const [techIds, setTechIds] = useState<string[]>([]);
+  const [terrIds, setTerrIds] = useState<string[]>([]);
 
-  const now = new Date();
+  const selectedPolys = useMemo(
+    () => territories.filter((tr) => terrIds.length === 0 || terrIds.includes(tr.id)).map((tr) => tr.coordinates),
+    [territories, terrIds],
+  );
+
+  const rows = useMemo(
+    () =>
+      installations.filter(
+        (r) =>
+          (techIds.length === 0 || (!!r.installerId && techIds.includes(r.installerId))) &&
+          (terrIds.length === 0 || (r.lat != null && r.lng != null && pointInAnyPolygon(r.lat, r.lng, selectedPolys))),
+      ),
+    [installations, techIds, terrIds, selectedPolys],
+  );
+
+  const now = useMemo(() => new Date(nowIso), [nowIso]);
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const d7 = new Date(now.getTime() - 7 * 864e5);
   const d14 = new Date(now.getTime() - 14 * 864e5);
-  const d30 = new Date(now.getTime() - 30 * 864e5);
 
-  // --- Aggregates ----------------------------------------------------------
   const total = rows.length;
   const countStatus = (s: InstallStatus) => rows.filter((r) => r.status === s).length;
   const pending = countStatus('pending') + countStatus('scheduled');
@@ -72,10 +85,10 @@ export async function TechnicianTeamStats() {
   const started = rows.filter((r) => ['in_progress', 'needs_revisit', 'done'].includes(r.status)).length;
   const completionRate = total > 0 ? Math.round((doneAll / total) * 100) : 0;
 
-  const done = rows.filter((r) => r.status === 'done' && r.completed_at);
+  const done = rows.filter((r) => r.status === 'done' && r.completedAt);
   const doneInWin = (from: Date, to?: Date) =>
     done.filter((r) => {
-      const at = new Date(r.completed_at as string);
+      const at = new Date(r.completedAt as string);
       return at >= from && (!to || at < to);
     }).length;
   const doneToday = doneInWin(startToday);
@@ -83,68 +96,90 @@ export async function TechnicianTeamStats() {
   const donePrevWeek = doneInWin(d14, d7);
   const wowDelta = doneWeek - donePrevWeek;
 
-  // --- 30-day completion trend --------------------------------------------
   const trend = Array.from({ length: 30 }, (_, i) => {
     const day = new Date(now.getTime() - (29 - i) * 864e5);
     const start = new Date(day.getFullYear(), day.getMonth(), day.getDate());
     return { label: '', value: doneInWin(start, new Date(start.getTime() + 864e5)) };
   });
 
-  // --- Status donut --------------------------------------------------------
   const donutSegs = INSTALL_STATUSES.map((s) => ({
     label: tStatus(s.i18n),
     value: countStatus(s.key),
     color: STATUS_CSS[s.color] ?? STATUS_CSS.grey,
   })).filter((s) => s.value > 0);
 
-  // --- Per-technician ------------------------------------------------------
-  const techName = new Map<string, string>();
-  for (const u of (users ?? []) as { id: string; full_name: string | null; username: string | null; role?: string }[]) {
-    if (u.role === 'technician') techName.set(u.id, u.full_name ?? u.username ?? '—');
-  }
-  const perTech = [...techName.entries()]
-    .map(([id, name]) => {
-      const mine = rows.filter((r) => r.installer_id === id);
-      return {
-        name,
-        done7d: mine.filter((r) => r.status === 'done' && r.completed_at && new Date(r.completed_at) >= d7).length,
-        open: mine.filter((r) => r.status !== 'done').length,
-        revisits: mine.filter((r) => r.status === 'needs_revisit').length,
-      };
-    })
-    .sort((a, b) => b.done7d - a.done7d || b.open - a.open);
+  const nameOf = useMemo(() => new Map(technicians.map((tech) => [tech.id, tech.name])), [technicians]);
+  const perTech = useMemo(() => {
+    // When filtering to specific technicians, only show those; else all.
+    const ids = techIds.length > 0 ? techIds : technicians.map((tt) => tt.id);
+    return ids
+      .map((id) => {
+        const mine = rows.filter((r) => r.installerId === id);
+        return {
+          name: nameOf.get(id) ?? '—',
+          done7d: mine.filter((r) => r.status === 'done' && r.completedAt && new Date(r.completedAt) >= d7).length,
+          open: mine.filter((r) => r.status !== 'done').length,
+          revisits: mine.filter((r) => r.status === 'needs_revisit').length,
+        };
+      })
+      .sort((a, b) => b.done7d - a.done7d || b.open - a.open);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, techIds, technicians, nameOf]);
   const maxDone = Math.max(1, ...perTech.map((p) => p.done7d));
 
-  // --- Upcoming ------------------------------------------------------------
   const upcoming = rows
     .filter((r) => r.status === 'scheduled' || r.status === 'needs_revisit')
     .map((r) => ({
       id: r.id,
-      name: r.contacts?.name ?? '—',
+      contactId: r.contactId,
+      name: r.contactName ?? '—',
       title: r.title,
-      when: r.next_visit_date ?? r.scheduled_date,
+      when: r.nextVisitDate ?? r.scheduledDate,
       revisit: r.status === 'needs_revisit',
     }))
     .filter((r) => r.when)
     .sort((a, b) => (a.when! < b.when! ? -1 : 1))
     .slice(0, 8);
 
-  // --- Map points (installations with GPS, coloured by status) -------------
   const mapPoints: TurfKnock[] = rows
-    .filter((r) => r.contacts?.lat != null && r.contacts?.lng != null)
+    .filter((r) => r.lat != null && r.lng != null)
     .map((r) => ({
       id: r.id,
-      lat: r.contacts!.lat as number,
-      lng: r.contacts!.lng as number,
+      lat: r.lat as number,
+      lng: r.lng as number,
       disposition: STATUS_TO_DISPOSITION[r.status],
-      contactId: r.contact_id,
-      name: r.contacts?.name ?? null,
+      contactId: r.contactId,
+      name: r.contactName,
       lifecycle: 'customer',
     }));
 
   return (
     <div className="space-y-4">
-      {/* KPI tiles (drill down to the queue) */}
+      {/* Filters */}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <TechMultiFilter technicians={technicians} selected={techIds} onChange={setTechIds} />
+        <TerritoryFilter territories={territories} selected={terrIds} onChange={setTerrIds} />
+      </div>
+
+      {/* Nav to sub-pages */}
+      {showNav && (
+        <div className="grid grid-cols-2 gap-2">
+          <Link href="/dashboard/install-pipeline" className="block">
+            <Card className="flex flex-col items-center gap-1.5 p-3 text-center transition-colors hover:bg-accent">
+              <KanbanSquare className="h-6 w-6 text-primary" />
+              <span className="text-xs font-medium">{tD('installPipeline')}</span>
+            </Card>
+          </Link>
+          <Link href="/dashboard/install-photos" className="block">
+            <Card className="flex flex-col items-center gap-1.5 p-3 text-center transition-colors hover:bg-accent">
+              <Images className="h-6 w-6 text-primary" />
+              <span className="text-xs font-medium">{tD('installPhotos')}</span>
+            </Card>
+          </Link>
+        </div>
+      )}
+
+      {/* KPI tiles */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <StatTile label={t('kpiPending')} value={pending} accent="primary" href="/installs" />
         <StatTile label={t('status.in_progress')} value={inProgress} accent="amber" href="/installs" />
@@ -202,7 +237,7 @@ export async function TechnicianTeamStats() {
         </CardContent>
       </Card>
 
-      {/* Upcoming (drill down to the job) */}
+      {/* Upcoming */}
       <Card>
         <CardContent className="space-y-3 pt-4">
           <p className="text-sm font-semibold">{t('upcoming')}</p>
@@ -213,7 +248,7 @@ export async function TechnicianTeamStats() {
               {upcoming.map((j) => (
                 <li key={j.id}>
                   <Link
-                    href={`/install/new?job=${j.id}`}
+                    href={j.contactId ? `/contacts/${j.contactId}` : '/installs'}
                     className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm ${
                       j.revisit ? 'bg-brand-amber/10' : 'bg-primary/5'
                     }`}
@@ -252,10 +287,7 @@ export async function TechnicianTeamStats() {
                   </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-brand-green"
-                    style={{ width: `${(tech.done7d / maxDone) * 100}%` }}
-                  />
+                  <div className="h-full rounded-full bg-brand-green" style={{ width: `${(tech.done7d / maxDone) * 100}%` }} />
                 </div>
               </div>
             ))}
@@ -273,12 +305,12 @@ export async function TechnicianTeamStats() {
         </Card>
       )}
 
-      {/* Map (drill down to the customer via popup) */}
+      {/* Map */}
       {mapPoints.length > 0 && (
         <Card>
           <CardContent className="space-y-2 pt-4">
             <p className="text-sm font-semibold">{t('mapTitle')}</p>
-            <CoverageMap polygons={[]} knocks={mapPoints} />
+            <CoverageMap polygons={selectedPolys} knocks={mapPoints} />
           </CardContent>
         </Card>
       )}

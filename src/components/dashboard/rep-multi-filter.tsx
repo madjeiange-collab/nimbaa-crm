@@ -27,6 +27,30 @@ export function RepMultiFilter({
   );
 }
 
+/** Searchable multi-select technician filter. */
+export function TechMultiFilter({
+  technicians,
+  selected,
+  onChange,
+}: {
+  technicians: { id: string; name: string }[];
+  selected: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const t = useTranslations('dashboard');
+  return (
+    <MultiSelectFilter
+      items={technicians}
+      selected={selected}
+      onChange={onChange}
+      allLabel={t('allTechnicians')}
+      searchPlaceholder={t('searchTechnician')}
+      emptyLabel={t('noTechnician')}
+      countLabel={(n) => t('techniciansSelected', { n })}
+    />
+  );
+}
+
 /** Searchable multi-select territory (secteur) filter. */
 export function TerritoryFilter({
   territories,

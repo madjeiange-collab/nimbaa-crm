@@ -9,6 +9,7 @@ import {
 } from '@/components/dashboard/dashboard-overview';
 import { DashboardTabs } from '@/components/dashboard/dashboard-tabs';
 import { TechnicianTeamStats } from '@/components/stats/technician-team-stats';
+import { loadInstallManagerData } from '@/lib/installations/manager-data';
 
 export default async function DashboardPage({
   params,
@@ -45,6 +46,8 @@ export default async function DashboardPage({
         .limit(2000),
     ]);
 
+  const installData = await loadInstallManagerData(supabase);
+
   const reps: DashboardOverviewProps['reps'] = (users ?? []).map(
     (u: { id: string; full_name: string | null; username: string | null }) => ({
       id: u.id,
@@ -73,7 +76,14 @@ export default async function DashboardPage({
             coverage={(coverage ?? []) as unknown as DashboardOverviewProps['coverage']}
           />
         }
-        technician={<TechnicianTeamStats />}
+        technician={
+          <TechnicianTeamStats
+            nowIso={now.toISOString()}
+            installations={installData.installations}
+            technicians={installData.technicians}
+            territories={installData.territories}
+          />
+        }
       />
     </>
   );
