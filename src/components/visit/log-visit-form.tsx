@@ -61,6 +61,7 @@ export function LogVisitForm({
   dnkPoints,
   attachedContact,
   contacts = [],
+  dispositionSettings,
 }: {
   repId: string;
   repName?: string | null;
@@ -69,6 +70,10 @@ export function LogVisitForm({
   canDoB2b: boolean;
   attachedContact?: { id: string; name: string | null } | null;
   contacts?: PickContact[];
+  /** Admin-configured labels/visibility per outcome (defaults when absent). */
+  dispositionSettings?: Partial<
+    Record<KnockDisposition, { label: string | null; active: boolean }>
+  >;
 }) {
   const t = useTranslations('visit');
   const tDisp = useTranslations('dispositions');
@@ -506,22 +511,24 @@ export function LogVisitForm({
       <div>
         <p className="mb-2 text-sm font-semibold">{t('disposition')}</p>
         <div className="grid grid-cols-2 gap-2">
-          {DISPOSITIONS.map((d) => {
-            const selected = disposition === d.key;
-            return (
-              <button
-                key={d.key}
-                type="button"
-                disabled={dnkBlocked}
-                onClick={() => setDisposition(d.key)}
-                className={`min-h-[64px] rounded-lg px-3 text-base font-semibold shadow-sm transition disabled:opacity-40 ${
-                  DISPOSITION_BTN_CLASSES[d.color]
-                } ${selected ? 'ring-4 ring-offset-2 ring-foreground/30' : 'opacity-95'}`}
-              >
-                {tDisp(d.key)}
-              </button>
-            );
-          })}
+          {DISPOSITIONS.filter((d) => dispositionSettings?.[d.key]?.active !== false).map(
+            (d) => {
+              const selected = disposition === d.key;
+              return (
+                <button
+                  key={d.key}
+                  type="button"
+                  disabled={dnkBlocked}
+                  onClick={() => setDisposition(d.key)}
+                  className={`min-h-[64px] rounded-lg px-3 text-base font-semibold shadow-sm transition disabled:opacity-40 ${
+                    DISPOSITION_BTN_CLASSES[d.color]
+                  } ${selected ? 'ring-4 ring-offset-2 ring-foreground/30' : 'opacity-95'}`}
+                >
+                  {dispositionSettings?.[d.key]?.label || tDisp(d.key)}
+                </button>
+              );
+            },
+          )}
         </div>
       </div>
 

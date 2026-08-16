@@ -96,6 +96,17 @@
     "removePhoto": "Retirer",
     "photoError": "Échec de l'envoi — réessayez."
   },
+  "adminDispositions": {
+    "title": "Résultats de visite",
+    "hint": "Personnalisez le libellé des boutons de résultat et masquez ceux que votre équipe n'utilise pas. Le comportement (création de prospect, vente…) ne change pas.",
+    "labelPlaceholder": "Libellé personnalisé (défaut : {name})",
+    "visible": "Visible",
+    "behaviourEngaged": "Crée un prospect + une affaire dans le pipeline.",
+    "behaviourSold": "Crée un client, gagne l'affaire et déclenche l'installation.",
+    "saved": "Résultats enregistrés",
+    "atLeastOne": "Au moins un résultat doit rester visible.",
+    "error": "Enregistrement impossible — réessayez."
+  },
   "adminPoints": {
     "title": "Points du classement",
     "hint": "Valeur en points de chaque action. S'applique immédiatement au classement.",
@@ -355,6 +366,7 @@
     "title": "Administration",
     "users": "Utilisateurs",
     "points": "Points du classement",
+    "dispositions": "Résultats de visite",
     "territories": "Secteurs",
     "products": "Produits",
     "protocol": "Protocole d'installation",

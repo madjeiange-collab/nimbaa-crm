@@ -1,6 +1,7 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { requireUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
+import { getDispositionConfig } from '@/lib/visits/disposition-config';
 import { AppHeader } from '@/components/shared/app-header';
 import { LogVisitForm } from '@/components/visit/log-visit-form';
 
@@ -59,12 +60,16 @@ export default async function NewVisitPage({
     deals: { id: string; title: string | null; status: string }[] | null;
   }[];
 
+  // Admin-adjusted outcome labels/visibility (defaults when unset).
+  const dispositionSettings = await getDispositionConfig(supabase);
+
   return (
     <>
       <AppHeader title={t('title')} />
       <LogVisitForm
         repId={user.id}
         repName={user.full_name || user.username}
+        dispositionSettings={dispositionSettings}
         turfPolygons={turfPolygons}
         dnkPoints={dnkPoints}
         canDoB2b={user.can_do_b2b}

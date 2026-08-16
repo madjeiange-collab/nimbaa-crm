@@ -96,6 +96,17 @@
     "removePhoto": "Remove",
     "photoError": "Upload failed — try again."
   },
+  "adminDispositions": {
+    "title": "Visit outcomes",
+    "hint": "Customize the outcome button labels and hide the ones your team doesn't use. Behaviour (lead creation, sale…) is unchanged.",
+    "labelPlaceholder": "Custom label (default: {name})",
+    "visible": "Visible",
+    "behaviourEngaged": "Creates a lead + a deal in the pipeline.",
+    "behaviourSold": "Creates a customer, wins the deal and triggers the installation.",
+    "saved": "Outcomes saved",
+    "atLeastOne": "At least one outcome must stay visible.",
+    "error": "Could not save — try again."
+  },
   "adminPoints": {
     "title": "Leaderboard points",
     "hint": "Point value of each action. Applies to the leaderboard immediately.",
@@ -355,6 +366,7 @@
     "title": "Administration",
     "users": "Users",
     "points": "Leaderboard points",
+    "dispositions": "Visit outcomes",
     "territories": "Territories",
     "products": "Products",
     "protocol": "Installation protocol",
