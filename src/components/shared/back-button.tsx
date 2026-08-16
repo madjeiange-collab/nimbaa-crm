@@ -1,8 +1,8 @@
 'use client';
 
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Home } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { usePathname, useRouter } from '@/i18n/navigation';
+import { Link, usePathname, useRouter } from '@/i18n/navigation';
 
 /**
  * Header back control. Goes back in history (the natural "return from a
@@ -33,5 +33,26 @@ export function BackButton() {
     >
       <ArrowLeft className="h-5 w-5" />
     </button>
+  );
+}
+
+/**
+ * Explicit "home" control beside the back arrow — one tap back to the
+ * dashboard from any depth. Hidden on Home itself.
+ */
+export function HomeButton() {
+  const pathname = usePathname();
+  const t = useTranslations('common');
+
+  if (pathname === '/home' || pathname === '/') return null;
+
+  return (
+    <Link
+      href="/home"
+      aria-label={t('home')}
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md hover:bg-accent active:bg-accent"
+    >
+      <Home className="h-5 w-5" />
+    </Link>
   );
 }

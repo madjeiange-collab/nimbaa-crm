@@ -2,16 +2,17 @@ import { User } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { LogoutButton } from './logout-button';
 import { BrandLogo } from './brand-logo';
-import { BackButton } from './back-button';
+import { BackButton, HomeButton } from './back-button';
 
 /** Sticky top bar for authenticated screens. */
 export function AppHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
       <div className="mx-auto flex max-w-3xl items-center justify-between gap-2 px-4 py-2.5">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 items-center gap-1">
           <BackButton />
-          <Link href="/home" aria-label="Nimbaa — Accueil" className="shrink-0">
+          <HomeButton />
+          <Link href="/home" aria-label="Nimbaa — Accueil" className="shrink-0 pl-1">
             <BrandLogo variant="inline" />
           </Link>
           <div className="min-w-0 border-l pl-3">
