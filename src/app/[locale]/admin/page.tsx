@@ -53,7 +53,7 @@ export default async function AdminPage({
         {/* Phase 1: territories are live; the rest arrive in Phase 6. */}
         <AdminLink href="/admin/territories" icon={MapIcon} label={t('territories')} ready />
         <AdminLink href="/admin/protocol" icon={Wrench} label={t('protocol')} ready />
-        <AdminLink href="/admin/users" icon={Users} label={t('users')} ready={false} />
+        <AdminLink href="/admin/users" icon={Users} label={t('users')} ready />
         <AdminLink href="/admin/stages" icon={ListChecks} label={t('stages')} ready={false} />
         <AdminLink href="/admin/import" icon={Upload} label={t('import')} ready={false} />
         <AdminLink href="/admin/do-not-knock" icon={Ban} label={t('doNotKnock')} ready={false} />
