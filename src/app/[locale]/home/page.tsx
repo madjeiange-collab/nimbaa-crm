@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { computeBoards, getPointConfig } from '@/lib/leaderboard/score';
 import { AppHeader } from '@/components/shared/app-header';
+import { Avatar } from '@/components/shared/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { CoverageMap } from '@/components/charts/coverage-map';
 import { GenerateRecapButton } from '@/components/leaderboard/generate-recap-button';
@@ -58,7 +59,13 @@ function MiniBoard({
   meId,
 }: {
   title: string;
-  rows: { id: string; name: string; points: number; lines: string[] }[];
+  rows: {
+    id: string;
+    name: string;
+    avatarUrl: string | null;
+    points: number;
+    lines: string[];
+  }[];
   meId: string;
 }) {
   if (rows.length === 0) return null;
@@ -77,6 +84,7 @@ function MiniBoard({
             }`}
           >
             <span className="w-7 shrink-0 text-center text-sm font-bold">{rankBadge(i)}</span>
+            <Avatar url={r.avatarUrl} name={r.name} size={34} />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">
                 {r.name}
@@ -204,6 +212,7 @@ export default async function HomePage({
   const repMini = reps.slice(0, 5).map((r) => ({
     id: r.id,
     name: r.name,
+    avatarUrl: r.avatarUrl,
     points: r.points,
     lines: [
       `${tBoard('visits')}: ${r.visits} · ${tBoard('refused')}: ${r.refused} · ${tBoard('interested')}: ${r.interested} · ${tBoard('rdv')}: ${r.rdv} · ${tBoard('sales')}: ${r.sales}`,
@@ -214,6 +223,7 @@ export default async function HomePage({
   const techMini = techs.slice(0, 5).map((r) => ({
     id: r.id,
     name: r.name,
+    avatarUrl: r.avatarUrl,
     points: r.points,
     lines: [
       `${tBoard('done')}: ${r.done} · ${tBoard('revisits')}: ${r.revisits} · ${tBoard('open')}: ${r.open} · ${tBoard('completion')}: ${r.completionPct}%`,

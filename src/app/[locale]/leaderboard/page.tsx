@@ -5,6 +5,7 @@ import { requireUser } from '@/lib/auth/session';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { computeBoards, getPointConfig } from '@/lib/leaderboard/score';
 import { AppHeader } from '@/components/shared/app-header';
+import { Avatar } from '@/components/shared/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { GenerateRecapButton } from '@/components/leaderboard/generate-recap-button';
 
@@ -12,7 +13,13 @@ function rankBadge(i: number): string {
   return i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
 }
 
-type DisplayRow = { id: string; name: string; points: number; lines: string[] };
+type DisplayRow = {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  points: number;
+  lines: string[];
+};
 
 function Board({
   title,
@@ -45,6 +52,7 @@ function Board({
                   <span className="w-8 shrink-0 text-center text-lg font-bold">
                     {rankBadge(i)}
                   </span>
+                  <Avatar url={r.avatarUrl} name={r.name} size={40} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
                       {r.name}
@@ -118,6 +126,7 @@ export default async function LeaderboardPage({
   const repDisplay: DisplayRow[] = repRows.map((r) => ({
     id: r.id,
     name: r.name,
+    avatarUrl: r.avatarUrl,
     points: r.points,
     lines: [
       `${t('visits')}: ${r.visits} · ${t('refused')}: ${r.refused} · ${t('interested')}: ${r.interested} · ${t('rdv')}: ${r.rdv} · ${t('sales')}: ${r.sales}`,
@@ -128,6 +137,7 @@ export default async function LeaderboardPage({
   const techDisplay: DisplayRow[] = techRows.map((r) => ({
     id: r.id,
     name: r.name,
+    avatarUrl: r.avatarUrl,
     points: r.points,
     lines: [
       `${t('done')}: ${r.done} · ${t('revisits')}: ${r.revisits} · ${t('open')}: ${r.open}`,

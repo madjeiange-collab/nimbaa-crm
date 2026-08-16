@@ -74,6 +74,13 @@
     "seeAll": "Voir tout",
     "coverageTitle": "Carte de couverture"
   },
+  "profile": {
+    "photoTitle": "Photo de profil",
+    "photoHint": "Visible sur le classement et dans l'application.",
+    "changePhoto": "Changer la photo",
+    "removePhoto": "Retirer",
+    "photoError": "Échec de l'envoi — réessayez."
+  },
   "adminPoints": {
     "title": "Points du classement",
     "hint": "Valeur en points de chaque action. S'applique immédiatement au classement.",

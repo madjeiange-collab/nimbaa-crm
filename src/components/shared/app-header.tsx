@@ -1,11 +1,16 @@
 import { User } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { getCurrentUser } from '@/lib/auth/session';
+import { avatarPublicUrl } from '@/lib/avatar';
 import { LogoutButton } from './logout-button';
 import { BrandLogo } from './brand-logo';
+import { Avatar } from './avatar';
 import { BackButton, HomeButton } from './back-button';
 
 /** Sticky top bar for authenticated screens. */
-export function AppHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+export async function AppHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  const user = await getCurrentUser();
+  const avatarUrl = avatarPublicUrl(user?.avatar_path);
   return (
     <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
       <div className="mx-auto flex max-w-3xl items-center justify-between gap-2 px-4 py-2.5">
@@ -28,7 +33,15 @@ export function AppHeader({ title, subtitle }: { title: string; subtitle?: strin
             aria-label="Profil"
             className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-accent"
           >
-            <User className="h-4 w-4" />
+            {user ? (
+              <Avatar
+                url={avatarUrl}
+                name={user.full_name ?? user.username}
+                size={28}
+              />
+            ) : (
+              <User className="h-4 w-4" />
+            )}
           </Link>
           <LogoutButton />
         </div>

@@ -64,6 +64,7 @@ export interface Database {
           email: string;
           username: string | null;
           full_name: string | null;
+          avatar_path: string | null;
           role: UserRole;
           can_do_b2b: boolean;
           can_do_d2d: boolean;
@@ -75,6 +76,7 @@ export interface Database {
           email: string;
           username?: string | null;
           full_name?: string | null;
+          avatar_path?: string | null;
           role?: UserRole;
           can_do_b2b?: boolean;
           can_do_d2d?: boolean;

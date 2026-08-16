@@ -74,6 +74,13 @@
     "seeAll": "See all",
     "coverageTitle": "Coverage map"
   },
+  "profile": {
+    "photoTitle": "Profile photo",
+    "photoHint": "Shown on the leaderboard and across the app.",
+    "changePhoto": "Change photo",
+    "removePhoto": "Remove",
+    "photoError": "Upload failed — try again."
+  },
   "adminPoints": {
     "title": "Leaderboard points",
     "hint": "Point value of each action. Applies to the leaderboard immediately.",

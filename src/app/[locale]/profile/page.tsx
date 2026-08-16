@@ -2,7 +2,9 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { requireUser } from '@/lib/auth/session';
+import { avatarPublicUrl } from '@/lib/avatar';
 import { AppHeader } from '@/components/shared/app-header';
+import { AvatarUploader } from '@/components/profile/avatar-uploader';
 import { ChangePasswordForm } from './change-password-form';
 
 export default async function ProfilePage({
@@ -26,6 +28,10 @@ export default async function ProfilePage({
           <ArrowLeft className="h-4 w-4" />
           {t('greeting', { name: '' }).trim().replace(/,$/, '')}
         </Link>
+        <AvatarUploader
+          url={avatarPublicUrl(user.avatar_path)}
+          name={user.full_name ?? user.username}
+        />
         <ChangePasswordForm />
       </main>
     </>

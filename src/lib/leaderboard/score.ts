@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { avatarPublicUrl } from '@/lib/avatar';
 
 /** Admin-configurable point values (app_settings key 'leaderboard_points'). */
 export interface PointConfig {
@@ -37,6 +38,7 @@ export async function getPointConfig(db: SupabaseClient): Promise<PointConfig> {
 export type RepBoardRow = {
   id: string;
   name: string;
+  avatarUrl: string | null;
   points: number;
   visits: number;
   refused: number;
@@ -55,6 +57,7 @@ export type RepBoardRow = {
 export type TechBoardRow = {
   id: string;
   name: string;
+  avatarUrl: string | null;
   points: number;
   done: number;
   revisits: number;
@@ -75,7 +78,7 @@ export async function computeBoards(
 ): Promise<{ reps: RepBoardRow[]; techs: TechBoardRow[] }> {
   const [{ data: users }, { data: visits }, { data: deals }, { data: installs }, { data: contacts }] =
     await Promise.all([
-      db.from('users').select('id, full_name, username, role, is_active'),
+      db.from('users').select('id, full_name, username, avatar_path, role, is_active'),
       db
         .from('visits')
         .select('rep_id, disposition, visit_type')
@@ -122,6 +125,7 @@ export async function computeBoards(
       return {
         id: u.id,
         name: nameOf(u),
+        avatarUrl: avatarPublicUrl(u.avatar_path),
         visits: mine.length,
         refused,
         interested,
@@ -157,6 +161,7 @@ export async function computeBoards(
       return {
         id: u.id,
         name: nameOf(u),
+        avatarUrl: avatarPublicUrl(u.avatar_path),
         done,
         revisits,
         open,
