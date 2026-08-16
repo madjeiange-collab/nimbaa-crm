@@ -69,7 +69,9 @@
     "assistant": "Nimbaa Assistant",
     "assistantHint": "Ask a question about your customers and sales",
     "leaderboard": "Leaderboard",
-    "leaderboardHint": "Who's ahead this week?"
+    "leaderboardHint": "Who's ahead this week?",
+    "seeAll": "See all",
+    "coverageTitle": "Coverage map"
   },
   "adminPoints": {
     "title": "Leaderboard points",

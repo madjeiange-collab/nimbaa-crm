@@ -69,7 +69,9 @@
     "assistant": "Assistant Nimbaa",
     "assistantHint": "Posez une question sur vos clients et vos ventes",
     "leaderboard": "Classement",
-    "leaderboardHint": "Qui est en tête cette semaine ?"
+    "leaderboardHint": "Qui est en tête cette semaine ?",
+    "seeAll": "Voir tout",
+    "coverageTitle": "Carte de couverture"
   },
   "adminPoints": {
     "title": "Points du classement",
