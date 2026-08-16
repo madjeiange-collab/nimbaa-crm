@@ -40,6 +40,7 @@ interface PickContact {
   lifecycle: string;
   lat: number | null;
   lng: number | null;
+  deals?: { id: string; title: string | null; status: string }[] | null;
 }
 
 export function LogVisitForm({
@@ -77,8 +78,15 @@ export function LogVisitForm({
   const [linked, setLinked] = useState<{ id: string; name: string | null } | null>(
     attachedContact ?? null,
   );
+  const [dealId, setDealId] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [contactQuery, setContactQuery] = useState('');
+
+  // Affaires of the currently linked contact (for the deal picker).
+  const linkedDeals = useMemo(
+    () => (linked ? (contacts.find((c) => c.id === linked.id)?.deals ?? []) : []),
+    [linked, contacts],
+  );
 
   const hasFix = geo.status === 'ready' && geo.lat != null && geo.lng != null;
   const gpsResolved = hasFix || geo.status === 'error';
@@ -146,6 +154,7 @@ export function LogVisitForm({
     setAppointmentDate('');
     setContactName('');
     setLinked(attachedContact ?? null);
+    setDealId(null);
     setShowPicker(false);
     setContactQuery('');
     photos.forEach((p) => URL.revokeObjectURL(p.url));
@@ -220,6 +229,7 @@ export function LogVisitForm({
         contactName: isEngaged && !linked && contactName.trim() ? contactName.trim() : null,
         address: hasFix ? address : null,
         contactId: linked?.id ?? null,
+        dealId: linked ? dealId : null,
         photoPaths,
       });
 
@@ -263,20 +273,51 @@ export function LogVisitForm({
       <Card className="space-y-3 p-4">
         <p className="text-sm font-semibold">{t('linkTitle')}</p>
         {linked ? (
-          <div className="flex items-center justify-between gap-2 rounded-md bg-primary/10 px-3 py-2">
-            <span className="truncate text-sm font-medium text-primary">
-              {linked.name ?? '—'}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setLinked(null);
-                setShowPicker(false);
-              }}
-              className="shrink-0 text-xs text-muted-foreground underline"
-            >
-              {t('unlink')}
-            </button>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 rounded-md bg-primary/10 px-3 py-2">
+              <span className="truncate text-sm font-medium text-primary">
+                {linked.name ?? '—'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setLinked(null);
+                  setDealId(null);
+                  setShowPicker(false);
+                }}
+                className="shrink-0 text-xs text-muted-foreground underline"
+              >
+                {t('unlink')}
+              </button>
+            </div>
+            {linkedDeals.length > 0 && (
+              <div>
+                <p className="mb-1 text-xs text-muted-foreground">{t('whichAffaire')}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setDealId(null)}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                      dealId === null ? 'border-primary bg-primary/10 text-primary' : 'border-input bg-background'
+                    }`}
+                  >
+                    {t('newAffaire')}
+                  </button>
+                  {linkedDeals.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => setDealId(d.id)}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                        dealId === d.id ? 'border-primary bg-primary/10 text-primary' : 'border-input bg-background'
+                      }`}
+                    >
+                      {d.title || t('affaire')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-2">

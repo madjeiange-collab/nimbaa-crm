@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { DISPOSITION_BY_KEY, type KnockDisposition } from '@/lib/visits/dispositions';
 import { ensurePendingInstallation } from '@/lib/installations/seed';
+import { recomputeContactRollup } from '@/lib/deals/rollup';
 
 export interface SaveVisitInput {
   clientUuid: string;
@@ -16,6 +17,7 @@ export interface SaveVisitInput {
   contactId?: string | null;
   contactName?: string | null;
   address?: string | null; // reverse-geocoded label (best-effort)
+  dealId?: string | null; // link the visit to a chosen affaire (existing contact)
   visitedAt?: string; // ISO — defaults to now
   photoPaths?: string[]; // storage paths of geo-stamped check-in photos
 }
@@ -100,20 +102,26 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
     );
   }
 
-  // 4. Auto-create a contact for engaged knocks (unless one is already linked).
+  // 4. Contact + Affaire (deal) handling.
+  const now = new Date().toISOString();
   let contactId: string | null = input.contactId ?? null;
   const meta = DISPOSITION_BY_KEY[input.disposition];
-  if (!contactId && meta?.createsContact) {
-    let stageId: string | null = null;
-    if (meta.stageName) {
-      const { data: stage } = await supabase
-        .from('pipeline_stages')
-        .select('id')
-        .eq('name', meta.stageName)
-        .maybeSingle();
-      stageId = stage?.id ?? null;
-    }
+  const engaged = !!meta?.createsContact;
+  const won = meta?.lifecycle === 'customer'; // "sold"
 
+  // The pipeline stage this disposition maps to (Intéressé / RDV / Gagné).
+  let stageId: string | null = null;
+  if (meta?.stageName) {
+    const { data: stage } = await supabase
+      .from('pipeline_stages')
+      .select('id')
+      .eq('name', meta.stageName)
+      .maybeSingle();
+    stageId = stage?.id ?? null;
+  }
+
+  // 4a. Auto-create a contact for engaged knocks (unless one is already linked).
+  if (!contactId && engaged) {
     const { data: ut } = await supabase
       .from('user_territories')
       .select('territory_id')
@@ -126,7 +134,7 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
       .insert({
         name: input.contactName ?? null,
         address: input.address ?? null,
-        lifecycle: meta.lifecycle,
+        lifecycle: meta!.lifecycle,
         pipeline_stage_id: stageId,
         source: 'd2d_knock',
         assigned_rep_id: user.id,
@@ -134,41 +142,51 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
         lat: input.lat,
         lng: input.lng,
         created_by: user.id,
-        converted_at: meta.lifecycle === 'customer' ? new Date().toISOString() : null,
+        converted_at: won ? now : null,
       })
       .select('id')
       .single();
-
     if (contact) {
       contactId = contact.id;
       await supabase.from('visits').update({ contact_id: contactId }).eq('id', visit.id);
+    }
+  }
 
-      // The engaged knock also opens an Affaire (deal) at the mapped stage.
-      const won = meta.lifecycle === 'customer'; // "sold"
+  // 4b. Attach the visit to an Affaire (deal), advancing / creating as needed.
+  let dealId: string | null = input.dealId ?? null;
+  if (contactId) {
+    if (dealId) {
+      // Existing chosen affaire: a "sold" visit wins it (+ installation job).
+      if (won) {
+        await supabase
+          .from('deals')
+          .update({ pipeline_stage_id: stageId, status: 'won', needs_installation: true, won_at: now, updated_at: now })
+          .eq('id', dealId);
+        await ensurePendingInstallation(supabase, { dealId, contactId, title: null, createdBy: user.id });
+      }
+    } else if (engaged) {
+      // No affaire chosen but engaged → open a new one at the mapped stage.
       const { data: deal } = await supabase
         .from('deals')
         .insert({
-          contact_id: contact.id,
+          contact_id: contactId,
           pipeline_stage_id: stageId,
           status: won ? 'won' : 'open',
-          needs_installation: won, // a sold door is installed by default
+          needs_installation: won,
           assigned_rep_id: user.id,
-          won_at: won ? new Date().toISOString() : null,
+          won_at: won ? now : null,
           created_by: user.id,
         })
         .select('id')
         .single();
-
-      // A door that closes as "sold" becomes a customer awaiting installation.
-      if (won && deal) {
-        await ensurePendingInstallation(supabase, {
-          dealId: deal.id,
-          contactId: contact.id,
-          title: null,
-          createdBy: user.id,
-        });
+      dealId = deal?.id ?? null;
+      if (won && dealId) {
+        await ensurePendingInstallation(supabase, { dealId, contactId, title: null, createdBy: user.id });
       }
     }
+
+    if (dealId) await supabase.from('visits').update({ deal_id: dealId }).eq('id', visit.id);
+    await recomputeContactRollup(supabase, contactId);
   }
 
   revalidatePath('/[locale]/turf', 'page');

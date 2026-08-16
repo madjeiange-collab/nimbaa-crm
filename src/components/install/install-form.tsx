@@ -231,11 +231,15 @@ export function InstallForm({
         onChange={onPickPhoto}
       />
 
-      {/* Which customer / job is being installed */}
+      {/* Which customer / affaire is being installed */}
       <Card className="p-4">
         <p className="text-xs text-muted-foreground">{t('installingFor')}</p>
         <p className="text-lg font-semibold">{contactName ?? '—'}</p>
-        {jobTitle && <p className="text-sm text-muted-foreground">{jobTitle}</p>}
+        {jobTitle && (
+          <p className="mt-0.5 inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-sm font-medium text-primary">
+            {t('affaire')}: {jobTitle}
+          </p>
+        )}
       </Card>
 
       {/* Photo + GPS check-in */}

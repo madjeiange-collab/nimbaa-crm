@@ -283,6 +283,7 @@ export interface Database {
           id: string;
           client_uuid: string | null;
           contact_id: string | null;
+          deal_id: string | null;
           rep_id: string;
           visit_type: VisitType;
           visited_at: string;
@@ -299,6 +300,7 @@ export interface Database {
           id?: string;
           client_uuid?: string | null;
           contact_id?: string | null;
+          deal_id?: string | null;
           rep_id: string;
           visit_type: VisitType;
           visited_at: string;

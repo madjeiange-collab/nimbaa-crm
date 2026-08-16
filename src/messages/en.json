@@ -108,6 +108,7 @@
     "queueTitle": "To install",
     "queueEmpty": "No pending installations.",
     "installingFor": "Installing for",
+    "affaire": "Deal",
     "photo": "Photo + GPS",
     "checkinHint": "Take a time- and geo-stamped photo on site.",
     "photoCount": "{n} photo(s)",
@@ -307,7 +308,10 @@
     "nearby": "Nearby",
     "searchContact": "Search a name…",
     "noMatch": "No results",
-    "unlink": "Unlink"
+    "unlink": "Unlink",
+    "whichAffaire": "Which deal?",
+    "newAffaire": "New deal",
+    "affaire": "Deal"
   },
   "turf": {
     "title": "My turf",

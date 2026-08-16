@@ -108,6 +108,7 @@
     "queueTitle": "À installer",
     "queueEmpty": "Aucune installation en attente.",
     "installingFor": "Installation pour",
+    "affaire": "Affaire",
     "photo": "Photo + GPS",
     "checkinHint": "Prenez une photo horodatée et géolocalisée sur site.",
     "photoCount": "{n} photo(s)",
@@ -307,7 +308,10 @@
     "nearby": "À proximité",
     "searchContact": "Rechercher un nom…",
     "noMatch": "Aucun résultat",
-    "unlink": "Détacher"
+    "unlink": "Détacher",
+    "whichAffaire": "Quelle affaire ?",
+    "newAffaire": "Nouvelle affaire",
+    "affaire": "Affaire"
   },
   "turf": {
     "title": "Mon secteur",

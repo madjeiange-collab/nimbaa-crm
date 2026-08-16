@@ -26,11 +26,11 @@ export default async function NewInstallPage({
 
   const { data: install } = await supabase
     .from('installations')
-    .select('id, title, status, checklist, equipment, contact_id, contacts(id, name)')
+    .select('id, title, status, checklist, equipment, contact_id, contacts(id, name), deals(title, value_xof)')
     .eq('id', sp.job)
     .maybeSingle();
   if (!install) redirect({ href: '/installs', locale });
-  // The to-one `contacts` embed mis-infers as an array on the untyped client.
+  // The to-one `contacts`/`deals` embeds mis-infer as arrays on the untyped client.
   const job = install as unknown as {
     id: string;
     title: string | null;
@@ -39,6 +39,7 @@ export default async function NewInstallPage({
     equipment: EquipmentItem[] | null;
     contact_id: string;
     contacts: { id: string; name: string | null } | null;
+    deals: { title: string | null; value_xof: number | null } | null;
   };
 
   return (
@@ -49,7 +50,7 @@ export default async function NewInstallPage({
         installationId={job.id}
         contactId={job.contact_id}
         contactName={job.contacts?.name ?? null}
-        jobTitle={job.title}
+        jobTitle={job.deals?.title ?? job.title}
         initialChecklist={job.checklist ?? null}
         initialEquipment={job.equipment ?? null}
         initialStatus={job.status ?? null}

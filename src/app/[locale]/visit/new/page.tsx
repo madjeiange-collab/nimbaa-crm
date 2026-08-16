@@ -43,18 +43,20 @@ export default async function NewVisitPage({
   const { data: dnk } = await supabase.from('do_not_knock_list').select('lat, lng');
   const dnkPoints = (dnk ?? []) as { lat: number; lng: number }[];
 
-  // The rep's contacts → link a visit to an existing lead/customer.
+  // The rep's contacts (+ their affaires) → link a visit to an existing
+  // lead/customer and to a specific deal.
   const { data: myContacts } = await supabase
     .from('contacts')
-    .select('id, name, lifecycle, lat, lng')
+    .select('id, name, lifecycle, lat, lng, deals(id, title, status)')
     .order('updated_at', { ascending: false })
     .limit(500);
-  const contacts = (myContacts ?? []) as {
+  const contacts = (myContacts ?? []) as unknown as {
     id: string;
     name: string | null;
     lifecycle: string;
     lat: number | null;
     lng: number | null;
+    deals: { id: string; title: string | null; status: string }[] | null;
   }[];
 
   return (

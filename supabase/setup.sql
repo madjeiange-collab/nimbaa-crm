@@ -570,3 +570,6 @@ drop policy if exists deals_upd on deals;
 create policy deals_upd on deals for update using (auth.uid() is not null);
 drop policy if exists deals_del on deals;
 create policy deals_del on deals for delete using (auth.uid() is not null);
+
+alter table visits add column if not exists deal_id uuid references deals(id) on delete set null;
+create index if not exists visits_deal_ix on visits (deal_id);
