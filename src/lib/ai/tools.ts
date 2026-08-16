@@ -1,6 +1,9 @@
 import type OpenAI from 'openai';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AppUser } from '@/lib/auth/session';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { pointInAnyPolygon } from '@/lib/geo';
+import { computeBoards, getPointConfig, startOfWeekIso } from '@/lib/leaderboard/score';
 
 /**
  * Assistant tools. Every executor runs on the LOGGED-IN user's Supabase
@@ -135,6 +138,135 @@ export const TOOL_DEFINITIONS: OpenAI.Responses.Tool[] = [
       required: ['period'],
       additionalProperties: false,
     },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'funnel_stats',
+    description:
+      "Entonnoir de conversion avec comparaison à la période précédente : visites → intéressés → RDV → ventes, taux à chaque étape, évolution. Pour un manager : aussi le détail par commercial. Utiliser pour 'où perd-on des prospects', 'pourquoi moins de ventes', 'analyse de la conversion'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', enum: ['week', 'month'], description: 'Période analysée (comparée à la précédente)' },
+      },
+      required: ['period'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'secteur_stats',
+    description:
+      "Performance par secteur (territoire) : visites, prospects créés, ventes et CA par zone géographique. Utiliser pour 'quel secteur performe', 'où renforcer l'équipe', 'comparer les zones'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', enum: ['week', 'month', 'all'], description: 'Période' },
+      },
+      required: ['period'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'product_stats',
+    description:
+      "Ventes par produit : nombre d'affaires gagnées, CA, panier moyen, meilleur produit de la période, avec comparaison à la période précédente. Utiliser pour 'qu'est-ce qui se vend', 'quel produit marche'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', enum: ['week', 'month', 'all'], description: 'Période' },
+      },
+      required: ['period'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'stale_deals',
+    description:
+      "Affaires qui traînent : affaires OUVERTES sans aucune mise à jour depuis N jours, les plus anciennes d'abord, avec client et étape. Utiliser pour 'quelles affaires sont bloquées', 'relances pipeline'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        min_days: { type: 'number', description: 'Ancienneté minimale en jours (7 par défaut si hésitation)' },
+      },
+      required: ['min_days'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'neglected_contacts',
+    description:
+      "Clients à risque : clients sans visite depuis N jours et prospects jamais recontactés — avec téléphone pour agir. Utiliser pour 'qui risque-t-on de perdre', 'clients délaissés'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        min_days: { type: 'number', description: 'Jours sans visite (30 par défaut si hésitation)' },
+      },
+      required: ['min_days'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'install_cycle_stats',
+    description:
+      "Analyse des installations : délai moyen vente→installation terminée, backlog par statut, taux de revisite, détail par technicien. Utiliser pour 'installe-t-on assez vite', 'charge des techniciens'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', enum: ['week', 'month', 'all'], description: 'Période (installations terminées)' },
+      },
+      required: ['period'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'rdv_overview',
+    description:
+      "Vue des rendez-vous : RDV à venir (7 jours) et RDV en retard, avec client et téléphone. Pour un manager : toute l'équipe, par commercial. Utiliser pour 'qui a des RDV demain', 'RDV manqués'.",
+    parameters: { type: 'object', properties: {}, required: [], additionalProperties: false },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'lost_analysis',
+    description:
+      "Analyse des affaires perdues : nombre, raisons de perte (lost_reason) et détail par commercial. Utiliser pour 'pourquoi perd-on', 'raisons d'échec'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', enum: ['month', 'all'], description: 'Période' },
+      },
+      required: ['period'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'leaderboard_standings',
+    description:
+      "Le classement de la semaine (points) : top commerciaux et top techniciens, comme sur la page Classement. Utiliser pour 'qui est en tête', 'mon rang'.",
+    parameters: { type: 'object', properties: {}, required: [], additionalProperties: false },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'daily_trend',
+    description:
+      "Tendance jour par jour sur 30 jours : visites et ventes quotidiennes, pour dire si l'activité monte ou descend. Utiliser pour 'ça progresse ?', 'momentum', 'comparer les semaines'.",
+    parameters: { type: 'object', properties: {}, required: [], additionalProperties: false },
   },
   {
     type: 'function' as const,
@@ -541,6 +673,524 @@ async function teamList(db: Db, user: AppUser) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Analysis aggregations
+// ---------------------------------------------------------------------------
+
+function periodStart(period: string, from = new Date()): Date {
+  const d = new Date(from);
+  if (period === 'today') d.setHours(0, 0, 0, 0);
+  else if (period === 'week') d.setDate(d.getDate() - 7);
+  else if (period === 'month') d.setDate(d.getDate() - 30);
+  else return new Date(0); // 'all'
+  return d;
+}
+
+const isManagerRole = (u: AppUser) => u.role === 'manager' || u.role === 'admin';
+const pctOf = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 100) : 0);
+
+async function repNames(db: Db, ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+  const { data } = await db.from('users').select('id, full_name, username').in('id', ids);
+  return new Map((data ?? []).map((u) => [u.id, u.full_name || u.username || '—']));
+}
+
+async function funnelStats(db: Db, user: AppUser, args: { period: string }) {
+  const isManager = isManagerRole(user);
+  const now = new Date();
+  const since = periodStart(args.period, now);
+  const prevSince = new Date(since.getTime() - (now.getTime() - since.getTime()));
+
+  let vq = db
+    .from('visits')
+    .select('rep_id, disposition, visited_at')
+    .neq('visit_type', 'installation')
+    .gte('visited_at', prevSince.toISOString())
+    .limit(10000);
+  if (!isManager) vq = vq.eq('rep_id', user.id);
+  let dq = db
+    .from('deals')
+    .select('assigned_rep_id, won_at')
+    .eq('status', 'won')
+    .gte('won_at', prevSince.toISOString())
+    .limit(5000);
+  if (!isManager) dq = dq.eq('assigned_rep_id', user.id);
+  const [{ data: vs, error }, { data: ds }] = await Promise.all([vq, dq]);
+  if (error) return { error: error.message };
+
+  const cut = since.toISOString();
+  const funnelOf = (rows: { disposition: string | null }[], won: number) => {
+    const visites = rows.length;
+    const interesses = rows.filter((v) => v.disposition === 'interested').length;
+    const rdv = rows.filter((v) => v.disposition === 'appointment_set').length;
+    const vendus = rows.filter((v) => v.disposition === 'sold').length;
+    const engages = interesses + rdv + vendus;
+    return {
+      visites,
+      interesses,
+      rdv,
+      ventes: won,
+      taux_engagement_pct: pctOf(engages, visites),
+      taux_conversion_engages_pct: pctOf(won, engages),
+    };
+  };
+  const cur = funnelOf(
+    (vs ?? []).filter((v) => v.visited_at >= cut),
+    (ds ?? []).filter((d) => d.won_at && d.won_at >= cut).length,
+  );
+  const prev = funnelOf(
+    (vs ?? []).filter((v) => v.visited_at < cut),
+    (ds ?? []).filter((d) => d.won_at && d.won_at < cut).length,
+  );
+
+  let parCommercial: unknown;
+  if (isManager) {
+    const curVisits = (vs ?? []).filter((v) => v.visited_at >= cut);
+    const ids = [...new Set(curVisits.map((v) => v.rep_id))];
+    const names = await repNames(db, ids);
+    parCommercial = ids
+      .map((id) => {
+        const mine = curVisits.filter((v) => v.rep_id === id);
+        const ventes = (ds ?? []).filter(
+          (d) => d.assigned_rep_id === id && d.won_at && d.won_at >= cut,
+        ).length;
+        return { commercial: names.get(id) ?? '—', visites: mine.length, ventes };
+      })
+      .sort((a, b) => b.visites - a.visites);
+  }
+
+  return {
+    scope: isManager ? 'équipe' : 'moi',
+    periode: args.period,
+    periode_courante: cur,
+    periode_precedente: prev,
+    ...(parCommercial ? { par_commercial: parCommercial } : {}),
+  };
+}
+
+async function secteurStats(db: Db, user: AppUser, args: { period: string }) {
+  const since = periodStart(args.period).toISOString();
+  const [{ data: turfs, error }, { data: vs }, { data: won }, { data: created }] =
+    await Promise.all([
+      db.rpc('territories_geojson'),
+      db
+        .from('visits')
+        .select('lat, lng')
+        .neq('visit_type', 'installation')
+        .gte('visited_at', since)
+        .not('lat', 'is', null)
+        .limit(10000),
+      db
+        .from('deals')
+        .select('value_xof, contacts(lat, lng)')
+        .eq('status', 'won')
+        .gte('won_at', since)
+        .limit(5000),
+      db
+        .from('contacts')
+        .select('lat, lng')
+        .gte('created_at', since)
+        .not('lat', 'is', null)
+        .limit(10000),
+    ]);
+  if (error) return { error: error.message };
+  const terrs = ((turfs ?? []) as { name: string; geojson?: { coordinates?: number[][][] } }[])
+    .filter((t) => t.geojson?.coordinates)
+    .map((t) => ({ name: t.name, polys: [t.geojson!.coordinates as number[][][]] }));
+  if (terrs.length === 0) return { error: 'aucun secteur actif visible' };
+
+  const inTerr = (t: { polys: number[][][][] }, lat: number | null, lng: number | null) =>
+    lat != null && lng != null && pointInAnyPolygon(lat, lng, t.polys);
+
+  const showMoney = isManagerRole(user);
+  return {
+    periode: args.period,
+    note: 'Un point peut compter dans plusieurs secteurs qui se chevauchent.',
+    secteurs: terrs.map((t) => {
+      const wonHere = ((won ?? []) as unknown as {
+        value_xof: number | null;
+        contacts: { lat: number | null; lng: number | null } | null;
+      }[]).filter((d) => inTerr(t, d.contacts?.lat ?? null, d.contacts?.lng ?? null));
+      return {
+        secteur: t.name,
+        visites: (vs ?? []).filter((v) => inTerr(t, v.lat, v.lng)).length,
+        nouveaux_contacts: (created ?? []).filter((c) => inTerr(t, c.lat, c.lng)).length,
+        ventes: wonHere.length,
+        ...(showMoney
+          ? { ca_fcfa: wonHere.reduce((s, d) => s + (d.value_xof ?? 0), 0) }
+          : {}),
+      };
+    }),
+  };
+}
+
+async function productStats(db: Db, user: AppUser, args: { period: string }) {
+  const isManager = isManagerRole(user);
+  const now = new Date();
+  const since = periodStart(args.period, now);
+  const prevSince =
+    args.period === 'all'
+      ? new Date(0)
+      : new Date(since.getTime() - (now.getTime() - since.getTime()));
+
+  let q = db
+    .from('deals')
+    .select('title, value_xof, won_at, product_id, products(name)')
+    .eq('status', 'won')
+    .gte('won_at', prevSince.toISOString())
+    .limit(5000);
+  if (!isManager) q = q.eq('assigned_rep_id', user.id);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+
+  const cut = since.toISOString();
+  type Row = {
+    title: string | null;
+    value_xof: number | null;
+    won_at: string | null;
+    products: { name: string } | null;
+  };
+  const rows = (data ?? []) as unknown as Row[];
+  const cur = rows.filter((d) => args.period === 'all' || (d.won_at && d.won_at >= cut));
+  const prevCount = rows.length - cur.length;
+
+  const byProduct = new Map<string, { ventes: number; ca: number }>();
+  for (const d of cur) {
+    const name = d.products?.name || d.title || 'Sans produit';
+    const agg = byProduct.get(name) ?? { ventes: 0, ca: 0 };
+    agg.ventes++;
+    agg.ca += d.value_xof ?? 0;
+    byProduct.set(name, agg);
+  }
+  const totalCa = cur.reduce((s, d) => s + (d.value_xof ?? 0), 0);
+
+  return {
+    scope: isManager ? 'équipe' : 'mes ventes',
+    periode: args.period,
+    ventes_total: cur.length,
+    ...(args.period !== 'all' ? { ventes_periode_precedente: prevCount } : {}),
+    ...(isManager
+      ? { ca_total_fcfa: totalCa, panier_moyen_fcfa: cur.length ? Math.round(totalCa / cur.length) : 0 }
+      : {}),
+    par_produit: [...byProduct.entries()]
+      .map(([produit, agg]) => ({
+        produit,
+        ventes: agg.ventes,
+        ...(isManager ? { ca_fcfa: agg.ca } : {}),
+      }))
+      .sort((a, b) => b.ventes - a.ventes),
+  };
+}
+
+async function staleDeals(db: Db, user: AppUser, args: { min_days: number }) {
+  const isManager = isManagerRole(user);
+  const days = Number.isFinite(args.min_days) && args.min_days > 0 ? Math.min(args.min_days, 365) : 7;
+  const cutoff = new Date(Date.now() - days * 86400_000).toISOString();
+
+  let q = db
+    .from('deals')
+    .select('title, updated_at, assigned_rep_id, value_xof, pipeline_stages(name), contacts(name, phone)')
+    .eq('status', 'open')
+    .lt('updated_at', cutoff)
+    .order('updated_at', { ascending: true })
+    .limit(20);
+  if (!isManager) q = q.eq('assigned_rep_id', user.id);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+
+  type Row = {
+    title: string | null;
+    updated_at: string;
+    assigned_rep_id: string | null;
+    value_xof: number | null;
+    pipeline_stages: { name: string } | null;
+    contacts: { name: string | null; phone: string | null } | null;
+  };
+  const rows = (data ?? []) as unknown as Row[];
+  const names = isManager
+    ? await repNames(db, [...new Set(rows.map((r) => r.assigned_rep_id).filter(Boolean) as string[])])
+    : new Map<string, string>();
+
+  return {
+    scope: isManager ? 'équipe' : 'mes affaires',
+    critere: `ouvertes, sans mise à jour depuis ${days} jours ou plus (20 plus anciennes)`,
+    affaires: rows.map((r) => ({
+      affaire: r.title || 'Sans titre',
+      client: r.contacts?.name ?? '—',
+      telephone: r.contacts?.phone,
+      etape: r.pipeline_stages?.name ?? '—',
+      jours_sans_activite: Math.floor((Date.now() - new Date(r.updated_at).getTime()) / 86400_000),
+      ...(isManager && r.assigned_rep_id
+        ? { commercial: names.get(r.assigned_rep_id) ?? '—' }
+        : {}),
+    })),
+  };
+}
+
+async function neglectedContacts(db: Db, user: AppUser, args: { min_days: number }) {
+  const isManager = isManagerRole(user);
+  const days = Number.isFinite(args.min_days) && args.min_days > 0 ? Math.min(args.min_days, 365) : 30;
+  const cutoff = Date.now() - days * 86400_000;
+
+  let cq = db
+    .from('contacts')
+    .select('id, name, phone, lifecycle, updated_at')
+    .in('lifecycle', ['lead', 'customer'])
+    .limit(500);
+  if (!isManager) cq = cq.eq('assigned_rep_id', user.id);
+  const { data: contacts, error } = await cq;
+  if (error) return { error: error.message };
+  const ids = (contacts ?? []).map((c) => c.id);
+  if (ids.length === 0) return { clients_delaisses: [], prospects_delaisses: [] };
+
+  const { data: vs } = await db
+    .from('visits')
+    .select('contact_id, visited_at')
+    .in('contact_id', ids)
+    .limit(10000);
+  const lastVisit = new Map<string, string>();
+  for (const v of (vs ?? []) as { contact_id: string | null; visited_at: string }[]) {
+    if (!v.contact_id) continue;
+    const prev = lastVisit.get(v.contact_id);
+    if (!prev || v.visited_at > prev) lastVisit.set(v.contact_id, v.visited_at);
+  }
+
+  const stale = (lifecycle: string) =>
+    (contacts ?? [])
+      .filter((c) => c.lifecycle === lifecycle)
+      .map((c) => {
+        const last = lastVisit.get(c.id) ?? null;
+        const ref = last ? new Date(last).getTime() : new Date(c.updated_at).getTime();
+        return { c, last, jours: Math.floor((Date.now() - ref) / 86400_000) };
+      })
+      .filter((x) => (x.last ? new Date(x.last).getTime() : 0) < cutoff && x.jours >= days)
+      .sort((a, b) => b.jours - a.jours)
+      .slice(0, 15)
+      .map((x) => ({
+        nom: x.c.name ?? '(sans nom)',
+        telephone: x.c.phone,
+        derniere_visite: x.last,
+        jours_sans_visite: x.jours,
+      }));
+
+  return {
+    scope: isManager ? 'équipe' : 'mes contacts',
+    critere: `sans visite depuis ${days} jours ou plus`,
+    clients_delaisses: stale('customer'),
+    prospects_delaisses: stale('lead'),
+  };
+}
+
+async function installCycleStats(db: Db, user: AppUser, args: { period: string }) {
+  const since = periodStart(args.period).toISOString();
+  let q = db
+    .from('installations')
+    .select('installer_id, status, created_at, completed_at')
+    .limit(5000);
+  if (user.role === 'technician') q = q.eq('installer_id', user.id);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  const rows = (data ?? []) as {
+    installer_id: string | null;
+    status: string;
+    created_at: string;
+    completed_at: string | null;
+  }[];
+
+  const done = rows.filter(
+    (r) => r.status === 'done' && r.completed_at && r.completed_at >= since,
+  );
+  const cycleDays = (r: { created_at: string; completed_at: string | null }) =>
+    (new Date(r.completed_at as string).getTime() - new Date(r.created_at).getTime()) / 86400_000;
+  const avg = done.length
+    ? Math.round((done.reduce((s, r) => s + cycleDays(r), 0) / done.length) * 10) / 10
+    : null;
+
+  const backlog: Record<string, number> = {};
+  for (const r of rows.filter((r) => r.status !== 'done'))
+    backlog[r.status] = (backlog[r.status] ?? 0) + 1;
+
+  const techIds = [...new Set(done.map((r) => r.installer_id).filter(Boolean) as string[])];
+  const names = await repNames(db, techIds);
+  const parTechnicien = techIds
+    .map((id) => {
+      const mine = done.filter((r) => r.installer_id === id);
+      return {
+        technicien: names.get(id) ?? '—',
+        terminees: mine.length,
+        delai_moyen_jours:
+          Math.round((mine.reduce((s, r) => s + cycleDays(r), 0) / mine.length) * 10) / 10,
+      };
+    })
+    .sort((a, b) => b.terminees - a.terminees);
+
+  return {
+    scope: user.role === 'technician' ? 'mes chantiers' : 'toute l’équipe',
+    periode: args.period,
+    terminees: done.length,
+    delai_moyen_vente_vers_termine_jours: avg,
+    backlog_ouvert: backlog,
+    taux_revisite_pct: pctOf(
+      rows.filter((r) => r.status === 'needs_revisit').length,
+      done.length + rows.filter((r) => r.status === 'needs_revisit').length,
+    ),
+    par_technicien: parTechnicien,
+  };
+}
+
+async function rdvOverview(db: Db, user: AppUser) {
+  const isManager = isManagerRole(user);
+  const startToday = new Date();
+  startToday.setHours(0, 0, 0, 0);
+  const in7d = new Date(Date.now() + 7 * 86400_000);
+  const past30 = new Date(Date.now() - 30 * 86400_000);
+
+  let q = db
+    .from('visits')
+    .select('rep_id, appointment_date, contacts(name, phone)')
+    .not('appointment_date', 'is', null)
+    .gte('appointment_date', past30.toISOString())
+    .lte('appointment_date', in7d.toISOString())
+    .order('appointment_date', { ascending: true })
+    .limit(100);
+  if (!isManager) q = q.eq('rep_id', user.id);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+
+  type Row = {
+    rep_id: string;
+    appointment_date: string;
+    contacts: { name: string | null; phone: string | null } | null;
+  };
+  const rows = (data ?? []) as unknown as Row[];
+  const names = isManager
+    ? await repNames(db, [...new Set(rows.map((r) => r.rep_id))])
+    : new Map<string, string>();
+  const shape = (r: Row) => ({
+    date: r.appointment_date,
+    client: r.contacts?.name ?? '—',
+    telephone: r.contacts?.phone,
+    ...(isManager ? { commercial: names.get(r.rep_id) ?? '—' } : {}),
+  });
+
+  return {
+    scope: isManager ? 'équipe' : 'mes RDV',
+    rdv_en_retard: rows.filter((r) => new Date(r.appointment_date) < startToday).map(shape),
+    rdv_a_venir_7j: rows.filter((r) => new Date(r.appointment_date) >= startToday).map(shape),
+  };
+}
+
+async function lostAnalysis(db: Db, user: AppUser, args: { period: string }) {
+  const isManager = isManagerRole(user);
+  const since = periodStart(args.period).toISOString();
+  let q = db
+    .from('deals')
+    .select('lost_reason, assigned_rep_id, updated_at')
+    .eq('status', 'lost')
+    .gte('updated_at', since)
+    .limit(5000);
+  if (!isManager) q = q.eq('assigned_rep_id', user.id);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  const rows = (data ?? []) as { lost_reason: string | null; assigned_rep_id: string | null }[];
+
+  const byReason: Record<string, number> = {};
+  for (const r of rows) {
+    const reason = r.lost_reason?.trim() || 'non précisé';
+    byReason[reason] = (byReason[reason] ?? 0) + 1;
+  }
+
+  let parCommercial: unknown;
+  if (isManager) {
+    const ids = [...new Set(rows.map((r) => r.assigned_rep_id).filter(Boolean) as string[])];
+    const names = await repNames(db, ids);
+    parCommercial = ids
+      .map((id) => ({
+        commercial: names.get(id) ?? '—',
+        perdues: rows.filter((r) => r.assigned_rep_id === id).length,
+      }))
+      .sort((a, b) => b.perdues - a.perdues);
+  }
+
+  return {
+    scope: isManager ? 'équipe' : 'mes affaires',
+    periode: args.period,
+    perdues_total: rows.length,
+    par_raison: byReason,
+    ...(parCommercial ? { par_commercial: parCommercial } : {}),
+  };
+}
+
+async function leaderboardStandings(user: AppUser) {
+  // The board is public in-app; use the admin client so a rep gets real
+  // names (their own RLS can't read colleagues' user rows).
+  const admin = createAdminClient();
+  const pts = await getPointConfig(admin);
+  const { reps, techs } = await computeBoards(admin, startOfWeekIso(), pts);
+  return {
+    semaine: 'en cours (depuis lundi)',
+    commerciaux: reps.slice(0, 5).map((r, i) => ({
+      rang: i + 1,
+      nom: r.name,
+      points: r.points,
+      ventes: r.sales,
+      c_est_moi: r.id === user.id || undefined,
+    })),
+    techniciens: techs.slice(0, 5).map((r, i) => ({
+      rang: i + 1,
+      nom: r.name,
+      points: r.points,
+      terminees: r.done,
+      c_est_moi: r.id === user.id || undefined,
+    })),
+  };
+}
+
+async function dailyTrend(db: Db, user: AppUser) {
+  const isManager = isManagerRole(user);
+  const since = new Date();
+  since.setDate(since.getDate() - 30);
+  since.setHours(0, 0, 0, 0);
+
+  let vq = db
+    .from('visits')
+    .select('visited_at, rep_id')
+    .neq('visit_type', 'installation')
+    .gte('visited_at', since.toISOString())
+    .limit(10000);
+  if (!isManager) vq = vq.eq('rep_id', user.id);
+  let dq = db
+    .from('deals')
+    .select('won_at, assigned_rep_id')
+    .eq('status', 'won')
+    .gte('won_at', since.toISOString())
+    .limit(5000);
+  if (!isManager) dq = dq.eq('assigned_rep_id', user.id);
+  const [{ data: vs, error }, { data: ds }] = await Promise.all([vq, dq]);
+  if (error) return { error: error.message };
+
+  const byDay = new Map<string, { visites: number; ventes: number }>();
+  for (const v of vs ?? []) {
+    const day = v.visited_at.slice(0, 10);
+    const agg = byDay.get(day) ?? { visites: 0, ventes: 0 };
+    agg.visites++;
+    byDay.set(day, agg);
+  }
+  for (const d of ds ?? []) {
+    if (!d.won_at) continue;
+    const day = d.won_at.slice(0, 10);
+    const agg = byDay.get(day) ?? { visites: 0, ventes: 0 };
+    agg.ventes++;
+    byDay.set(day, agg);
+  }
+  return {
+    scope: isManager ? 'équipe' : 'moi',
+    jours: [...byDay.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([date, agg]) => ({ date, ...agg })),
+  };
+}
+
 /** Dispatch a tool call. Unknown tool names return an error object. */
 export async function executeTool(
   name: string,
@@ -568,6 +1218,26 @@ export async function executeTool(
         return await territoriesList(db);
       case 'photos_summary':
         return await photosSummary(db, user, args as { period: string });
+      case 'funnel_stats':
+        return await funnelStats(db, user, args as { period: string });
+      case 'secteur_stats':
+        return await secteurStats(db, user, args as { period: string });
+      case 'product_stats':
+        return await productStats(db, user, args as { period: string });
+      case 'stale_deals':
+        return await staleDeals(db, user, args as { min_days: number });
+      case 'neglected_contacts':
+        return await neglectedContacts(db, user, args as { min_days: number });
+      case 'install_cycle_stats':
+        return await installCycleStats(db, user, args as { period: string });
+      case 'rdv_overview':
+        return await rdvOverview(db, user);
+      case 'lost_analysis':
+        return await lostAnalysis(db, user, args as { period: string });
+      case 'leaderboard_standings':
+        return await leaderboardStandings(user);
+      case 'daily_trend':
+        return await dailyTrend(db, user);
       case 'flagged_visits_summary':
         return await flaggedVisitsSummary(db, user);
       case 'team_list':
