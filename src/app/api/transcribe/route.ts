@@ -27,7 +27,13 @@ export async function POST(request: Request) {
     const result = await openai.audio.transcriptions.create({
       file: audio,
       model: TRANSCRIBE_MODEL,
-      language: 'fr',
+      // No language pin: reps speak French with Ivorian accents, sometimes
+      // mixed with English — let the model auto-detect. The prompt biases it
+      // toward the CRM's domain vocabulary instead of phonetic guesses.
+      prompt:
+        "Dictée d'un commercial terrain à Abidjan (Côte d'Ivoire) pour un CRM : " +
+        'clients, prospects, affaires, rendez-vous (RDV), relance, montants en FCFA, ' +
+        'installation, Cocody, Yopougon, Abobo, Marcory, Treichville, Koumassi, Port-Bouët.',
     });
     return NextResponse.json({ text: result.text ?? '' });
   } catch (e) {
