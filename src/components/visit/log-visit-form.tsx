@@ -2,7 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle, Ban, CheckCircle2, Camera, X, MapPin } from 'lucide-react';
+import {
+  AlertTriangle,
+  Ban,
+  CheckCircle2,
+  Camera,
+  Loader2,
+  Mic,
+  Square,
+  X,
+  MapPin,
+} from 'lucide-react';
+import { useDictation } from '@/hooks/use-dictation';
 import { useGeolocation } from '@/hooks/use-geolocation';
 import { pointInAnyPolygon, haversineMeters } from '@/lib/geo';
 import { reverseGeocode } from '@/lib/geo/reverse';
@@ -79,6 +90,9 @@ export function LogVisitForm({
   >(null);
   const [linked, setLinked] = useState<{ id: string; name: string | null } | null>(
     attachedContact ?? null,
+  );
+  const dictation = useDictation((text) =>
+    setNotes((prev) => (prev ? prev + ' ' + text : text)),
   );
   const [dealId, setDealId] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
@@ -539,17 +553,51 @@ export function LogVisitForm({
         </Card>
       )}
 
-      {/* Notes — optional */}
+      {/* Notes — optional, with voice dictation */}
       <div className="space-y-2">
-        <Label htmlFor="notes">{t('notes')}</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="notes">{t('notes')}</Label>
+          {dictation.status !== 'unsupported' && (
+            <button
+              type="button"
+              onClick={dictation.toggle}
+              disabled={dictation.status === 'processing'}
+              className={`flex min-h-touch items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium ${
+                dictation.status === 'recording'
+                  ? 'border-destructive bg-destructive/10 text-destructive'
+                  : 'border-input bg-background text-foreground'
+              }`}
+              aria-label={t('dictate')}
+            >
+              {dictation.status === 'recording' ? (
+                <>
+                  <Square className="h-4 w-4" /> {t('dictateStop')}
+                </>
+              ) : dictation.status === 'processing' ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> …
+                </>
+              ) : (
+                <>
+                  <Mic className="h-4 w-4" /> {t('dictate')}
+                </>
+              )}
+            </button>
+          )}
+        </div>
         <textarea
           id="notes"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder={t('notesPlaceholder')}
+          placeholder={
+            dictation.status === 'recording' ? t('dictateListening') : t('notesPlaceholder')
+          }
           rows={2}
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-base"
         />
+        {dictation.status === 'error' && (
+          <p className="text-xs text-destructive">{t('dictateError')}</p>
+        )}
       </div>
 
       {result && (

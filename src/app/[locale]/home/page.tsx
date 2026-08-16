@@ -6,6 +6,7 @@ import {
   BarChart3,
   ShieldCheck,
   Settings,
+  Sparkles,
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
@@ -96,6 +97,15 @@ export default async function HomePage({
         {user.can_do_d2d && (
           <HomeCard href="/turf" icon={MapIcon} title={t('myTurf')} hint={t('myTurfHint')} />
         )}
+
+        {/* AI assistant — every role, scoped server-side by RLS + role. */}
+        <HomeCard
+          href="/assistant"
+          icon={Sparkles}
+          title={t('assistant')}
+          hint={t('assistantHint')}
+        />
+
 
         {(user.can_do_b2b || user.can_do_d2d) && (
           <HomeCard
