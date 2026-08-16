@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { getTemplateChecklist } from '@/lib/installations/template';
 import type {
   ChecklistItem,
   EquipmentItem,
@@ -16,35 +15,6 @@ function revalidateContact(id: string) {
   revalidatePath(`/[locale]/contacts/${id}`, 'page');
   revalidatePath('/[locale]/installs', 'page');
   revalidatePath('/[locale]/dashboard', 'page');
-}
-
-/** Create a new installation job for a customer (multiple jobs are allowed). */
-export async function createInstallation(
-  contactId: string,
-  title?: string | null,
-): Promise<{ ok: true; installationId: string } | { ok: false; error: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: 'unauthenticated' };
-
-  const checklist = await getTemplateChecklist(supabase);
-  const { data, error } = await supabase
-    .from('installations')
-    .insert({
-      contact_id: contactId,
-      title: title?.trim() || null,
-      status: 'pending',
-      checklist,
-      created_by: user.id,
-    })
-    .select('id')
-    .single();
-  if (error || !data) return { ok: false, error: 'save_failed' };
-
-  revalidateContact(contactId);
-  return { ok: true, installationId: data.id };
 }
 
 /**

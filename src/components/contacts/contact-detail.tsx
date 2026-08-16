@@ -6,19 +6,12 @@ import { Phone, MessageCircle, StickyNote, DoorOpen, Pencil, MapPin, Navigation 
 import { Link, useRouter } from '@/i18n/navigation';
 import { directionsUrl } from '@/lib/geo';
 import type { ContactLifecycle, PriorityLevel, ActivityType } from '@/types/database';
+import { logActivity, updateContact, assignContact } from '@/lib/contacts/actions';
 import {
-  logActivity,
-  setStage,
-  convertToCustomer,
-  markLost,
-  updateContact,
-  assignContact,
-} from '@/lib/contacts/actions';
-import {
-  InstallationsSection,
-  type InstallJob,
-  type TechOption,
-} from '@/components/contacts/installation-card';
+  DealsSection,
+  type DealCard,
+  type DealStage,
+} from '@/components/contacts/deals-section';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,10 +24,8 @@ export interface ContactFull {
   address: string | null;
   lifecycle: ContactLifecycle;
   priority: PriorityLevel;
-  pipelineStageId: string | null;
   valueXof: number | null;
   tags: string[];
-  lostReason: string | null;
   assignedRepId: string | null;
   lat: number | null;
   lng: number | null;
@@ -90,15 +81,15 @@ export function ContactDetail({
   timeline,
   reps,
   technicians,
-  installJobs,
+  deals,
   canInstall,
 }: {
   contact: ContactFull;
   stages: Stage[];
   timeline: TimelineItem[];
   reps: RepOption[];
-  technicians: TechOption[];
-  installJobs: InstallJob[];
+  technicians: RepOption[];
+  deals: DealCard[];
   canInstall: boolean;
 }) {
   const t = useTranslations('contacts');
@@ -112,14 +103,10 @@ export function ContactDetail({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(contact.name ?? '');
   const [phone, setPhone] = useState(contact.phone ?? '');
-  const [value, setValue] = useState(contact.valueXof?.toString() ?? '');
   const [priority, setPriority] = useState<PriorityLevel>(contact.priority);
 
   const [actType, setActType] = useState<ActivityType>('call');
   const [actContent, setActContent] = useState('');
-
-  const [lostOpen, setLostOpen] = useState(false);
-  const [lostReason, setLostReason] = useState('');
 
   function run(fn: () => Promise<unknown>) {
     startTransition(async () => {
@@ -164,26 +151,20 @@ export function ContactDetail({
                 <Label htmlFor="c-phone">{t('phone')}</Label>
                 <Input id="c-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="c-value">{t('value')}</Label>
-                  <Input id="c-value" inputMode="numeric" value={value} onChange={(e) => setValue(e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="c-prio">{t('priority')}</Label>
-                  <select
-                    id="c-prio"
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value as PriorityLevel)}
-                    className="flex min-h-touch w-full rounded-md border border-input bg-background px-3 text-base"
-                  >
-                    {PRIORITIES.map((p) => (
-                      <option key={p} value={p}>
-                        {tPrio(p)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div className="space-y-1">
+                <Label htmlFor="c-prio">{t('priority')}</Label>
+                <select
+                  id="c-prio"
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value as PriorityLevel)}
+                  className="flex min-h-touch w-full rounded-md border border-input bg-background px-3 text-base"
+                >
+                  {PRIORITIES.map((p) => (
+                    <option key={p} value={p}>
+                      {tPrio(p)}
+                    </option>
+                  ))}
+                </select>
               </div>
               <Button
                 className="w-full"
@@ -193,7 +174,6 @@ export function ContactDetail({
                     await updateContact(contact.id, {
                       name: name.trim() || null,
                       phone: phone.trim() || null,
-                      value_xof: value.trim() ? Number(value.replace(/[^0-9]/g, '')) : null,
                       priority,
                     });
                     setEditing(false);
@@ -251,102 +231,35 @@ export function ContactDetail({
         </CardContent>
       </Card>
 
-      {/* Pipeline controls */}
+      {/* Account owner (commercial) */}
       <Card>
-        <CardContent className="space-y-3 pt-4">
-          <div className="space-y-1">
-            <Label htmlFor="c-assign">{t('assignedTo')}</Label>
-            <select
-              id="c-assign"
-              value={contact.assignedRepId ?? ''}
-              onChange={(e) => run(() => assignContact(contact.id, e.target.value || null))}
-              disabled={isPending}
-              className="flex min-h-touch w-full rounded-md border border-input bg-background px-3 text-base"
-            >
-              <option value="">{t('unassigned')}</option>
-              {reps.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="c-stage">{t('stage')}</Label>
-            <select
-              id="c-stage"
-              value={contact.pipelineStageId ?? ''}
-              onChange={(e) => run(() => setStage(contact.id, e.target.value))}
-              disabled={isPending}
-              className="flex min-h-touch w-full rounded-md border border-input bg-background px-3 text-base"
-            >
-              {stages.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {contact.lifecycle === 'lead' && (
-              <Button
-                variant="default"
-                size="sm"
-                disabled={isPending}
-                onClick={() => run(() => convertToCustomer(contact.id))}
-              >
-                {t('convert')}
-              </Button>
-            )}
-            {contact.lifecycle !== 'lost' && !lostOpen && (
-              <Button variant="outline" size="sm" onClick={() => setLostOpen(true)}>
-                {t('markLost')}
-              </Button>
-            )}
-          </div>
-          {lostOpen && (
-            <div className="space-y-2 rounded-md border border-destructive/30 p-3">
-              <Label htmlFor="c-lost">{t('lostReason')}</Label>
-              <textarea
-                id="c-lost"
-                rows={2}
-                value={lostReason}
-                onChange={(e) => setLostReason(e.target.value)}
-                placeholder={t('lostReasonPlaceholder')}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-base"
-              />
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setLostOpen(false)}>
-                  {t('confirm') === 'Confirmer' ? 'Annuler' : 'Cancel'}
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={isPending}
-                  onClick={() =>
-                    run(async () => {
-                      await markLost(contact.id, lostReason);
-                      setLostOpen(false);
-                    })
-                  }
-                >
-                  {t('markLost')}
-                </Button>
-              </div>
-            </div>
-          )}
+        <CardContent className="space-y-1 pt-4">
+          <Label htmlFor="c-assign">{t('assignedTo')}</Label>
+          <select
+            id="c-assign"
+            value={contact.assignedRepId ?? ''}
+            onChange={(e) => run(() => assignContact(contact.id, e.target.value || null))}
+            disabled={isPending}
+            className="flex min-h-touch w-full rounded-md border border-input bg-background px-3 text-base"
+          >
+            <option value="">{t('unassigned')}</option>
+            {reps.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
         </CardContent>
       </Card>
 
-      {/* Installations (customers only) */}
-      {contact.lifecycle === 'customer' && (
-        <InstallationsSection
-          contactId={contact.id}
-          jobs={installJobs}
-          technicians={technicians}
-          canInstall={canInstall}
-        />
-      )}
+      {/* Affaires (deals): several businesses, each sellable and/or installable */}
+      <DealsSection
+        contactId={contact.id}
+        deals={deals}
+        stages={stages as DealStage[]}
+        technicians={technicians}
+        canInstall={canInstall}
+      />
 
       {/* Activity composer */}
       <Card>

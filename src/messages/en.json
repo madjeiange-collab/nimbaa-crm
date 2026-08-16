@@ -87,6 +87,22 @@
     "customer": "Customer",
     "lost": "Lost"
   },
+  "deals": {
+    "title": "Deals",
+    "untitled": "Deal",
+    "value": "Value",
+    "stage": "Stage",
+    "needsInstallation": "Needs installation",
+    "status_open": "Open",
+    "status_won": "Won",
+    "status_lost": "Lost",
+    "noAffaires": "No deal for this customer.",
+    "newAffaire": "New deal",
+    "productPlaceholder": "Product / service",
+    "add": "Add",
+    "delete": "Delete",
+    "filterAll": "All"
+  },
   "installation": {
     "title": "Installation",
     "queueTitle": "To install",

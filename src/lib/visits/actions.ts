@@ -142,9 +142,31 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
     if (contact) {
       contactId = contact.id;
       await supabase.from('visits').update({ contact_id: contactId }).eq('id', visit.id);
+
+      // The engaged knock also opens an Affaire (deal) at the mapped stage.
+      const won = meta.lifecycle === 'customer'; // "sold"
+      const { data: deal } = await supabase
+        .from('deals')
+        .insert({
+          contact_id: contact.id,
+          pipeline_stage_id: stageId,
+          status: won ? 'won' : 'open',
+          needs_installation: won, // a sold door is installed by default
+          assigned_rep_id: user.id,
+          won_at: won ? new Date().toISOString() : null,
+          created_by: user.id,
+        })
+        .select('id')
+        .single();
+
       // A door that closes as "sold" becomes a customer awaiting installation.
-      if (meta.lifecycle === 'customer') {
-        await ensurePendingInstallation(supabase, contact.id, user.id);
+      if (won && deal) {
+        await ensurePendingInstallation(supabase, {
+          dealId: deal.id,
+          contactId: contact.id,
+          title: null,
+          createdBy: user.id,
+        });
       }
     }
   }

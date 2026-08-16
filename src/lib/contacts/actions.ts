@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { ensurePendingInstallation } from '@/lib/installations/seed';
 import type { ActivityType, PriorityLevel } from '@/types/database';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -38,103 +37,6 @@ export async function logActivity(
   return { ok: true };
 }
 
-/**
- * Move a contact to a pipeline stage. Keeps lifecycle consistent: a "won"
- * stage marks it a customer (stamps converted_at), a "lost" stage marks it lost.
- */
-export async function setStage(contactId: string, stageId: string): Promise<ActionResult> {
-  const supabase = await createClient();
-
-  const { data: stage } = await supabase
-    .from('pipeline_stages')
-    .select('is_won, is_lost')
-    .eq('id', stageId)
-    .maybeSingle();
-
-  const patch: Record<string, unknown> = {
-    pipeline_stage_id: stageId,
-    updated_at: new Date().toISOString(),
-  };
-  if (stage?.is_won) {
-    patch.lifecycle = 'customer';
-    patch.converted_at = new Date().toISOString();
-  } else if (stage?.is_lost) {
-    patch.lifecycle = 'lost';
-  } else {
-    patch.lifecycle = 'lead';
-  }
-
-  const { error } = await supabase.from('contacts').update(patch).eq('id', contactId);
-  if (error) return { ok: false, error: 'save_failed' };
-
-  // A freshly won customer gets a pending installation job (idempotent).
-  if (stage?.is_won) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    await ensurePendingInstallation(supabase, contactId, user?.id ?? null);
-  }
-
-  revalidateContact(contactId);
-  return { ok: true };
-}
-
-/** Mark a contact as lost with a reason. */
-export async function markLost(contactId: string, reason: string): Promise<ActionResult> {
-  const supabase = await createClient();
-  const { data: lostStage } = await supabase
-    .from('pipeline_stages')
-    .select('id')
-    .eq('is_lost', true)
-    .order('sort_order', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const { error } = await supabase
-    .from('contacts')
-    .update({
-      lifecycle: 'lost',
-      lost_reason: reason.trim() || null,
-      pipeline_stage_id: lostStage?.id ?? null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', contactId);
-  if (error) return { ok: false, error: 'save_failed' };
-  revalidateContact(contactId);
-  return { ok: true };
-}
-
-/** Convert a lead to a customer (moves to the won stage). */
-export async function convertToCustomer(contactId: string): Promise<ActionResult> {
-  const supabase = await createClient();
-  const { data: wonStage } = await supabase
-    .from('pipeline_stages')
-    .select('id')
-    .eq('is_won', true)
-    .order('sort_order', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  const { error } = await supabase
-    .from('contacts')
-    .update({
-      lifecycle: 'customer',
-      converted_at: new Date().toISOString(),
-      pipeline_stage_id: wonStage?.id ?? null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', contactId);
-  if (error) return { ok: false, error: 'save_failed' };
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  await ensurePendingInstallation(supabase, contactId, user?.id ?? null);
-
-  revalidateContact(contactId);
-  return { ok: true };
-}
-
 /** Allocate (or reassign) the contact to a commercial (or unassign). */
 export async function assignContact(
   contactId: string,
@@ -155,14 +57,13 @@ export async function assignContact(
   return { ok: true };
 }
 
-/** Edit basic contact fields (name / phone / priority / value / tags). */
+/** Edit basic contact fields (name / phone / priority / tags). Deal value lives on deals. */
 export async function updateContact(
   contactId: string,
   fields: {
     name?: string | null;
     phone?: string | null;
     priority?: PriorityLevel;
-    value_xof?: number | null;
     tags?: string[];
   },
 ): Promise<ActionResult> {

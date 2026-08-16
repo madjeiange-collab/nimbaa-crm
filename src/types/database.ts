@@ -26,6 +26,7 @@ export type DispositionType =
   | 'sold'
   | 'do_not_knock';
 export type ContactLifecycle = 'lead' | 'customer' | 'lost';
+export type DealStatus = 'open' | 'won' | 'lost';
 export type PriorityLevel = 'vip' | 'high' | 'medium' | 'low';
 export type ContactSource =
   | 'd2d_knock'
@@ -183,10 +184,45 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['contacts']['Insert']>;
         Relationships: [];
       };
+      deals: {
+        Row: {
+          id: string;
+          contact_id: string;
+          title: string | null;
+          value_xof: number | null;
+          pipeline_stage_id: string | null;
+          status: DealStatus;
+          needs_installation: boolean;
+          lost_reason: string | null;
+          assigned_rep_id: string | null;
+          won_at: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          contact_id: string;
+          title?: string | null;
+          value_xof?: number | null;
+          pipeline_stage_id?: string | null;
+          status?: DealStatus;
+          needs_installation?: boolean;
+          lost_reason?: string | null;
+          assigned_rep_id?: string | null;
+          won_at?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['deals']['Insert']>;
+        Relationships: [];
+      };
       installations: {
         Row: {
           id: string;
           contact_id: string;
+          deal_id: string | null;
           title: string | null;
           installer_id: string | null;
           status: InstallStatus;
@@ -204,6 +240,7 @@ export interface Database {
         Insert: {
           id?: string;
           contact_id: string;
+          deal_id?: string | null;
           title?: string | null;
           installer_id?: string | null;
           status?: InstallStatus;
@@ -410,6 +447,7 @@ export interface Database {
       visit_type: VisitType;
       disposition_type: DispositionType;
       contact_lifecycle: ContactLifecycle;
+      deal_status: DealStatus;
       priority_level: PriorityLevel;
       contact_source: ContactSource;
       activity_type: ActivityType;

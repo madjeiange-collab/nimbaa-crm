@@ -87,6 +87,22 @@
     "customer": "Client",
     "lost": "Perdu"
   },
+  "deals": {
+    "title": "Affaires",
+    "untitled": "Affaire",
+    "value": "Valeur",
+    "stage": "Étape",
+    "needsInstallation": "Installation requise",
+    "status_open": "En cours",
+    "status_won": "Gagnée",
+    "status_lost": "Perdue",
+    "noAffaires": "Aucune affaire pour ce client.",
+    "newAffaire": "Nouvelle affaire",
+    "productPlaceholder": "Produit / service",
+    "add": "Ajouter",
+    "delete": "Supprimer",
+    "filterAll": "Toutes"
+  },
   "installation": {
     "title": "Installation",
     "queueTitle": "À installer",

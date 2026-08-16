@@ -12,7 +12,7 @@ import type {
   Stage,
   RepOption,
 } from '@/components/contacts/contact-detail';
-import type { InstallJob } from '@/components/contacts/installation-card';
+import type { DealCard } from '@/components/contacts/deals-section';
 
 export default async function ContactDetailPage({
   params,
@@ -29,24 +29,24 @@ export default async function ContactDetailPage({
   const { data: contact } = await supabase
     .from('contacts')
     .select(
-      'id, name, phone, address, lat, lng, lifecycle, priority, pipeline_stage_id, value_xof, tags, lost_reason, assigned_rep_id, created_at',
+      'id, name, phone, address, lat, lng, lifecycle, priority, value_xof, tags, assigned_rep_id, created_at',
     )
     .eq('id', id)
     .maybeSingle();
 
   if (!contact) notFound();
 
-  // Installation jobs are fetched separately so a pre-migration DB degrades to
-  // "no jobs" instead of 404ing the whole contact page.
-  const [{ data: stages }, { data: activities }, { data: visits }, { data: users }, { data: installs }] =
+  // Deals (with their installations) are fetched separately so a pre-migration
+  // DB degrades to "no affaires" instead of 404ing the whole contact page.
+  const [{ data: stages }, { data: activities }, { data: visits }, { data: users }, { data: dealRows }] =
     await Promise.all([
       supabase.from('pipeline_stages').select('id, name, sort_order, is_won, is_lost').order('sort_order'),
       supabase.from('activities').select('id, type, content, created_at, rep_id').eq('contact_id', id).order('created_at', { ascending: false }),
       supabase.from('visits').select('id, disposition, notes, visited_at, rep_id, visit_photos(storage_path)').eq('contact_id', id).order('visited_at', { ascending: false }),
       supabase.from('users').select('id, full_name, username, role'),
       supabase
-        .from('installations')
-        .select('id, title, status, installer_id, scheduled_date, next_visit_date, checklist, equipment, created_at')
+        .from('deals')
+        .select('id, title, value_xof, status, pipeline_stage_id, needs_installation, installations(id, status, installer_id, scheduled_date, next_visit_date, checklist, equipment)')
         .eq('contact_id', id)
         .order('created_at', { ascending: true }),
     ]);
@@ -129,35 +129,48 @@ export default async function ContactDetailPage({
     address: contact.address,
     lifecycle: contact.lifecycle,
     priority: contact.priority,
-    pipelineStageId: contact.pipeline_stage_id,
     valueXof: contact.value_xof,
     tags: contact.tags ?? [],
-    lostReason: contact.lost_reason,
     assignedRepId: contact.assigned_rep_id,
     lat: contact.lat,
     lng: contact.lng,
   };
 
-  type InstallRow = {
+  type InstRow = {
     id: string;
-    title: string | null;
-    status: InstallJob['status'];
+    status: DealCard['installs'][number]['status'];
     installer_id: string | null;
     scheduled_date: string | null;
     next_visit_date: string | null;
     checklist?: { done: boolean }[];
     equipment?: unknown[];
   };
-  const installJobs: InstallJob[] = ((installs ?? []) as InstallRow[]).map((r) => ({
-    id: r.id,
-    title: r.title,
-    status: r.status,
-    installerId: r.installer_id,
-    scheduledDate: r.scheduled_date,
-    nextVisitDate: r.next_visit_date,
-    doneSteps: (r.checklist ?? []).filter((c) => c.done).length,
-    totalSteps: (r.checklist ?? []).length,
-    equipmentCount: (r.equipment ?? []).length,
+  type DealRow = {
+    id: string;
+    title: string | null;
+    value_xof: number | null;
+    status: DealCard['status'];
+    pipeline_stage_id: string | null;
+    needs_installation: boolean;
+    installations?: InstRow[];
+  };
+  const deals: DealCard[] = ((dealRows ?? []) as unknown as DealRow[]).map((d) => ({
+    id: d.id,
+    title: d.title,
+    valueXof: d.value_xof,
+    status: d.status,
+    pipelineStageId: d.pipeline_stage_id,
+    needsInstallation: d.needs_installation,
+    installs: (d.installations ?? []).map((i) => ({
+      id: i.id,
+      status: i.status,
+      installerId: i.installer_id,
+      scheduledDate: i.scheduled_date,
+      nextVisitDate: i.next_visit_date,
+      doneSteps: (i.checklist ?? []).filter((c) => c.done).length,
+      totalSteps: (i.checklist ?? []).length,
+      equipmentCount: (i.equipment ?? []).length,
+    })),
   }));
   const canInstall =
     user.role === 'technician' || user.role === 'manager' || user.role === 'admin';
@@ -179,7 +192,7 @@ export default async function ContactDetailPage({
           timeline={timeline}
           reps={reps}
           technicians={technicians}
-          installJobs={installJobs}
+          deals={deals}
           canInstall={canInstall}
         />
       </main>

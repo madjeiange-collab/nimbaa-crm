@@ -7,29 +7,30 @@ import { getTemplateChecklist } from '@/lib/installations/template';
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
 
 /**
- * Ensure a won customer has at least one OPEN installation job. Called from the
- * win paths (convert / won stage / sold knock). Idempotent: if the customer
- * already has an open job it does nothing, so re-saving a won stage never spawns
- * duplicate jobs. Additional jobs are added explicitly from the contact page.
+ * Ensure a WON deal that needs installation has an open installation job.
+ * Idempotent: if the deal already has an open job it does nothing, so re-winning
+ * never spawns duplicates. Keyed on the deal; `contactId` is carried onto the
+ * job (denormalised) for the many readers that reach the customer through it.
  */
 export async function ensurePendingInstallation(
   supabase: ServerClient,
-  contactId: string,
-  createdBy: string | null,
+  args: { dealId: string; contactId: string; title?: string | null; createdBy: string | null },
 ): Promise<void> {
   const { data: open } = await supabase
     .from('installations')
     .select('id')
-    .eq('contact_id', contactId)
+    .eq('deal_id', args.dealId)
     .in('status', OPEN_INSTALL_STATUSES)
     .limit(1);
   if (open && open.length > 0) return;
 
   const checklist = await getTemplateChecklist(supabase);
   await supabase.from('installations').insert({
-    contact_id: contactId,
+    deal_id: args.dealId,
+    contact_id: args.contactId,
+    title: args.title ?? null,
     status: 'pending',
     checklist,
-    created_by: createdBy,
+    created_by: args.createdBy,
   });
 }

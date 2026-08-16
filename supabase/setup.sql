@@ -530,3 +530,43 @@ select * from (values
   ('customer_training', 'Formation client',    6)
 ) as v(key, label, sort_order)
 where not exists (select 1 from install_protocol_steps);
+
+
+-- ====== 0007_deals.sql ======
+
+do $$ begin
+  create type deal_status as enum ('open','won','lost');
+exception when duplicate_object then null; end $$;
+
+create table if not exists deals (
+  id                 uuid primary key default uuid_generate_v4(),
+  contact_id         uuid not null references contacts(id) on delete cascade,
+  title              text,
+  value_xof          bigint,
+  pipeline_stage_id  uuid references pipeline_stages(id),
+  status             deal_status not null default 'open',
+  needs_installation boolean not null default false,
+  lost_reason        text,
+  assigned_rep_id    uuid references users(id),
+  won_at             timestamptz,
+  created_by         uuid references users(id),
+  created_at         timestamptz not null default now(),
+  updated_at         timestamptz not null default now()
+);
+create index if not exists deals_contact_ix on deals (contact_id);
+create index if not exists deals_stage_ix   on deals (pipeline_stage_id);
+create index if not exists deals_status_ix  on deals (status);
+create index if not exists deals_rep_ix     on deals (assigned_rep_id);
+
+alter table installations add column if not exists deal_id uuid references deals(id) on delete cascade;
+create index if not exists installations_deal_ix on installations (deal_id);
+
+alter table deals enable row level security;
+drop policy if exists deals_read on deals;
+create policy deals_read on deals for select using (auth.uid() is not null);
+drop policy if exists deals_ins on deals;
+create policy deals_ins on deals for insert with check (auth.uid() is not null);
+drop policy if exists deals_upd on deals;
+create policy deals_upd on deals for update using (auth.uid() is not null);
+drop policy if exists deals_del on deals;
+create policy deals_del on deals for delete using (auth.uid() is not null);

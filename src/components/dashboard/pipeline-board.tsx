@@ -4,18 +4,19 @@ import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Download } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import type { ContactLifecycle, PriorityLevel } from '@/types/database';
+import type { DealStatus } from '@/types/database';
 import { downloadCsv } from '@/lib/csv';
 import { Button } from '@/components/ui/button';
 import { RepMultiFilter, TerritoryFilter } from '@/components/dashboard/rep-multi-filter';
 
-export interface PipelineContact {
+export interface PipelineDeal {
   id: string;
-  name: string | null;
-  lifecycle: ContactLifecycle;
-  priority: PriorityLevel;
-  stageId: string | null;
+  contactId: string;
+  name: string | null; // customer
+  title: string | null; // product / service
   value: number | null;
+  stageId: string | null;
+  status: DealStatus;
   repId: string | null;
   repName: string | null;
   territoryId: string | null;
@@ -33,73 +34,63 @@ export interface PipelineTerritory {
   name: string;
 }
 
-type LifeFilter = 'all' | ContactLifecycle;
-
-const PRIORITY_DOT: Record<PriorityLevel, string> = {
-  vip: 'bg-brand-amber',
-  high: 'bg-brand-amber/70',
-  medium: 'bg-muted-foreground/40',
-  low: 'bg-muted-foreground/20',
-};
+type StatusFilter = 'all' | DealStatus;
 
 export function PipelineBoard({
-  contacts,
+  deals,
   stages,
   reps,
   territories,
-  initialLife = 'all',
+  initialStatus = 'all',
 }: {
-  contacts: PipelineContact[];
+  deals: PipelineDeal[];
   stages: PipelineStage[];
   reps: PipelineRep[];
   territories: PipelineTerritory[];
-  initialLife?: LifeFilter;
+  initialStatus?: StatusFilter;
 }) {
   const t = useTranslations('dashboard');
-  const tC = useTranslations('contacts');
-  const tLife = useTranslations('lifecycle');
-  const [life, setLife] = useState<LifeFilter>(initialLife);
+  const tD = useTranslations('deals');
+  const [status, setStatus] = useState<StatusFilter>(initialStatus);
   const [repIds, setRepIds] = useState<string[]>([]);
   const [terrIds, setTerrIds] = useState<string[]>([]);
 
   const filtered = useMemo(
     () =>
-      contacts.filter(
-        (c) =>
-          (life === 'all' || c.lifecycle === life) &&
-          (repIds.length === 0 || (!!c.repId && repIds.includes(c.repId))) &&
-          (terrIds.length === 0 || (!!c.territoryId && terrIds.includes(c.territoryId))),
+      deals.filter(
+        (d) =>
+          (status === 'all' || d.status === status) &&
+          (repIds.length === 0 || (!!d.repId && repIds.includes(d.repId))) &&
+          (terrIds.length === 0 || (!!d.territoryId && terrIds.includes(d.territoryId))),
       ),
-    [contacts, life, repIds, terrIds],
+    [deals, status, repIds, terrIds],
   );
 
   const byStage = useMemo(() => {
-    const m = new Map<string, PipelineContact[]>();
+    const m = new Map<string, PipelineDeal[]>();
     for (const s of stages) m.set(s.id, []);
-    for (const c of filtered) {
-      if (c.stageId && m.has(c.stageId)) m.get(c.stageId)!.push(c);
-    }
+    for (const d of filtered) if (d.stageId && m.has(d.stageId)) m.get(d.stageId)!.push(d);
     return m;
   }, [filtered, stages]);
 
-  const tabs: { key: LifeFilter; label: string }[] = [
-    { key: 'all', label: tC('tabAll') },
-    { key: 'lead', label: tC('tabLeads') },
-    { key: 'customer', label: tC('tabCustomers') },
-    { key: 'lost', label: tC('tabLost') },
+  const tabs: { key: StatusFilter; label: string }[] = [
+    { key: 'all', label: tD('filterAll') },
+    { key: 'open', label: tD('status_open') },
+    { key: 'won', label: tD('status_won') },
+    { key: 'lost', label: tD('status_lost') },
   ];
 
   function exportCsv() {
     const stageName = new Map(stages.map((s) => [s.id, s.name]));
     downloadCsv('pipeline.csv', [
-      ['Nom', 'Commercial', 'Cycle', 'Étape', 'Priorité', 'Valeur XOF'],
-      ...filtered.map((c) => [
-        c.name ?? '',
-        c.repName ?? '',
-        c.lifecycle,
-        c.stageId ? (stageName.get(c.stageId) ?? '') : '',
-        c.priority,
-        c.value ?? '',
+      ['Affaire', 'Client', 'Commercial', 'Statut', 'Étape', 'Valeur XOF'],
+      ...filtered.map((d) => [
+        d.title ?? '',
+        d.name ?? '',
+        d.repName ?? '',
+        d.status,
+        d.stageId ? (stageName.get(d.stageId) ?? '') : '',
+        d.value ?? '',
       ]),
     ]);
   }
@@ -111,9 +102,9 @@ export function PipelineBoard({
           {tabs.map((tb) => (
             <button
               key={tb.key}
-              onClick={() => setLife(tb.key)}
+              onClick={() => setStatus(tb.key)}
               className={`min-h-touch whitespace-nowrap rounded-lg px-3 text-sm font-medium ${
-                life === tb.key
+                status === tb.key
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-secondary text-secondary-foreground'
               }`}
@@ -143,22 +134,15 @@ export function PipelineBoard({
                 </span>
               </div>
               <div className="space-y-2">
-                {items.map((c) => (
-                  <Link key={c.id} href={`/contacts/${c.id}`} className="block">
+                {items.map((d) => (
+                  <Link key={d.id} href={`/contacts/${d.contactId}`} className="block">
                     <div className="rounded-lg border bg-card p-2.5 shadow-sm transition-colors hover:bg-accent">
-                      <div className="flex items-center gap-2">
-                        <span className={`h-2 w-2 shrink-0 rounded-full ${PRIORITY_DOT[c.priority]}`} />
-                        <p className="truncate text-sm font-medium">{c.name ?? tC('noName')}</p>
-                      </div>
+                      <p className="truncate text-sm font-medium">{d.title ?? tD('untitled')}</p>
+                      <p className="truncate text-xs text-muted-foreground">{d.name ?? '—'}</p>
                       <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{tLife(c.lifecycle)}</span>
-                        {c.value != null && <span>{c.value.toLocaleString('fr-FR')} XOF</span>}
+                        {d.value != null ? <span>{d.value.toLocaleString('fr-FR')} XOF</span> : <span />}
+                        {d.repName && <span className="truncate">{d.repName}</span>}
                       </div>
-                      {c.repName && (
-                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground/80">
-                          {c.repName}
-                        </p>
-                      )}
                     </div>
                   </Link>
                 ))}

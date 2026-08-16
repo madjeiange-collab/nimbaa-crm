@@ -1,0 +1,335 @@
+'use client';
+
+import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
+import { Briefcase, Plus, Trash2, Wrench, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Link, useRouter } from '@/i18n/navigation';
+import {
+  createDeal,
+  setDealStage,
+  updateDeal,
+  deleteDeal,
+} from '@/lib/deals/actions';
+import { assignInstaller } from '@/lib/installations/actions';
+import { INSTALL_STATUS_BADGE, INSTALL_STATUS_BY_KEY } from '@/lib/installations/protocol';
+import type { DealStatus, InstallStatus } from '@/types/database';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
+
+export interface DealInstall {
+  id: string;
+  status: InstallStatus;
+  installerId: string | null;
+  scheduledDate: string | null;
+  nextVisitDate: string | null;
+  doneSteps: number;
+  totalSteps: number;
+  equipmentCount: number;
+}
+
+export interface DealCard {
+  id: string;
+  title: string | null;
+  valueXof: number | null;
+  status: DealStatus;
+  pipelineStageId: string | null;
+  needsInstallation: boolean;
+  installs: DealInstall[];
+}
+
+export interface DealStage {
+  id: string;
+  name: string;
+  is_won: boolean;
+  is_lost: boolean;
+}
+
+const STATUS_BADGE: Record<DealStatus, string> = {
+  open: 'bg-brand-amber/15 text-brand-brown',
+  won: 'bg-brand-green/15 text-brand-green',
+  lost: 'bg-destructive/10 text-destructive',
+};
+
+function InstallRow({
+  contactId,
+  install,
+  technicians,
+  canInstall,
+}: {
+  contactId: string;
+  install: DealInstall;
+  technicians: { id: string; name: string }[];
+  canInstall: boolean;
+}) {
+  const t = useTranslations('installation');
+  const tStatus = useTranslations('installation.status');
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [date, setDate] = useState(install.scheduledDate ?? '');
+  const meta = INSTALL_STATUS_BY_KEY[install.status];
+
+  function assign(techId: string | null) {
+    startTransition(async () => {
+      await assignInstaller(install.id, contactId, techId, date || null);
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="space-y-2 rounded-md border border-primary/20 bg-primary/5 p-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+          <Wrench className="h-3.5 w-3.5" /> {t('cardTitle')}
+        </span>
+        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${INSTALL_STATUS_BADGE[meta.color]}`}>
+          {tStatus(meta.i18n)}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <select
+          value={install.installerId ?? ''}
+          onChange={(e) => assign(e.target.value || null)}
+          disabled={isPending || technicians.length === 0}
+          aria-label={t('assignTech')}
+          className="flex min-h-touch w-full rounded-md border border-input bg-background px-2 text-sm"
+        >
+          <option value="">{t('unassignedTech')}</option>
+          {technicians.map((tech) => (
+            <option key={tech.id} value={tech.id}>
+              {tech.name}
+            </option>
+          ))}
+        </select>
+        <Input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          onBlur={() => install.installerId && assign(install.installerId)}
+          disabled={isPending}
+          aria-label={t('scheduledDate')}
+          className="text-sm"
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          {t('stepsDone', { done: install.doneSteps, total: install.totalSteps })}
+        </span>
+        <span>{t('equipmentCount', { n: install.equipmentCount })}</span>
+        {install.nextVisitDate && <span>{t('nextVisitOn', { date: install.nextVisitDate })}</span>}
+      </div>
+      {canInstall && (
+        <Link
+          href={`/install/new?job=${install.id}`}
+          className="inline-flex items-center gap-1 text-sm font-medium text-primary"
+        >
+          {t('openInstall')} <ArrowRight className="h-4 w-4" />
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function DealRow({
+  contactId,
+  deal,
+  stages,
+  technicians,
+  canInstall,
+}: {
+  contactId: string;
+  deal: DealCard;
+  stages: DealStage[];
+  technicians: { id: string; name: string }[];
+  canInstall: boolean;
+}) {
+  const t = useTranslations('deals');
+  const tInstall = useTranslations('installation');
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [title, setTitle] = useState(deal.title ?? '');
+  const [value, setValue] = useState(deal.valueXof?.toString() ?? '');
+
+  function run(fn: () => Promise<unknown>) {
+    startTransition(async () => {
+      await fn();
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="space-y-2.5 rounded-lg border p-3">
+      <div className="flex items-center gap-2">
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={() => title.trim() !== (deal.title ?? '') && run(() => updateDeal(deal.id, { title }))}
+          placeholder={t('untitled')}
+          className="flex-1 font-medium"
+        />
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[deal.status]}`}>
+          {t(`status_${deal.status}` as never)}
+        </span>
+        <button
+          type="button"
+          aria-label={t('delete')}
+          disabled={isPending}
+          onClick={() => run(() => deleteDeal(deal.id))}
+          className="shrink-0 text-muted-foreground hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label className="text-xs">{t('value')}</Label>
+          <Input
+            inputMode="numeric"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onBlur={() =>
+              run(() => updateDeal(deal.id, { value: value.trim() ? Number(value.replace(/[^0-9]/g, '')) : null }))
+            }
+            placeholder="XOF"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">{t('stage')}</Label>
+          <select
+            value={deal.pipelineStageId ?? ''}
+            onChange={(e) => run(() => setDealStage(deal.id, e.target.value))}
+            disabled={isPending}
+            className="flex min-h-touch w-full rounded-md border border-input bg-background px-2 text-sm"
+          >
+            {stages.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={deal.needsInstallation}
+          disabled={isPending}
+          onChange={(e) => run(() => updateDeal(deal.id, { needsInstallation: e.target.checked }))}
+        />
+        {t('needsInstallation')}
+      </label>
+
+      {/* Installation(s) for a won + installable deal */}
+      {deal.status === 'won' && deal.needsInstallation && (
+        <div className="space-y-2">
+          {deal.installs.length === 0 ? (
+            <p className="text-xs text-muted-foreground">{tInstall('noJobs')}</p>
+          ) : (
+            deal.installs.map((inst) => (
+              <InstallRow
+                key={inst.id}
+                contactId={contactId}
+                install={inst}
+                technicians={technicians}
+                canInstall={canInstall}
+              />
+            ))
+          )}
+          {technicians.length === 0 && (
+            <p className="text-xs text-muted-foreground">{tInstall('noTechnicians')}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function DealsSection({
+  contactId,
+  deals,
+  stages,
+  technicians,
+  canInstall,
+}: {
+  contactId: string;
+  deals: DealCard[];
+  stages: DealStage[];
+  technicians: { id: string; name: string }[];
+  canInstall: boolean;
+}) {
+  const t = useTranslations('deals');
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [newTitle, setNewTitle] = useState('');
+  const [newValue, setNewValue] = useState('');
+  const [newNeedsInstall, setNewNeedsInstall] = useState(false);
+
+  function addDeal() {
+    startTransition(async () => {
+      await createDeal(contactId, {
+        title: newTitle.trim() || null,
+        value: newValue.trim() ? Number(newValue.replace(/[^0-9]/g, '')) : null,
+        needsInstallation: newNeedsInstall,
+      });
+      setNewTitle('');
+      setNewValue('');
+      setNewNeedsInstall(false);
+      router.refresh();
+    });
+  }
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 pt-4">
+        <p className="flex items-center gap-1.5 text-sm font-semibold">
+          <Briefcase className="h-4 w-4 text-primary" />
+          {t('title')}
+        </p>
+
+        {deals.length === 0 ? (
+          <p className="text-xs text-muted-foreground">{t('noAffaires')}</p>
+        ) : (
+          <div className="space-y-2">
+            {deals.map((d) => (
+              <DealRow
+                key={d.id}
+                contactId={contactId}
+                deal={d}
+                stages={stages}
+                technicians={technicians}
+                canInstall={canInstall}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* New affaire */}
+        <div className="space-y-2 rounded-lg border border-dashed p-3">
+          <p className="text-xs font-medium text-muted-foreground">{t('newAffaire')}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={t('productPlaceholder')} />
+            <Input
+              inputMode="numeric"
+              value={newValue}
+              onChange={(e) => setNewValue(e.target.value)}
+              placeholder="XOF"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={newNeedsInstall} onChange={(e) => setNewNeedsInstall(e.target.checked)} />
+              {t('needsInstallation')}
+            </label>
+            <Button size="sm" onClick={addDeal} disabled={isPending}>
+              <Plus className="mr-1 h-4 w-4" /> {t('add')}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
