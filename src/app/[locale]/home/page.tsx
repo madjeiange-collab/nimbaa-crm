@@ -169,6 +169,19 @@ export default async function HomePage({
         .maybeSingle(),
     ]);
 
+  // Managers get the detailed per-person brief instead of the public recap.
+  let managerRecap: { day: string; content: string } | null = null;
+  if (isManager) {
+    const { data } = await admin
+      .from('manager_recaps')
+      .select('day, content')
+      .order('day', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    managerRecap = data ?? null;
+  }
+  const shownRecap = managerRecap ?? recap;
+
   const polygons: number[][][][] = ((turfs ?? []) as { geojson?: { coordinates?: number[][][] } }[])
     .map((row) => row.geojson?.coordinates)
     .filter(Boolean) as number[][][][];
@@ -337,16 +350,16 @@ export default async function HomePage({
 
           {/* ---- Right: daily AI recap + this week's board + coverage map ---- */}
           <div className="space-y-4">
-            {(recap || isManager) && (
+            {(shownRecap || isManager) && (
               <Card className="border-primary/30 bg-primary/5">
                 <CardContent className="pt-4">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <p className="flex min-w-0 items-center gap-2 text-sm font-semibold">
                       <Sparkles className="h-4 w-4 shrink-0 text-primary" />
-                      {tBoard('recapTitle')}
-                      {recap && (
+                      {managerRecap ? tBoard('managerRecapTitle') : tBoard('recapTitle')}
+                      {shownRecap && (
                         <span className="truncate font-normal text-muted-foreground">
-                          · {new Date(recap.day + 'T12:00:00').toLocaleDateString('fr-FR', {
+                          · {new Date(shownRecap.day + 'T12:00:00').toLocaleDateString('fr-FR', {
                             weekday: 'long',
                             day: 'numeric',
                             month: 'long',
@@ -356,8 +369,8 @@ export default async function HomePage({
                     </p>
                     {isManager && <GenerateRecapButton />}
                   </div>
-                  {recap ? (
-                    <p className="whitespace-pre-wrap text-sm">{recap.content}</p>
+                  {shownRecap ? (
+                    <p className="whitespace-pre-wrap text-sm">{shownRecap.content}</p>
                   ) : (
                     <p className="text-sm text-muted-foreground">{tBoard('empty')}</p>
                   )}
