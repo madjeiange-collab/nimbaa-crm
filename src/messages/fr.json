@@ -67,7 +67,27 @@
     "managerArea": "Espace manager",
     "adminArea": "Administration",
     "assistant": "Assistant Nimbaa",
-    "assistantHint": "Posez une question sur vos clients et vos ventes"
+    "assistantHint": "Posez une question sur vos clients et vos ventes",
+    "leaderboard": "Classement",
+    "leaderboardHint": "Qui est en tête cette semaine ?"
+  },
+  "leaderboard": {
+    "title": "Classement",
+    "subtitle": "La compétition de la semaine",
+    "thisWeek": "Cette semaine",
+    "thisMonth": "Ce mois",
+    "repsBoard": "🏆 Commerciaux",
+    "techsBoard": "🔧 Techniciens",
+    "visits": "Visites",
+    "leadsRdv": "Intéressés + RDV",
+    "sales": "Ventes",
+    "done": "Terminées",
+    "revisits": "Revisites",
+    "open": "En cours",
+    "empty": "Pas encore de points sur cette période — à vous de jouer !",
+    "scoringTitle": "Comment les points sont calculés",
+    "scoringReps": "Commerciaux : visite ×{v} · intéressé ×{i} · RDV ×{r} · affaire gagnée ×{w}",
+    "scoringTechs": "Techniciens : installation terminée ×{d} · revisite ×{r}"
   },
   "assistant": {
     "title": "Assistant Nimbaa",

@@ -67,7 +67,27 @@
     "managerArea": "Manager area",
     "adminArea": "Administration",
     "assistant": "Nimbaa Assistant",
-    "assistantHint": "Ask a question about your customers and sales"
+    "assistantHint": "Ask a question about your customers and sales",
+    "leaderboard": "Leaderboard",
+    "leaderboardHint": "Who's ahead this week?"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "subtitle": "This week's competition",
+    "thisWeek": "This week",
+    "thisMonth": "This month",
+    "repsBoard": "🏆 Sales reps",
+    "techsBoard": "🔧 Technicians",
+    "visits": "Visits",
+    "leadsRdv": "Interested + appts",
+    "sales": "Sales",
+    "done": "Completed",
+    "revisits": "Revisits",
+    "open": "Open",
+    "empty": "No points yet this period — game on!",
+    "scoringTitle": "How points are calculated",
+    "scoringReps": "Reps: visit ×{v} · interested ×{i} · appointment ×{r} · deal won ×{w}",
+    "scoringTechs": "Technicians: completed install ×{d} · revisit ×{r}"
   },
   "assistant": {
     "title": "Nimbaa Assistant",

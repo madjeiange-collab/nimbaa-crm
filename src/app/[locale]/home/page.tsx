@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   Settings,
   Sparkles,
+  Trophy,
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
@@ -104,6 +105,14 @@ export default async function HomePage({
           icon={Sparkles}
           title={t('assistant')}
           hint={t('assistantHint')}
+        />
+
+        {/* Leaderboard — public by design, competition is the feature. */}
+        <HomeCard
+          href="/leaderboard"
+          icon={Trophy}
+          title={t('leaderboard')}
+          hint={t('leaderboardHint')}
         />
 
 
