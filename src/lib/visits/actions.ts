@@ -109,13 +109,14 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
   const engaged = !!meta?.createsContact;
   const won = meta?.lifecycle === 'customer'; // "sold"
 
-  // The pipeline stage this disposition maps to (Intéressé / RDV / Gagné).
+  // The pipeline stage this disposition maps to — by stable system_key, so
+  // the admin can rename stages freely.
   let stageId: string | null = null;
-  if (meta?.stageName) {
+  if (meta?.stageKey) {
     const { data: stage } = await supabase
       .from('pipeline_stages')
       .select('id')
-      .eq('name', meta.stageName)
+      .eq('system_key', meta.stageKey)
       .maybeSingle();
     stageId = stage?.id ?? null;
   }

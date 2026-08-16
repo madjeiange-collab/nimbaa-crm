@@ -40,7 +40,7 @@ export default async function ContactDetailPage({
   // DB degrades to "no affaires" instead of 404ing the whole contact page.
   const [{ data: stages }, { data: activities }, { data: visits }, { data: users }, { data: dealRows }] =
     await Promise.all([
-      supabase.from('pipeline_stages').select('id, name, sort_order, is_won, is_lost').order('sort_order'),
+      supabase.from('pipeline_stages').select('id, name, sort_order, is_won, is_lost').eq('is_active', true).order('sort_order'),
       supabase.from('activities').select('id, type, content, created_at, rep_id').eq('contact_id', id).order('created_at', { ascending: false }),
       supabase.from('visits').select('id, disposition, notes, visited_at, rep_id, visit_photos(storage_path)').eq('contact_id', id).order('visited_at', { ascending: false }),
       supabase.from('users').select('id, full_name, username, role'),

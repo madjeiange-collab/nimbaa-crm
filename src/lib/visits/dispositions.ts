@@ -9,8 +9,9 @@ export interface DispositionMeta {
   /** Engaged knocks create a contact in the pipeline. */
   createsContact: boolean;
   lifecycle?: ContactLifecycle;
-  /** Name of the seeded pipeline stage to place the new contact in. */
-  stageName?: string;
+  /** Stable `pipeline_stages.system_key` this outcome maps to (stages are
+      admin-renamable, so never match by name). */
+  stageKey?: 'interested' | 'rdv' | 'won';
   /** Requires an appointment date field. */
   needsAppointment?: boolean;
 }
@@ -20,16 +21,16 @@ export const DISPOSITIONS: DispositionMeta[] = [
   { key: 'no_answer', color: 'grey', createsContact: false },
   { key: 'not_home', color: 'grey', createsContact: false },
   { key: 'refused', color: 'red', createsContact: false },
-  { key: 'interested', color: 'yellow', createsContact: true, lifecycle: 'lead', stageName: 'Intéressé' },
+  { key: 'interested', color: 'yellow', createsContact: true, lifecycle: 'lead', stageKey: 'interested' },
   {
     key: 'appointment_set',
     color: 'yellow',
     createsContact: true,
     lifecycle: 'lead',
-    stageName: 'RDV',
+    stageKey: 'rdv',
     needsAppointment: true,
   },
-  { key: 'sold', color: 'green', createsContact: true, lifecycle: 'customer', stageName: 'Gagné (Client)' },
+  { key: 'sold', color: 'green', createsContact: true, lifecycle: 'customer', stageKey: 'won' },
 ];
 
 export const DISPOSITION_BY_KEY: Record<KnockDisposition, DispositionMeta> =

@@ -96,6 +96,25 @@
     "removePhoto": "Retirer",
     "photoError": "Échec de l'envoi — réessayez."
   },
+  "adminStages": {
+    "title": "Étapes du pipeline",
+    "hint": "Renommez, réordonnez, ajoutez ou masquez les étapes. Les étapes verrouillées sont utilisées par les automatismes (visite Intéressé/RDV/Vendu, affaire perdue) — renommables mais ni supprimables ni masquables.",
+    "moveUp": "Monter",
+    "moveDown": "Descendre",
+    "activate": "Activer",
+    "deactivate": "Masquer",
+    "add": "Ajouter",
+    "addPlaceholder": "Nouvelle étape (ex. Devis envoyé)",
+    "deleteConfirm": "Supprimer l'étape « {name} » ?",
+    "stageInUse": "Impossible : des affaires ou contacts sont sur cette étape. Masquez-la plutôt.",
+    "systemStage": "Cette étape système ne peut pas être supprimée ou masquée.",
+    "systemHint": "Étape système — utilisée par les automatismes",
+    "role_interested": "Intéressé",
+    "role_rdv": "RDV",
+    "role_won": "Gagnée",
+    "role_lost": "Perdue",
+    "error": "Enregistrement impossible — réessayez."
+  },
   "adminDispositions": {
     "title": "Résultats de visite",
     "hint": "Personnalisez le libellé des boutons de résultat et masquez ceux que votre équipe n'utilise pas. Le comportement (création de prospect, vente…) ne change pas.",

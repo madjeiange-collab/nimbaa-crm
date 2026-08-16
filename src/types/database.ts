@@ -124,6 +124,7 @@ export interface Database {
           is_won: boolean;
           is_lost: boolean;
           is_active: boolean;
+          system_key: string | null;
           created_at: string;
         };
         Insert: {

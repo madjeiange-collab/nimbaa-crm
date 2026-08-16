@@ -57,7 +57,7 @@ export default async function AdminPage({
         <AdminLink href="/admin/users" icon={Users} label={t('users')} ready />
         <AdminLink href="/admin/points" icon={Trophy} label={t('points')} ready />
         <AdminLink href="/admin/dispositions" icon={DoorOpen} label={t('dispositions')} ready />
-        <AdminLink href="/admin/stages" icon={ListChecks} label={t('stages')} ready={false} />
+        <AdminLink href="/admin/stages" icon={ListChecks} label={t('stages')} ready />
         <AdminLink href="/admin/import" icon={Upload} label={t('import')} ready={false} />
         <AdminLink href="/admin/do-not-knock" icon={Ban} label={t('doNotKnock')} ready={false} />
       </main>

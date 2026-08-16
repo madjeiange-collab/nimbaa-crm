@@ -96,6 +96,25 @@
     "removePhoto": "Remove",
     "photoError": "Upload failed — try again."
   },
+  "adminStages": {
+    "title": "Pipeline stages",
+    "hint": "Rename, reorder, add or hide stages. Locked stages are used by automations (Interested/Appointment/Sold visits, lost deals) — renamable but not deletable or hideable.",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "activate": "Activate",
+    "deactivate": "Hide",
+    "add": "Add",
+    "addPlaceholder": "New stage (e.g. Quote sent)",
+    "deleteConfirm": "Delete stage “{name}”?",
+    "stageInUse": "Not possible: deals or contacts are on this stage. Hide it instead.",
+    "systemStage": "This system stage cannot be deleted or hidden.",
+    "systemHint": "System stage — used by automations",
+    "role_interested": "Interested",
+    "role_rdv": "Appointment",
+    "role_won": "Won",
+    "role_lost": "Lost",
+    "error": "Could not save — try again."
+  },
   "adminDispositions": {
     "title": "Visit outcomes",
     "hint": "Customize the outcome button labels and hide the ones your team doesn't use. Behaviour (lead creation, sale…) is unchanged.",
