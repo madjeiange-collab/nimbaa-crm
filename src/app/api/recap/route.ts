@@ -46,15 +46,17 @@ export async function GET(request: Request) {
     aujourd_hui: {
       commerciaux: today.reps.map((r) => ({
         nom: r.name,
-        visites: r.a,
-        interesses_rdv: r.b,
-        ventes: r.c,
-        fcfa: r.fcfa,
+        visites: r.visits,
+        refus: r.refused,
+        interesses: r.interested,
+        rdv: r.rdv,
+        ventes: r.sales,
+        taux_engagement_pct: r.engagementPct,
       })),
       techniciens: today.techs.map((r) => ({
         nom: r.name,
-        terminees: r.a,
-        en_cours: r.c,
+        terminees: r.done,
+        en_cours: r.open,
       })),
     },
     classement_semaine: {
@@ -62,14 +64,15 @@ export async function GET(request: Request) {
         rang: i + 1,
         nom: r.name,
         points: r.points,
-        ventes: r.c,
-        fcfa: r.fcfa,
+        ventes: r.sales,
+        taux_conversion_pct: r.conversionPct,
       })),
       techniciens_top: week.techs.slice(0, 3).map((r, i) => ({
         rang: i + 1,
         nom: r.name,
         points: r.points,
-        terminees: r.a,
+        terminees: r.done,
+        taux_completion_pct: r.completionPct,
       })),
     },
   };

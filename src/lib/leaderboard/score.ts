@@ -34,14 +34,33 @@ export async function getPointConfig(db: SupabaseClient): Promise<PointConfig> {
   return merged;
 }
 
-export type BoardRow = {
+export type RepBoardRow = {
   id: string;
   name: string;
   points: number;
-  a: number; // visits | installs done
-  b: number; // interested+RDV | revisits
-  c: number; // deals won | open jobs
+  visits: number;
+  refused: number;
+  interested: number;
+  rdv: number;
+  sales: number;
+  leads: number;
+  /** % of visits that became interested/RDV/sold. */
+  engagementPct: number;
+  /** % of engaged visits that became a sale. */
+  conversionPct: number;
+  /** Kept for the recap prompt — never rendered on the board. */
   fcfa: number;
+};
+
+export type TechBoardRow = {
+  id: string;
+  name: string;
+  points: number;
+  done: number;
+  revisits: number;
+  open: number;
+  /** % of the period's workload (done + open) that is completed. */
+  completionPct: number;
 };
 
 /**
@@ -53,8 +72,8 @@ export async function computeBoards(
   db: SupabaseClient,
   sinceIso: string,
   pts: PointConfig,
-): Promise<{ reps: BoardRow[]; techs: BoardRow[] }> {
-  const [{ data: users }, { data: visits }, { data: deals }, { data: installs }] =
+): Promise<{ reps: RepBoardRow[]; techs: TechBoardRow[] }> {
+  const [{ data: users }, { data: visits }, { data: deals }, { data: installs }, { data: contacts }] =
     await Promise.all([
       db.from('users').select('id, full_name, username, role, is_active'),
       db
@@ -72,28 +91,45 @@ export async function computeBoards(
         .from('installations')
         .select('installer_id, status, completed_at, next_visit_date')
         .limit(5000),
+      db
+        .from('contacts')
+        .select('created_by, lifecycle')
+        .gte('created_at', sinceIso)
+        .limit(10000),
     ]);
 
   const active = (users ?? []).filter((u) => u.is_active);
   const nameOf = (u: { full_name: string | null; username: string | null; id: string }) =>
     u.full_name || u.username || u.id.slice(0, 8);
+  const pct = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 100) : 0);
 
-  const reps: BoardRow[] = active
+  const reps: RepBoardRow[] = active
     .filter((u) => u.role === 'rep' || u.role === 'manager')
     .map((u) => {
       const mine = (visits ?? []).filter(
         (v) => v.rep_id === u.id && v.visit_type !== 'installation',
       );
+      const refused = mine.filter((v) => v.disposition === 'refused').length;
       const interested = mine.filter((v) => v.disposition === 'interested').length;
       const rdv = mine.filter((v) => v.disposition === 'appointment_set').length;
+      const soldDisp = mine.filter((v) => v.disposition === 'sold').length;
+      const engaged = interested + rdv + soldDisp;
       const myDeals = (deals ?? []).filter((d) => d.assigned_rep_id === u.id);
       const fcfa = myDeals.reduce((s, d) => s + (d.value_xof ?? 0), 0);
+      const leads = (contacts ?? []).filter(
+        (c) => c.created_by === u.id && c.lifecycle === 'lead',
+      ).length;
       return {
         id: u.id,
         name: nameOf(u),
-        a: mine.length,
-        b: interested + rdv,
-        c: myDeals.length,
+        visits: mine.length,
+        refused,
+        interested,
+        rdv,
+        sales: myDeals.length,
+        leads,
+        engagementPct: pct(engaged, mine.length),
+        conversionPct: pct(myDeals.length, engaged),
         fcfa,
         points:
           mine.length * pts.visit +
@@ -102,10 +138,10 @@ export async function computeBoards(
           myDeals.length * pts.deal_won,
       };
     })
-    .filter((r) => r.points > 0 || r.a > 0)
-    .sort((x, y) => y.points - x.points || y.fcfa - x.fcfa);
+    .filter((r) => r.points > 0 || r.visits > 0)
+    .sort((x, y) => y.points - x.points || y.sales - x.sales);
 
-  const techs: BoardRow[] = active
+  const techs: TechBoardRow[] = active
     .filter((u) => u.role === 'technician')
     .map((u) => {
       const mine = (installs ?? []).filter((i) => i.installer_id === u.id);
@@ -121,15 +157,15 @@ export async function computeBoards(
       return {
         id: u.id,
         name: nameOf(u),
-        a: done,
-        b: revisits,
-        c: open,
-        fcfa: 0,
+        done,
+        revisits,
+        open,
+        completionPct: pct(done, done + open),
         points: done * pts.install_done + revisits * pts.revisit,
       };
     })
-    .filter((r) => r.points > 0 || r.c > 0)
-    .sort((x, y) => y.points - x.points || y.a - x.a);
+    .filter((r) => r.points > 0 || r.open > 0)
+    .sort((x, y) => y.points - x.points || y.done - x.done);
 
   return { reps, techs };
 }

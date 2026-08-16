@@ -3,11 +3,7 @@ import { Trophy, Sparkles } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { requireUser } from '@/lib/auth/session';
 import { createAdminClient } from '@/lib/supabase/admin';
-import {
-  computeBoards,
-  getPointConfig,
-  type BoardRow,
-} from '@/lib/leaderboard/score';
+import { computeBoards, getPointConfig } from '@/lib/leaderboard/score';
 import { AppHeader } from '@/components/shared/app-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { GenerateRecapButton } from '@/components/leaderboard/generate-recap-button';
@@ -16,17 +12,17 @@ function rankBadge(i: number): string {
   return i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
 }
 
+type DisplayRow = { id: string; name: string; points: number; lines: string[] };
+
 function Board({
   title,
   rows,
   meId,
-  cols,
   emptyText,
 }: {
   title: string;
-  rows: BoardRow[];
+  rows: DisplayRow[];
   meId: string;
-  cols: [string, string, string];
   emptyText: string;
 }) {
   const max = rows[0]?.points || 1;
@@ -54,10 +50,11 @@ function Board({
                       {r.name}
                       {r.id === meId && ' 👈'}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      {cols[0]}: {r.a} · {cols[1]}: {r.b} · {cols[2]}: {r.c}
-                      {r.fcfa > 0 && ` · ${r.fcfa.toLocaleString('fr-FR')} FCFA`}
-                    </p>
+                    {r.lines.map((line, j) => (
+                      <p key={j} className="text-xs text-muted-foreground">
+                        {line}
+                      </p>
+                    ))}
                   </div>
                   <span className="shrink-0 text-lg font-bold text-primary">{r.points}</span>
                 </div>
@@ -116,21 +113,40 @@ export default async function LeaderboardPage({
 
   const isTech = user.role === 'technician';
   const isManager = user.role === 'manager' || user.role === 'admin';
+
+  // Funnel + performance lines (no revenue on the public board).
+  const repDisplay: DisplayRow[] = repRows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    points: r.points,
+    lines: [
+      `${t('visits')}: ${r.visits} · ${t('refused')}: ${r.refused} · ${t('interested')}: ${r.interested} · ${t('rdv')}: ${r.rdv} · ${t('sales')}: ${r.sales}`,
+      `${t('leads')}: ${r.leads} · ${t('customers')}: ${r.sales} · ${t('engagement')}: ${r.engagementPct}% · ${t('conversion')}: ${r.conversionPct}%`,
+    ],
+  }));
+  const techDisplay: DisplayRow[] = techRows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    points: r.points,
+    lines: [
+      `${t('done')}: ${r.done} · ${t('revisits')}: ${r.revisits} · ${t('open')}: ${r.open}`,
+      `${t('completion')}: ${r.completionPct}%`,
+    ],
+  }));
+
   const boards = [
     <Board
       key="reps"
       title={t('repsBoard')}
-      rows={repRows}
+      rows={repDisplay}
       meId={user.id}
-      cols={[t('visits'), t('leadsRdv'), t('sales')]}
       emptyText={t('empty')}
     />,
     <Board
       key="techs"
       title={t('techsBoard')}
-      rows={techRows}
+      rows={techDisplay}
       meId={user.id}
-      cols={[t('done'), t('revisits'), t('open')]}
       emptyText={t('empty')}
     />,
   ];
