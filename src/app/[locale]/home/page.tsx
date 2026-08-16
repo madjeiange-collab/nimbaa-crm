@@ -19,7 +19,7 @@ import { computeBoards, getPointConfig } from '@/lib/leaderboard/score';
 import { AppHeader } from '@/components/shared/app-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { CoverageMap } from '@/components/charts/coverage-map';
-import type { TurfKnock } from '@/components/map/turf-map';
+import type { InstallPoint, TurfKnock } from '@/components/map/turf-map';
 
 function HomeCard({
   href,
@@ -133,11 +133,21 @@ export default async function HomePage({
   // Reps see their own coverage; managers/admins the whole team's.
   if (!isManager) visitsQ = visitsQ.eq('rep_id', user.id);
 
-  const [{ reps, techs }, { data: turfs }, { data: knockRows }] = await Promise.all([
-    getPointConfig(admin).then((pts) => computeBoards(admin, monday.toISOString(), pts)),
-    supabase.rpc('territories_geojson'), // RLS: rep → own turfs, manager → all
-    isTechnician ? Promise.resolve({ data: [] as never[] }) : visitsQ,
-  ]);
+  // Installations on the same map (status-coloured 🔧 markers). Technicians
+  // see their own jobs; everyone else sees all (matches the app's read model).
+  let installsQ = supabase
+    .from('installations')
+    .select('id, status, title, contact_id, contacts(name, lat, lng)')
+    .limit(1000);
+  if (isTechnician) installsQ = installsQ.eq('installer_id', user.id);
+
+  const [{ reps, techs }, { data: turfs }, { data: knockRows }, { data: installRows }] =
+    await Promise.all([
+      getPointConfig(admin).then((pts) => computeBoards(admin, monday.toISOString(), pts)),
+      supabase.rpc('territories_geojson'), // RLS: rep → own turfs, manager → all
+      isTechnician ? Promise.resolve({ data: [] as never[] }) : visitsQ,
+      installsQ,
+    ]);
 
   const polygons: number[][][][] = ((turfs ?? []) as { geojson?: { coordinates?: number[][][] } }[])
     .map((row) => row.geojson?.coordinates)
@@ -156,6 +166,26 @@ export default async function HomePage({
       lng: v.lng as number,
       disposition: v.disposition,
       contactId: v.contact_id,
+    }));
+
+  const tInstall = await getTranslations('installation');
+  const installs: InstallPoint[] = ((installRows ?? []) as unknown as {
+    id: string;
+    status: string;
+    title: string | null;
+    contact_id: string | null;
+    contacts: { name: string | null; lat: number | null; lng: number | null } | null;
+  }[])
+    .filter((i) => i.contacts?.lat != null && i.contacts?.lng != null)
+    .map((i) => ({
+      id: i.id,
+      lat: i.contacts!.lat as number,
+      lng: i.contacts!.lng as number,
+      status: i.status,
+      statusLabel: tInstall(`status.${i.status}` as never),
+      title: i.title,
+      contactId: i.contact_id,
+      name: i.contacts?.name ?? null,
     }));
 
   const miniBoards = [
@@ -290,7 +320,7 @@ export default async function HomePage({
                   <MapIcon className="h-4 w-4 text-primary" />
                   {t('coverageTitle')}
                 </p>
-                <CoverageMap polygons={polygons} knocks={knocks} />
+                <CoverageMap polygons={polygons} knocks={knocks} installs={installs} />
               </CardContent>
             </Card>
           </div>

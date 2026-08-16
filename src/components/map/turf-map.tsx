@@ -104,6 +104,38 @@ export interface TurfKnock {
   lifecycle?: string | null;
 }
 
+/** An installation job plotted on the map (square 🔧 marker, status colour). */
+export interface InstallPoint {
+  id: string;
+  lat: number;
+  lng: number;
+  status: string;
+  /** Pre-translated status label (rendered in the popup). */
+  statusLabel: string;
+  title?: string | null;
+  contactId?: string | null;
+  name?: string | null;
+}
+
+const INSTALL_COLORS: Record<string, string> = {
+  pending: '#9ca3af',
+  scheduled: '#3b82f6',
+  in_progress: '#f59e0b',
+  needs_revisit: '#f97316',
+  done: '#16a34a',
+};
+
+/** Square wrench marker — visually distinct from the round knock dots. */
+function installIcon(p: InstallPoint): L.DivIcon {
+  const c = INSTALL_COLORS[p.status] ?? '#9ca3af';
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:24px;height:24px;border-radius:6px;background:${c};display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)">🔧</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+}
+
 /** GeoJSON Polygon coords ([lng,lat]) → Leaflet positions ([lat,lng]). */
 function toLatLngRing(coordinates: number[][][]): [number, number][] {
   return (coordinates[0] ?? []).map(([lng, lat]) => [lat, lng]);
@@ -242,9 +274,11 @@ function focusBounds(pts: [number, number][]): L.LatLngBounds | null {
 function InitialView({
   polygons,
   knocks,
+  installs = [],
 }: {
   polygons: number[][][][];
   knocks: TurfKnock[];
+  installs?: InstallPoint[];
 }) {
   const map = useMap();
   const done = useRef(false);
@@ -260,6 +294,9 @@ function InitialView({
       polygons.forEach((poly) => toLatLngRing(poly).forEach((p) => pts.push(p)));
       knocks.forEach((k) => {
         if (k.lat != null && k.lng != null) pts.push([k.lat, k.lng]);
+      });
+      installs.forEach((p) => {
+        if (p.lat != null && p.lng != null) pts.push([p.lat, p.lng]);
       });
       const bounds = focusBounds(pts);
       if (bounds) map.fitBounds(bounds.pad(0.15), { maxZoom: 16 });
@@ -291,7 +328,7 @@ function InitialView({
       () => fitData(),
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 },
     );
-  }, [map, polygons, knocks]);
+  }, [map, polygons, knocks, installs]);
 
   return null;
 }
@@ -299,10 +336,12 @@ function InitialView({
 export default function TurfMap({
   polygons,
   knocks,
+  installs = [],
   showLocate = true,
 }: {
   polygons: number[][][][];
   knocks: TurfKnock[];
+  installs?: InstallPoint[];
   showLocate?: boolean;
 }) {
   const t = useTranslations('turf');
@@ -371,7 +410,33 @@ export default function TurfMap({
             </Popup>
           </Marker>
         ))}
-        <InitialView polygons={polygons} knocks={knocks} />
+        {installs.map((p) => (
+          <Marker key={`ins-${p.id}`} position={[p.lat, p.lng]} icon={installIcon(p)}>
+            <Popup>
+              <div className="space-y-0.5 text-xs">
+                <p className="font-semibold">🔧 {p.title || '—'}</p>
+                <p className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block h-2 w-2 shrink-0 rounded-sm"
+                    style={{ background: INSTALL_COLORS[p.status] ?? '#9ca3af' }}
+                  />
+                  {p.statusLabel}
+                </p>
+                {p.contactId ? (
+                  <Link
+                    href={`/contacts/${p.contactId}`}
+                    className="font-medium text-primary underline"
+                  >
+                    {p.name ?? tC('noName')}
+                  </Link>
+                ) : (
+                  p.name && <p className="font-medium">{p.name}</p>
+                )}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+        <InitialView polygons={polygons} knocks={knocks} installs={installs} />
       </MapContainer>
     </div>
   );
