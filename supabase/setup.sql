@@ -748,7 +748,10 @@ create or replace function point_in_my_turf(p_lat double precision, p_lng double
   ) $$;
 
 -- Vue anti-fraude : un secteur désactivé ne « couvre » plus une visite.
-create or replace view flagged_visits with (security_invoker = on) as
+-- DROP obligatoire : `visits` a gagné des colonnes depuis la création de la
+-- vue (v.* change) et CREATE OR REPLACE refuse un changement de colonnes.
+drop view if exists flagged_visits;
+create view flagged_visits with (security_invoker = on) as
 with rates as (
   select rep_id, visited_at,
     count(*) over (partition by rep_id order by visited_at
