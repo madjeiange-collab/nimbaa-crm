@@ -47,6 +47,25 @@ export const TOOL_DEFINITIONS: OpenAI.Responses.Tool[] = [
   {
     type: 'function' as const,
     strict: true,
+    name: 'visit_stats',
+    description:
+      "Statistiques d'activité terrain agrégées : nombre de visites, contacts visités (clients vs prospects, uniques), répartition par résultat (intéressé, vendu, refus…), et — pour un manager — par commercial. Utiliser pour 'combien de visites/clients visités aujourd'hui', 'activité de la semaine', 'qui a visité combien'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        period: {
+          type: 'string',
+          enum: ['today', 'week', 'month'],
+          description: "Période ('today' = aujourd'hui, 'week' = 7 jours, 'month' = 30 jours)",
+        },
+      },
+      required: ['period'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
     name: 'my_todo',
     description:
       "La liste 'À faire' de l'utilisateur : rendez-vous du jour, rendez-vous en retard, et prospects à relancer (sans contact depuis plus de 7 jours). Utiliser pour 'qui dois-je relancer', 'mes RDV', 'quoi faire aujourd'hui'.",
@@ -186,6 +205,67 @@ async function pipelineStats(db: Db, user: AppUser, args: { period: string }) {
     won_count: won.length,
     won_value_xof: won.reduce((s, d) => s + (d.value_xof ?? 0), 0),
     lost_count: lost.length,
+  };
+}
+
+async function visitStats(db: Db, user: AppUser, args: { period: string }) {
+  const isManager = user.role === 'manager' || user.role === 'admin';
+  const since = new Date();
+  if (args.period === 'today') since.setHours(0, 0, 0, 0);
+  else if (args.period === 'week') since.setDate(since.getDate() - 7);
+  else since.setDate(since.getDate() - 30);
+
+  let q = db
+    .from('visits')
+    .select('rep_id, disposition, contact_id, visit_type, contacts(lifecycle)')
+    .neq('visit_type', 'installation')
+    .gte('visited_at', since.toISOString())
+    .limit(5000);
+  if (!isManager) q = q.eq('rep_id', user.id);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+
+  const rows = (data ?? []) as unknown as {
+    rep_id: string;
+    disposition: string | null;
+    contact_id: string | null;
+    contacts: { lifecycle: string } | null;
+  }[];
+
+  const byResult: Record<string, number> = {};
+  const customers = new Set<string>();
+  const leads = new Set<string>();
+  const byRep = new Map<string, number>();
+  for (const v of rows) {
+    byResult[v.disposition ?? 'inconnu'] = (byResult[v.disposition ?? 'inconnu'] ?? 0) + 1;
+    if (v.contact_id) {
+      if (v.contacts?.lifecycle === 'customer') customers.add(v.contact_id);
+      else if (v.contacts?.lifecycle === 'lead') leads.add(v.contact_id);
+    }
+    byRep.set(v.rep_id, (byRep.get(v.rep_id) ?? 0) + 1);
+  }
+
+  let parCommercial: { commercial: string; visites: number }[] | undefined;
+  if (isManager) {
+    const { data: reps } = await db
+      .from('users')
+      .select('id, full_name, username')
+      .in('id', [...byRep.keys()]);
+    const nameOf = new Map((reps ?? []).map((u) => [u.id, u.full_name || u.username || u.id]));
+    parCommercial = [...byRep.entries()]
+      .map(([id, n]) => ({ commercial: nameOf.get(id) ?? '—', visites: n }))
+      .sort((a, b) => b.visites - a.visites);
+  }
+
+  return {
+    scope: isManager ? 'équipe entière' : 'mes visites',
+    periode: args.period,
+    visites_total: rows.length,
+    clients_visites_uniques: customers.size,
+    prospects_visites_uniques: leads.size,
+    portes_sans_contact: rows.filter((v) => !v.contact_id).length,
+    par_resultat: byResult,
+    ...(parCommercial ? { par_commercial: parCommercial } : {}),
   };
 }
 
@@ -474,6 +554,8 @@ export async function executeTool(
         return await searchContacts(db, args as { query: string });
       case 'pipeline_stats':
         return await pipelineStats(db, user, args as { period: string });
+      case 'visit_stats':
+        return await visitStats(db, user, args as { period: string });
       case 'my_todo':
         return await myTodo(db, user);
       case 'contact_history':
