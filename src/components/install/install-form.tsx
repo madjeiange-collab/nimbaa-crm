@@ -42,6 +42,7 @@ const FIELD_STATUSES: InstallStatus[] = ['in_progress', 'done', 'needs_revisit']
 
 export function InstallForm({
   technicianId,
+  technicianName,
   installationId,
   contactId,
   contactName,
@@ -51,6 +52,7 @@ export function InstallForm({
   initialStatus,
 }: {
   technicianId: string;
+  technicianName?: string | null;
   installationId: string;
   contactId: string;
   contactName: string | null;
@@ -144,6 +146,7 @@ export function InstallForm({
         accuracy: geo.accuracy,
         at: new Date(),
         address,
+        by: technicianName,
       });
       setPhotos((prev) =>
         [...prev, { blob, url: URL.createObjectURL(blob) }].slice(0, MAX_PHOTOS),

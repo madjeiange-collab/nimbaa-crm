@@ -47,6 +47,7 @@ export default async function NewInstallPage({
       <AppHeader title={t('title')} />
       <InstallForm
         technicianId={user.id}
+        technicianName={user.full_name || user.username}
         installationId={job.id}
         contactId={job.contact_id}
         contactName={job.contacts?.name ?? null}

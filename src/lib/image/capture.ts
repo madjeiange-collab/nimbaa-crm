@@ -6,6 +6,8 @@ export interface GeoStamp {
   accuracy: number | null;
   at: Date;
   address?: string | null;
+  /** Who took the photo (commercial / technician) — burned into the stamp. */
+  by?: string | null;
 }
 
 function formatDateTime(d: Date): string {
@@ -61,7 +63,8 @@ export async function processCheckInPhoto(file: File, stamp: GeoStamp): Promise<
     stamp.address && stamp.address.length > 60
       ? stamp.address.slice(0, 57) + '…'
       : stamp.address;
-  const lines = [formatDateTime(stamp.at), address, gpsLine].filter(
+  const by = stamp.by && stamp.by.length > 40 ? stamp.by.slice(0, 37) + '…' : stamp.by;
+  const lines = [formatDateTime(stamp.at), by, address, gpsLine].filter(
     (l): l is string => !!l,
   );
   const boxH = lineH * lines.length + pad;

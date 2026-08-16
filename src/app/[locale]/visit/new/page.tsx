@@ -64,6 +64,7 @@ export default async function NewVisitPage({
       <AppHeader title={t('title')} />
       <LogVisitForm
         repId={user.id}
+        repName={user.full_name || user.username}
         turfPolygons={turfPolygons}
         dnkPoints={dnkPoints}
         canDoB2b={user.can_do_b2b}

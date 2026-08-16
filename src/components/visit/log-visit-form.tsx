@@ -45,12 +45,14 @@ interface PickContact {
 
 export function LogVisitForm({
   repId,
+  repName,
   turfPolygons,
   dnkPoints,
   attachedContact,
   contacts = [],
 }: {
   repId: string;
+  repName?: string | null;
   turfPolygons: number[][][][];
   dnkPoints: { lat: number; lng: number }[];
   canDoB2b: boolean;
@@ -183,6 +185,7 @@ export function LogVisitForm({
         accuracy: geo.accuracy,
         at: new Date(),
         address,
+        by: repName,
       });
       setPhotos((prev) =>
         [...prev, { blob, url: URL.createObjectURL(blob) }].slice(0, MAX_PHOTOS),
