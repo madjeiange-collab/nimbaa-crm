@@ -114,14 +114,15 @@ export default async function LeaderboardPage({
   const isTech = user.role === 'technician';
   const isManager = user.role === 'manager' || user.role === 'admin';
 
-  // Funnel + performance lines (no revenue on the public board).
+  // Funnel + performance lines. Revenue is visible to managers/admins only.
   const repDisplay: DisplayRow[] = repRows.map((r) => ({
     id: r.id,
     name: r.name,
     points: r.points,
     lines: [
       `${t('visits')}: ${r.visits} · ${t('refused')}: ${r.refused} · ${t('interested')}: ${r.interested} · ${t('rdv')}: ${r.rdv} · ${t('sales')}: ${r.sales}`,
-      `${t('leads')}: ${r.leads} · ${t('customers')}: ${r.sales} · ${t('engagement')}: ${r.engagementPct}% · ${t('conversion')}: ${r.conversionPct}%`,
+      `${t('leads')}: ${r.leads} · ${t('customers')}: ${r.sales} · ${t('engagement')}: ${r.engagementPct}% · ${t('conversion')}: ${r.conversionPct}%` +
+        (isManager ? ` · ${t('revenue')}: ${r.fcfa.toLocaleString('fr-FR')} FCFA` : ''),
     ],
   }));
   const techDisplay: DisplayRow[] = techRows.map((r) => ({
