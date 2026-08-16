@@ -2,15 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import {
-  Mic,
-  Send,
-  Square,
-  Loader2,
-  Sparkles,
-  Headphones,
-  Volume2,
-} from 'lucide-react';
+import { Mic, Send, Loader2, Sparkles, Volume2 } from 'lucide-react';
 import { useDictation } from '@/hooks/use-dictation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -38,9 +30,8 @@ export function AssistantChat() {
   const dictation = useDictation(
     (text) => {
       if (voiceModeRef.current) void voiceTurn(text);
-      else setInput((prev) => (prev ? prev + ' ' + text : text));
     },
-    { autoStop: voiceMode },
+    { autoStop: true },
   );
   // Keep a stable handle for restarting the mic from async code.
   const dictationRef = useRef(dictation);
@@ -201,7 +192,7 @@ export function AssistantChat() {
       {voiceMode && (
         <div className="mb-2 flex items-center justify-between rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium text-primary">
           <span className="flex items-center gap-2">
-            <Headphones className="h-4 w-4" />
+            <Mic className={`h-4 w-4 ${dictation.status === 'recording' ? 'animate-pulse' : ''}`} />
             {dictation.status === 'recording'
               ? t('listening')
               : dictation.status === 'processing' || pending
@@ -235,28 +226,11 @@ export function AssistantChat() {
           aria-label={t('voiceMode')}
           title={t('voiceMode')}
         >
-          <Headphones className="h-5 w-5" />
-        </Button>
-        <Button
-          type="button"
-          variant={dictation.status === 'recording' ? 'destructive' : 'outline'}
-          size="icon"
-          className="h-11 w-11 shrink-0"
-          onClick={dictation.toggle}
-          disabled={
-            voiceMode ||
-            dictation.status === 'processing' ||
-            dictation.status === 'unsupported'
-          }
-          aria-label={t('dictate')}
-        >
-          {dictation.status === 'recording' ? (
-            <Square className="h-5 w-5" />
-          ) : dictation.status === 'processing' ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <Mic className="h-5 w-5" />
-          )}
+          <Mic
+            className={`h-5 w-5 ${
+              voiceMode && dictation.status === 'recording' ? 'animate-pulse' : ''
+            }`}
+          />
         </Button>
         <textarea
           value={input}
