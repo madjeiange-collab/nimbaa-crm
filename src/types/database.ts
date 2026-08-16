@@ -184,11 +184,34 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['contacts']['Insert']>;
         Relationships: [];
       };
+      products: {
+        Row: {
+          id: string;
+          name: string;
+          price_xof: number;
+          commission_pct: number;
+          is_active: boolean;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          price_xof?: number;
+          commission_pct?: number;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['products']['Insert']>;
+        Relationships: [];
+      };
       deals: {
         Row: {
           id: string;
           contact_id: string;
           title: string | null;
+          product_id: string | null;
           value_xof: number | null;
           pipeline_stage_id: string | null;
           status: DealStatus;
@@ -204,6 +227,7 @@ export interface Database {
           id?: string;
           contact_id: string;
           title?: string | null;
+          product_id?: string | null;
           value_xof?: number | null;
           pipeline_stage_id?: string | null;
           status?: DealStatus;

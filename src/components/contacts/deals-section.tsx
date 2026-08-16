@@ -32,6 +32,7 @@ export interface DealInstall {
 export interface DealCard {
   id: string;
   title: string | null;
+  productId: string | null;
   valueXof: number | null;
   status: DealStatus;
   pipelineStageId: string | null;
@@ -44,6 +45,11 @@ export interface DealStage {
   name: string;
   is_won: boolean;
   is_lost: boolean;
+}
+
+export interface ProductOption {
+  id: string;
+  name: string;
 }
 
 const STATUS_BADGE: Record<DealStatus, string> = {
@@ -136,12 +142,14 @@ function DealRow({
   contactId,
   deal,
   stages,
+  products,
   technicians,
   canInstall,
 }: {
   contactId: string;
   deal: DealCard;
   stages: DealStage[];
+  products: ProductOption[];
   technicians: { id: string; name: string }[];
   canInstall: boolean;
 }) {
@@ -150,7 +158,6 @@ function DealRow({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState(deal.title ?? '');
-  const [value, setValue] = useState(deal.valueXof?.toString() ?? '');
 
   function run(fn: () => Promise<unknown>) {
     startTransition(async () => {
@@ -185,16 +192,23 @@ function DealRow({
 
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <Label className="text-xs">{t('value')}</Label>
-          <Input
-            inputMode="numeric"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onBlur={() =>
-              run(() => updateDeal(deal.id, { value: value.trim() ? Number(value.replace(/[^0-9]/g, '')) : null }))
-            }
-            placeholder="XOF"
-          />
+          <Label className="text-xs">{t('product')}</Label>
+          <select
+            value={deal.productId ?? ''}
+            onChange={(e) => run(() => updateDeal(deal.id, { productId: e.target.value || null }))}
+            disabled={isPending}
+            className="flex min-h-touch w-full rounded-md border border-input bg-background px-2 text-sm"
+          >
+            <option value="">{t('noProduct')}</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            {t('value')}: {(deal.valueXof ?? 0).toLocaleString('fr-FR')} XOF
+          </p>
         </div>
         <div className="space-y-1">
           <Label className="text-xs">{t('stage')}</Label>
@@ -252,12 +266,14 @@ export function DealsSection({
   contactId,
   deals,
   stages,
+  products,
   technicians,
   canInstall,
 }: {
   contactId: string;
   deals: DealCard[];
   stages: DealStage[];
+  products: ProductOption[];
   technicians: { id: string; name: string }[];
   canInstall: boolean;
 }) {
@@ -265,18 +281,15 @@ export function DealsSection({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [newTitle, setNewTitle] = useState('');
-  const [newValue, setNewValue] = useState('');
   const [newNeedsInstall, setNewNeedsInstall] = useState(false);
 
   function addDeal() {
     startTransition(async () => {
       await createDeal(contactId, {
         title: newTitle.trim() || null,
-        value: newValue.trim() ? Number(newValue.replace(/[^0-9]/g, '')) : null,
         needsInstallation: newNeedsInstall,
       });
       setNewTitle('');
-      setNewValue('');
       setNewNeedsInstall(false);
       router.refresh();
     });
@@ -300,6 +313,7 @@ export function DealsSection({
                 contactId={contactId}
                 deal={d}
                 stages={stages}
+                products={products}
                 technicians={technicians}
                 canInstall={canInstall}
               />
@@ -307,18 +321,10 @@ export function DealsSection({
           </div>
         )}
 
-        {/* New affaire */}
+        {/* New affaire — name it here, pick the product on the card once created */}
         <div className="space-y-2 rounded-lg border border-dashed p-3">
           <p className="text-xs font-medium text-muted-foreground">{t('newAffaire')}</p>
-          <div className="grid grid-cols-2 gap-2">
-            <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={t('productPlaceholder')} />
-            <Input
-              inputMode="numeric"
-              value={newValue}
-              onChange={(e) => setNewValue(e.target.value)}
-              placeholder="XOF"
-            />
-          </div>
+          <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={t('productPlaceholder')} />
           <div className="flex items-center justify-between gap-2">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={newNeedsInstall} onChange={(e) => setNewNeedsInstall(e.target.checked)} />

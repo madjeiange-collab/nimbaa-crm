@@ -12,7 +12,7 @@ import type {
   Stage,
   RepOption,
 } from '@/components/contacts/contact-detail';
-import type { DealCard } from '@/components/contacts/deals-section';
+import type { DealCard, ProductOption } from '@/components/contacts/deals-section';
 
 export default async function ContactDetailPage({
   params,
@@ -46,10 +46,17 @@ export default async function ContactDetailPage({
       supabase.from('users').select('id, full_name, username, role'),
       supabase
         .from('deals')
-        .select('id, title, value_xof, status, pipeline_stage_id, needs_installation, installations(id, status, installer_id, scheduled_date, next_visit_date, checklist, equipment)')
+        .select('id, title, product_id, value_xof, status, pipeline_stage_id, needs_installation, installations(id, status, installer_id, scheduled_date, next_visit_date, checklist, equipment)')
         .eq('contact_id', id)
         .order('created_at', { ascending: true }),
     ]);
+
+  const { data: productRows } = await supabase
+    .from('products')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+  const products: ProductOption[] = (productRows ?? []) as ProductOption[];
 
   type UserRow = {
     id: string;
@@ -148,6 +155,7 @@ export default async function ContactDetailPage({
   type DealRow = {
     id: string;
     title: string | null;
+    product_id: string | null;
     value_xof: number | null;
     status: DealCard['status'];
     pipeline_stage_id: string | null;
@@ -157,6 +165,7 @@ export default async function ContactDetailPage({
   const deals: DealCard[] = ((dealRows ?? []) as unknown as DealRow[]).map((d) => ({
     id: d.id,
     title: d.title,
+    productId: d.product_id,
     valueXof: d.value_xof,
     status: d.status,
     pipelineStageId: d.pipeline_stage_id,
@@ -193,6 +202,7 @@ export default async function ContactDetailPage({
           reps={reps}
           technicians={technicians}
           deals={deals}
+          products={products}
           canInstall={canInstall}
         />
       </main>

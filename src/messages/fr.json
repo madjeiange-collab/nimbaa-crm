@@ -91,6 +91,8 @@
     "title": "Affaires",
     "untitled": "Affaire",
     "value": "Valeur",
+    "product": "Produit",
+    "noProduct": "— Aucun produit —",
     "stage": "Étape",
     "needsInstallation": "Installation requise",
     "status_open": "En cours",
@@ -184,6 +186,23 @@
       "needs_revisit": "Retour requis"
     }
   },
+  "adminProducts": {
+    "title": "Produits",
+    "subtitle": "Portefeuille de produits (prix + commission)",
+    "intro": "Ces produits alimentent la liste déroulante d'une affaire ; le prix devient la valeur de l'affaire (et la base de commission).",
+    "empty": "Aucun produit. Ajoutez-en un ci-dessous.",
+    "addProduct": "Ajouter un produit",
+    "name": "Nom du produit",
+    "price": "Prix (XOF)",
+    "commissionPct": "Commission %",
+    "add": "Ajouter",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "activate": "Activer",
+    "deactivate": "Désactiver"
+  },
   "adminUsers": {
     "title": "Utilisateurs",
     "subtitle": "Créer et gérer les comptes de l'équipe",
@@ -241,6 +260,7 @@
     "title": "Administration",
     "users": "Utilisateurs",
     "territories": "Secteurs",
+    "products": "Produits",
     "protocol": "Protocole d'installation",
     "stages": "Étapes du pipeline",
     "import": "Importer des contacts",

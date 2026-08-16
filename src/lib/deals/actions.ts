@@ -131,7 +131,12 @@ export async function markDealLost(dealId: string, reason: string): Promise<Acti
 /** Edit a deal's product/value/needs-installation. */
 export async function updateDeal(
   dealId: string,
-  fields: { title?: string | null; value?: number | null; needsInstallation?: boolean },
+  fields: {
+    title?: string | null;
+    value?: number | null;
+    productId?: string | null;
+    needsInstallation?: boolean;
+  },
 ): Promise<ActionResult> {
   const supabase = await createClient();
   const {
@@ -148,6 +153,20 @@ export async function updateDeal(
   if (fields.title !== undefined) patch.title = fields.title?.trim() || null;
   if (fields.value !== undefined) patch.value_xof = fields.value;
   if (fields.needsInstallation !== undefined) patch.needs_installation = fields.needsInstallation;
+  // Choosing a product snapshots its price as the deal value.
+  if (fields.productId !== undefined) {
+    if (fields.productId) {
+      const { data: product } = await supabase
+        .from('products')
+        .select('price_xof')
+        .eq('id', fields.productId)
+        .maybeSingle();
+      patch.product_id = fields.productId;
+      patch.value_xof = product?.price_xof ?? 0;
+    } else {
+      patch.product_id = null;
+    }
+  }
 
   const { error } = await supabase.from('deals').update(patch).eq('id', dealId);
   if (error) return { ok: false, error: 'save_failed' };

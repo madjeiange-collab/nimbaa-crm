@@ -13,7 +13,8 @@ export interface PipelineDeal {
   id: string;
   contactId: string;
   name: string | null; // customer
-  title: string | null; // product / service
+  title: string | null; // free-text label
+  product: string | null; // portfolio product name
   value: number | null;
   stageId: string | null;
   status: DealStatus;
@@ -103,7 +104,7 @@ export function PipelineBoard({
     downloadCsv('pipeline.csv', [
       ['Affaire', 'Client', 'Commercial', 'Statut', 'Étape', 'Valeur XOF'],
       ...filtered.map((d) => [
-        d.title ?? '',
+        d.product ?? d.title ?? '',
         d.name ?? '',
         d.repName ?? '',
         d.status,
@@ -176,7 +177,7 @@ export function PipelineBoard({
                 {items.map((d) => (
                   <Link key={d.id} href={`/contacts/${d.contactId}`} className="block">
                     <div className="rounded-lg border bg-card p-2.5 shadow-sm transition-colors hover:bg-accent">
-                      <p className="truncate text-sm font-medium">{d.title ?? tD('untitled')}</p>
+                      <p className="truncate text-sm font-medium">{d.product ?? d.title ?? tD('untitled')}</p>
                       <p className="truncate text-xs text-muted-foreground">{d.name ?? '—'}</p>
                       <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
                         {d.value != null ? <span>{d.value.toLocaleString('fr-FR')} XOF</span> : <span />}

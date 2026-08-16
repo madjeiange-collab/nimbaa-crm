@@ -91,6 +91,8 @@
     "title": "Deals",
     "untitled": "Deal",
     "value": "Value",
+    "product": "Product",
+    "noProduct": "— No product —",
     "stage": "Stage",
     "needsInstallation": "Needs installation",
     "status_open": "Open",
@@ -184,6 +186,23 @@
       "needs_revisit": "Revisit needed"
     }
   },
+  "adminProducts": {
+    "title": "Products",
+    "subtitle": "Product portfolio (price + commission)",
+    "intro": "These products populate a deal's dropdown; the price becomes the deal value (and the commission basis).",
+    "empty": "No products yet. Add one below.",
+    "addProduct": "Add product",
+    "name": "Product name",
+    "price": "Price (XOF)",
+    "commissionPct": "Commission %",
+    "add": "Add",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "activate": "Activate",
+    "deactivate": "Deactivate"
+  },
   "adminUsers": {
     "title": "Users",
     "subtitle": "Create and manage team accounts",
@@ -241,6 +260,7 @@
     "title": "Administration",
     "users": "Users",
     "territories": "Territories",
+    "products": "Products",
     "protocol": "Installation protocol",
     "stages": "Pipeline stages",
     "import": "Import contacts",

@@ -573,3 +573,26 @@ create policy deals_del on deals for delete using (auth.uid() is not null);
 
 alter table visits add column if not exists deal_id uuid references deals(id) on delete set null;
 create index if not exists visits_deal_ix on visits (deal_id);
+
+
+-- ====== 0009_products.sql ======
+
+create table if not exists products (
+  id             uuid primary key default uuid_generate_v4(),
+  name           text not null,
+  price_xof      bigint not null default 0,
+  commission_pct numeric(5,2) not null default 0,
+  is_active      boolean not null default true,
+  sort_order     int not null default 0,
+  created_at     timestamptz not null default now()
+);
+create index if not exists products_order_ix on products (sort_order);
+alter table products enable row level security;
+drop policy if exists products_read on products;
+create policy products_read on products for select using (auth.uid() is not null);
+drop policy if exists products_admin on products;
+create policy products_admin on products for all
+  using (current_user_role() = 'admin') with check (current_user_role() = 'admin');
+
+alter table deals add column if not exists product_id uuid references products(id);
+create index if not exists deals_product_ix on deals (product_id);
