@@ -67,6 +67,72 @@ export const TOOL_DEFINITIONS: OpenAI.Responses.Tool[] = [
       additionalProperties: false,
     },
   },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'installations_list',
+    description:
+      "Les installations (interventions techniques) : titre, statut (pending/scheduled/in_progress/done/needs_revisit), dates, client, technicien. Pour un technicien : ses installations. Pour les autres rôles : toutes. Utiliser pour 'mes installations', 'installations en attente', 'planning technicien'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['open', 'done', 'all'],
+          description: "'open' = pas encore terminées, 'done' = terminées, 'all' = toutes",
+        },
+      },
+      required: ['status'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'products_list',
+    description:
+      'Le catalogue produits : nom, prix en FCFA et taux de commission (%). Utiliser pour toute question sur les produits, tarifs ou commissions.',
+    parameters: { type: 'object', properties: {}, required: [], additionalProperties: false },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'territories_list',
+    description:
+      "Les secteurs (territoires) : nom, type, zones couvertes, et qui y est assigné. Un commercial ne voit que ses propres secteurs ; un manager/admin les voit tous. Utiliser pour 'mes secteurs', 'qui couvre Yopougon', etc.",
+    parameters: { type: 'object', properties: {}, required: [], additionalProperties: false },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'photos_summary',
+    description:
+      "Résumé des photos de visite (preuve de passage) : nombre de photos par commercial sur une période. Pour un commercial : ses propres photos. Utiliser pour l'audit photo, 'combien de photos cette semaine'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', enum: ['week', 'month'], description: 'Période' },
+      },
+      required: ['period'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'flagged_visits_summary',
+    description:
+      "RÉSERVÉ MANAGERS/ADMINS — visites suspectes (anti-fraude) : hors secteur, cadence invraisemblable (>40 portes/heure), enchaînement trop rapide (<3s). Retourne les comptes par commercial et les cas récents.",
+    parameters: { type: 'object', properties: {}, required: [], additionalProperties: false },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'team_list',
+    description:
+      "RÉSERVÉ MANAGERS/ADMINS — la liste de l'équipe : nom, rôle (commercial/technicien/manager/admin), actif ou non, capacités B2B/porte-à-porte.",
+    parameters: { type: 'object', properties: {}, required: [], additionalProperties: false },
+  },
 ];
 
 type Db = SupabaseClient;
@@ -205,6 +271,185 @@ async function contactHistory(db: Db, args: { contact_id: string }) {
   return { contact, affaires: deals ?? [], visites: visits ?? [], activites: activities ?? [] };
 }
 
+const OPEN_INSTALL_STATUSES = ['pending', 'scheduled', 'in_progress', 'needs_revisit'];
+
+async function installationsList(db: Db, user: AppUser, args: { status: string }) {
+  let q = db
+    .from('installations')
+    .select(
+      'title, status, scheduled_date, next_visit_date, completed_at, contacts(name, address), installer:users!installer_id(full_name)',
+    )
+    .order('updated_at', { ascending: false })
+    .limit(25);
+  if (user.role === 'technician') q = q.eq('installer_id', user.id);
+  if (args.status === 'open') q = q.in('status', OPEN_INSTALL_STATUSES);
+  if (args.status === 'done') q = q.eq('status', 'done');
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+
+  const rows = (data ?? []) as unknown as {
+    title: string | null;
+    status: string;
+    scheduled_date: string | null;
+    next_visit_date: string | null;
+    completed_at: string | null;
+    contacts: { name: string | null; address: string | null } | null;
+    installer: { full_name: string | null } | null;
+  }[];
+  const byStatus: Record<string, number> = {};
+  for (const r of rows) byStatus[r.status] = (byStatus[r.status] ?? 0) + 1;
+  return {
+    scope: user.role === 'technician' ? 'mes installations' : 'toutes les installations',
+    counts_by_status: byStatus,
+    installations: rows.map((r) => ({
+      titre: r.title,
+      statut: r.status,
+      date_prevue: r.scheduled_date,
+      revisite: r.next_visit_date,
+      terminee_le: r.completed_at,
+      client: r.contacts?.name ?? '—',
+      adresse: r.contacts?.address,
+      technicien: r.installer?.full_name ?? null,
+    })),
+  };
+}
+
+async function productsList(db: Db) {
+  const { data, error } = await db
+    .from('products')
+    .select('name, price_xof, commission_pct, is_active')
+    .order('sort_order');
+  if (error) return { error: error.message };
+  return {
+    produits: (data ?? []).map((p) => ({
+      nom: p.name,
+      prix_fcfa: p.price_xof,
+      commission_pct: p.commission_pct,
+      actif: p.is_active,
+    })),
+  };
+}
+
+async function territoriesList(db: Db) {
+  const [{ data: terrs, error }, { data: links }] = await Promise.all([
+    db.from('territories').select('id, name, type, description').order('name'),
+    db.from('user_territories').select('territory_id, users(full_name)'),
+  ]);
+  if (error) return { error: error.message };
+  type Link = { territory_id: string; users: { full_name: string | null } | null };
+  const byTerr = new Map<string, string[]>();
+  for (const l of (links ?? []) as unknown as Link[]) {
+    if (!l.users?.full_name) continue;
+    const list = byTerr.get(l.territory_id) ?? [];
+    list.push(l.users.full_name);
+    byTerr.set(l.territory_id, list);
+  }
+  return {
+    note: 'Un commercial ne voit que ses propres secteurs (RLS).',
+    secteurs: (terrs ?? []).map((t) => ({
+      nom: t.name,
+      type: t.type,
+      zones: t.description,
+      assigne_a: byTerr.get(t.id) ?? [],
+    })),
+  };
+}
+
+async function photosSummary(db: Db, user: AppUser, args: { period: string }) {
+  const days = args.period === 'week' ? 7 : 30;
+  const since = new Date(Date.now() - days * 86400_000).toISOString();
+  const { data, error } = await db
+    .from('visit_photos')
+    .select('taken_at, visits!inner(rep_id)')
+    .gte('taken_at', since)
+    .limit(2000);
+  if (error) return { error: error.message };
+
+  const rows = (data ?? []) as unknown as { visits: { rep_id: string } }[];
+  const byRep = new Map<string, number>();
+  for (const r of rows) byRep.set(r.visits.rep_id, (byRep.get(r.visits.rep_id) ?? 0) + 1);
+
+  // Resolve names (managers/admins can read all users; a rep resolves only itself).
+  const { data: reps } = await db
+    .from('users')
+    .select('id, full_name, username')
+    .in('id', [...byRep.keys()]);
+  const nameOf = new Map((reps ?? []).map((u) => [u.id, u.full_name || u.username || u.id]));
+
+  return {
+    periode: args.period,
+    total_photos: rows.length,
+    par_commercial: [...byRep.entries()].map(([id, n]) => ({
+      commercial: nameOf.get(id) ?? '—',
+      photos: n,
+    })),
+  };
+}
+
+async function flaggedVisitsSummary(db: Db, user: AppUser) {
+  if (user.role !== 'manager' && user.role !== 'admin') {
+    return { error: 'Réservé aux managers et administrateurs.' };
+  }
+  const { data, error } = await db
+    .from('flagged_visits')
+    .select('rep_id, visited_at, out_of_turf, implausible_rate, rapid_fire')
+    .order('visited_at', { ascending: false })
+    .limit(100);
+  if (error) return { error: error.message };
+
+  const rows = data ?? [];
+  const byRep = new Map<string, { hors_secteur: number; cadence: number; rapide: number }>();
+  for (const r of rows) {
+    const agg = byRep.get(r.rep_id) ?? { hors_secteur: 0, cadence: 0, rapide: 0 };
+    if (r.out_of_turf) agg.hors_secteur++;
+    if (r.implausible_rate) agg.cadence++;
+    if (r.rapid_fire) agg.rapide++;
+    byRep.set(r.rep_id, agg);
+  }
+  const { data: reps } = await db
+    .from('users')
+    .select('id, full_name, username')
+    .in('id', [...byRep.keys()]);
+  const nameOf = new Map((reps ?? []).map((u) => [u.id, u.full_name || u.username || u.id]));
+
+  return {
+    note: '100 cas les plus récents. hors_secteur = visite hors zone assignée ; cadence = >40 portes/h ; rapide = <3s entre deux portes.',
+    total_recent: rows.length,
+    par_commercial: [...byRep.entries()].map(([id, agg]) => ({
+      commercial: nameOf.get(id) ?? '—',
+      ...agg,
+    })),
+    derniers_cas: rows.slice(0, 10).map((r) => ({
+      commercial: nameOf.get(r.rep_id) ?? '—',
+      date: r.visited_at,
+      hors_secteur: r.out_of_turf,
+      cadence_invraisemblable: r.implausible_rate,
+      trop_rapide: r.rapid_fire,
+    })),
+  };
+}
+
+async function teamList(db: Db, user: AppUser) {
+  if (user.role !== 'manager' && user.role !== 'admin') {
+    return { error: 'Réservé aux managers et administrateurs.' };
+  }
+  const { data, error } = await db
+    .from('users')
+    .select('full_name, username, role, is_active, can_do_b2b, can_do_d2d')
+    .order('role')
+    .order('full_name');
+  if (error) return { error: error.message };
+  return {
+    equipe: (data ?? []).map((u) => ({
+      nom: u.full_name || u.username,
+      role: u.role,
+      actif: u.is_active,
+      b2b: u.can_do_b2b,
+      porte_a_porte: u.can_do_d2d,
+    })),
+  };
+}
+
 /** Dispatch a tool call. Unknown tool names return an error object. */
 export async function executeTool(
   name: string,
@@ -222,6 +467,18 @@ export async function executeTool(
         return await myTodo(db, user);
       case 'contact_history':
         return await contactHistory(db, args as { contact_id: string });
+      case 'installations_list':
+        return await installationsList(db, user, args as { status: string });
+      case 'products_list':
+        return await productsList(db);
+      case 'territories_list':
+        return await territoriesList(db);
+      case 'photos_summary':
+        return await photosSummary(db, user, args as { period: string });
+      case 'flagged_visits_summary':
+        return await flaggedVisitsSummary(db, user);
+      case 'team_list':
+        return await teamList(db, user);
       default:
         return { error: `outil inconnu: ${name}` };
     }
