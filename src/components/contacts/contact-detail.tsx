@@ -11,8 +11,10 @@ import {
   DealsSection,
   type DealCard,
   type DealStage,
+  type PersonOption,
   type ProductOption,
 } from '@/components/contacts/deals-section';
+import { PeopleSection, type PersonCard } from '@/components/contacts/people-section';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -84,6 +86,7 @@ export function ContactDetail({
   technicians,
   deals,
   products,
+  people = [],
   canInstall,
 }: {
   contact: ContactFull;
@@ -93,6 +96,7 @@ export function ContactDetail({
   technicians: RepOption[];
   deals: DealCard[];
   products: ProductOption[];
+  people?: PersonCard[];
   canInstall: boolean;
 }) {
   const t = useTranslations('contacts');
@@ -255,12 +259,16 @@ export function ContactDetail({
         </CardContent>
       </Card>
 
+      {/* Interlocuteurs (gérant, chef de projet…) of this business */}
+      <PeopleSection contactId={contact.id} people={people} />
+
       {/* Affaires (deals): several businesses, each sellable and/or installable */}
       <DealsSection
         contactId={contact.id}
         deals={deals}
         stages={stages as DealStage[]}
         products={products}
+        people={people as PersonOption[]}
         technicians={technicians}
         canInstall={canInstall}
       />

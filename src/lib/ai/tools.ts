@@ -243,7 +243,7 @@ async function myTodo(db: Db, user: AppUser) {
 }
 
 async function contactHistory(db: Db, args: { contact_id: string }) {
-  const [{ data: contact }, { data: visits }, { data: activities }, { data: deals }] =
+  const [{ data: contact }, { data: visits }, { data: activities }, { data: deals }, { data: people }] =
     await Promise.all([
       db
         .from('contacts')
@@ -266,9 +266,19 @@ async function contactHistory(db: Db, args: { contact_id: string }) {
         .from('deals')
         .select('title, status, value_xof, won_at, pipeline_stages(name)')
         .eq('contact_id', args.contact_id),
+      db
+        .from('contact_people')
+        .select('name, role, phone, email')
+        .eq('contact_id', args.contact_id),
     ]);
   if (!contact) return { error: 'contact introuvable' };
-  return { contact, affaires: deals ?? [], visites: visits ?? [], activites: activities ?? [] };
+  return {
+    contact,
+    interlocuteurs: people ?? [],
+    affaires: deals ?? [],
+    visites: visits ?? [],
+    activites: activities ?? [],
+  };
 }
 
 const OPEN_INSTALL_STATUSES = ['pending', 'scheduled', 'in_progress', 'needs_revisit'];

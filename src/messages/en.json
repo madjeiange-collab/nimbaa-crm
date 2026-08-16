@@ -74,6 +74,21 @@
     "seeAll": "See all",
     "coverageTitle": "Coverage map"
   },
+  "people": {
+    "title": "Contact persons",
+    "add": "Add",
+    "empty": "No contact persons yet — add the manager, project lead…",
+    "namePlaceholder": "Full name *",
+    "rolePlaceholder": "Role (e.g. Manager)",
+    "phonePlaceholder": "Phone",
+    "emailPlaceholder": "Email",
+    "call": "Call",
+    "save": "Save",
+    "cancel": "Cancel",
+    "remove": "Delete",
+    "deleteConfirm": "Delete {name}?",
+    "error": "Could not save — try again."
+  },
   "profile": {
     "photoTitle": "Profile photo",
     "photoHint": "Shown on the leaderboard and across the app.",
@@ -170,6 +185,9 @@
     "value": "Value",
     "product": "Product",
     "noProduct": "— No product —",
+    "person": "Contact person",
+    "noPerson": "— None —",
+    "callPerson": "Call contact person",
     "stage": "Stage",
     "needsInstallation": "Needs installation",
     "status_open": "Open",

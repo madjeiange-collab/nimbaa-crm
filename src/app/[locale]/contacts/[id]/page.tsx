@@ -46,10 +46,25 @@ export default async function ContactDetailPage({
       supabase.from('users').select('id, full_name, username, role'),
       supabase
         .from('deals')
-        .select('id, title, product_id, value_xof, status, pipeline_stage_id, needs_installation, installations(id, status, installer_id, scheduled_date, next_visit_date, checklist, equipment)')
+        .select('id, title, product_id, value_xof, status, pipeline_stage_id, needs_installation, contact_person_id, installations(id, status, installer_id, scheduled_date, next_visit_date, checklist, equipment)')
         .eq('contact_id', id)
         .order('created_at', { ascending: true }),
     ]);
+
+  // Interlocuteurs of this business (fetched separately: pre-0014 DB degrades
+  // to an empty list instead of breaking the page).
+  const { data: peopleRows } = await supabase
+    .from('contact_people')
+    .select('id, name, role, phone, email')
+    .eq('contact_id', id)
+    .order('created_at', { ascending: true });
+  const people = (peopleRows ?? []) as {
+    id: string;
+    name: string;
+    role: string | null;
+    phone: string | null;
+    email: string | null;
+  }[];
 
   const { data: productRows } = await supabase
     .from('products')
@@ -160,6 +175,7 @@ export default async function ContactDetailPage({
     status: DealCard['status'];
     pipeline_stage_id: string | null;
     needs_installation: boolean;
+    contact_person_id: string | null;
     installations?: InstRow[];
   };
   const deals: DealCard[] = ((dealRows ?? []) as unknown as DealRow[]).map((d) => ({
@@ -170,6 +186,7 @@ export default async function ContactDetailPage({
     status: d.status,
     pipelineStageId: d.pipeline_stage_id,
     needsInstallation: d.needs_installation,
+    contactPersonId: d.contact_person_id ?? null,
     installs: (d.installations ?? []).map((i) => ({
       id: i.id,
       status: i.status,
@@ -203,6 +220,7 @@ export default async function ContactDetailPage({
           technicians={technicians}
           deals={deals}
           products={products}
+          people={people}
           canInstall={canInstall}
         />
       </main>

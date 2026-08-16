@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { Briefcase, Plus, Trash2, Wrench, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Briefcase, Phone, Plus, Trash2, Wrench, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
 import {
   createDeal,
@@ -10,6 +10,7 @@ import {
   updateDeal,
   deleteDeal,
 } from '@/lib/deals/actions';
+import { assignDealPerson } from '@/lib/contacts/people-actions';
 import { assignInstaller } from '@/lib/installations/actions';
 import { INSTALL_STATUS_BADGE, INSTALL_STATUS_BY_KEY } from '@/lib/installations/protocol';
 import type { DealStatus, InstallStatus } from '@/types/database';
@@ -37,7 +38,16 @@ export interface DealCard {
   status: DealStatus;
   pipelineStageId: string | null;
   needsInstallation: boolean;
+  contactPersonId: string | null;
   installs: DealInstall[];
+}
+
+/** An interlocutor of the business, selectable per deal. */
+export interface PersonOption {
+  id: string;
+  name: string;
+  role: string | null;
+  phone: string | null;
 }
 
 export interface DealStage {
@@ -143,6 +153,7 @@ function DealRow({
   deal,
   stages,
   products,
+  people,
   technicians,
   canInstall,
 }: {
@@ -150,6 +161,7 @@ function DealRow({
   deal: DealCard;
   stages: DealStage[];
   products: ProductOption[];
+  people: PersonOption[];
   technicians: { id: string; name: string }[];
   canInstall: boolean;
 }) {
@@ -227,6 +239,43 @@ function DealRow({
         </div>
       </div>
 
+      {/* Interlocutor this deal is negotiated with */}
+      {people.length > 0 && (
+        <div className="space-y-1">
+          <Label className="text-xs">{t('person')}</Label>
+          <div className="flex items-center gap-2">
+            <select
+              value={deal.contactPersonId ?? ''}
+              onChange={(e) =>
+                run(() => assignDealPerson(deal.id, contactId, e.target.value || null))
+              }
+              disabled={isPending}
+              className="flex min-h-touch w-full rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{t('noPerson')}</option>
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                  {p.role ? ` — ${p.role}` : ''}
+                </option>
+              ))}
+            </select>
+            {(() => {
+              const sel = people.find((p) => p.id === deal.contactPersonId);
+              return sel?.phone ? (
+                <a
+                  href={`tel:${sel.phone}`}
+                  aria-label={t('callPerson')}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
+                >
+                  <Phone className="h-4 w-4" />
+                </a>
+              ) : null;
+            })()}
+          </div>
+        </div>
+      )}
+
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
@@ -267,6 +316,7 @@ export function DealsSection({
   deals,
   stages,
   products,
+  people = [],
   technicians,
   canInstall,
 }: {
@@ -274,6 +324,7 @@ export function DealsSection({
   deals: DealCard[];
   stages: DealStage[];
   products: ProductOption[];
+  people?: PersonOption[];
   technicians: { id: string; name: string }[];
   canInstall: boolean;
 }) {
@@ -314,6 +365,7 @@ export function DealsSection({
                 deal={d}
                 stages={stages}
                 products={products}
+                people={people}
                 technicians={technicians}
                 canInstall={canInstall}
               />

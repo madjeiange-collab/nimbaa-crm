@@ -220,6 +220,7 @@ export interface Database {
           pipeline_stage_id: string | null;
           status: DealStatus;
           needs_installation: boolean;
+          contact_person_id: string | null;
           lost_reason: string | null;
           assigned_rep_id: string | null;
           won_at: string | null;
@@ -236,6 +237,7 @@ export interface Database {
           pipeline_stage_id?: string | null;
           status?: DealStatus;
           needs_installation?: boolean;
+          contact_person_id?: string | null;
           lost_reason?: string | null;
           assigned_rep_id?: string | null;
           won_at?: string | null;
@@ -244,6 +246,32 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['deals']['Insert']>;
+        Relationships: [];
+      };
+      contact_people: {
+        Row: {
+          id: string;
+          contact_id: string;
+          name: string;
+          role: string | null;
+          phone: string | null;
+          email: string | null;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          contact_id: string;
+          name: string;
+          role?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['contact_people']['Insert']>;
         Relationships: [];
       };
       installations: {

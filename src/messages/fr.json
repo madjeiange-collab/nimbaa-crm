@@ -74,6 +74,21 @@
     "seeAll": "Voir tout",
     "coverageTitle": "Carte de couverture"
   },
+  "people": {
+    "title": "Interlocuteurs",
+    "add": "Ajouter",
+    "empty": "Aucun interlocuteur — ajoutez le gérant, le chef de projet…",
+    "namePlaceholder": "Nom complet *",
+    "rolePlaceholder": "Rôle (ex. Gérant)",
+    "phonePlaceholder": "Téléphone",
+    "emailPlaceholder": "Email",
+    "call": "Appeler",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "remove": "Supprimer",
+    "deleteConfirm": "Supprimer {name} ?",
+    "error": "Enregistrement impossible — réessayez."
+  },
   "profile": {
     "photoTitle": "Photo de profil",
     "photoHint": "Visible sur le classement et dans l'application.",
@@ -170,6 +185,9 @@
     "value": "Valeur",
     "product": "Produit",
     "noProduct": "— Aucun produit —",
+    "person": "Interlocuteur",
+    "noPerson": "— Aucun —",
+    "callPerson": "Appeler l'interlocuteur",
     "stage": "Étape",
     "needsInstallation": "Installation requise",
     "status_open": "En cours",
