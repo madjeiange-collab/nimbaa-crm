@@ -79,3 +79,15 @@ update installations i
 set deal_id = d.id
 from deals d
 where d.contact_id = i.contact_id and i.deal_id is null;
+
+-- ---- Give every deal a pipeline stage matching its status (so the board
+-- ---- shows deals whose contact had no stage, e.g. seeded customers) --------
+update deals set pipeline_stage_id =
+  (select id from pipeline_stages where is_won and is_active order by sort_order limit 1)
+  where pipeline_stage_id is null and status = 'won';
+update deals set pipeline_stage_id =
+  (select id from pipeline_stages where is_lost and is_active order by sort_order desc limit 1)
+  where pipeline_stage_id is null and status = 'lost';
+update deals set pipeline_stage_id =
+  (select id from pipeline_stages where not is_won and not is_lost and is_active order by sort_order limit 1)
+  where pipeline_stage_id is null and status = 'open';
