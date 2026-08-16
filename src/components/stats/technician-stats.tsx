@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { CalendarClock, RotateCcw, ArrowUp, ArrowDown, Minus } from 'lucide-react';
+import { CalendarClock, RotateCcw, ArrowUp, ArrowDown, Minus, KanbanSquare, Images } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { StatTile } from '@/components/charts/stat-tile';
@@ -34,6 +34,7 @@ export async function TechnicianStats({ userId }: { userId: string }) {
   const t = await getTranslations('installation');
   const tStatus = await getTranslations('installation.status');
   const tS = await getTranslations('stats');
+  const tDash = await getTranslations('dashboard');
 
   const supabase = await createClient();
   const [{ data }, { data: turfs }] = await Promise.all([
@@ -119,6 +120,22 @@ export async function TechnicianStats({ userId }: { userId: string }) {
         <StatTile label={t('kpiDoneMonth')} value={doneMonth} accent="primary" />
         <StatTile label={t('kpiOpen')} value={openJobs.length} accent="amber" href="/installs" />
         <StatTile label={t('kpiRevisits')} value={revisits} accent="red" />
+      </div>
+
+      {/* Drill-downs: my install pipeline + install photo audit */}
+      <div className="grid grid-cols-2 gap-2">
+        <Link href="/dashboard/install-pipeline" className="block">
+          <Card className="flex flex-col items-center gap-1.5 p-4 transition-colors hover:bg-accent">
+            <KanbanSquare className="h-5 w-5 text-primary" />
+            <span className="text-sm font-medium">{tDash('installPipeline')}</span>
+          </Card>
+        </Link>
+        <Link href="/dashboard/install-photos" className="block">
+          <Card className="flex flex-col items-center gap-1.5 p-4 transition-colors hover:bg-accent">
+            <Images className="h-5 w-5 text-primary" />
+            <span className="text-sm font-medium">{tDash('installPhotos')}</span>
+          </Card>
+        </Link>
       </div>
 
       {/* Momentum */}

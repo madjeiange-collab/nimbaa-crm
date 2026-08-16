@@ -1,7 +1,7 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { requireRole } from '@/lib/auth/session';
+import { requireUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { AppHeader } from '@/components/shared/app-header';
 import { PhotoAudit, type PhotoItem } from '@/components/dashboard/photo-audit';
@@ -13,7 +13,7 @@ export default async function PhotosPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  await requireRole(['manager', 'admin']);
+  const user = await requireUser();
   const t = await getTranslations('dashboard');
 
   const supabase = await createClient();
@@ -86,7 +86,7 @@ export default async function PhotosPage({
           <ArrowLeft className="h-4 w-4" />
           {t('title')}
         </Link>
-        <PhotoAudit items={items} territories={territories} />
+        <PhotoAudit items={items} territories={territories} initialPeople={user.role === 'rep' ? [user.id] : []} />
       </main>
     </>
   );

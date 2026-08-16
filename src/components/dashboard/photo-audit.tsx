@@ -69,6 +69,7 @@ export function PhotoAudit({
   territories,
   variant = 'commercial',
   people,
+  initialPeople = [],
 }: {
   items: PhotoItem[];
   territories: PhotoTerritory[];
@@ -77,12 +78,14 @@ export function PhotoAudit({
   /** Full person list for the filter; falls back to deriving from `items`
       (so the filter still shows when there are no photos yet). */
   people?: { id: string; name: string }[];
+  /** Pre-selected person filter (field users land on themselves). */
+  initialPeople?: string[];
 }) {
   const t = useTranslations('dashboard');
   const tDisp = useTranslations('dispositions');
   const locale = useLocale();
   const isTech = variant === 'technician';
-  const [repIds, setRepIds] = useState<string[]>([]);
+  const [repIds, setRepIds] = useState<string[]>(initialPeople);
   const [terrIds, setTerrIds] = useState<string[]>([]);
   const [groupBy, setGroupBy] = useState<GroupBy>('day');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());

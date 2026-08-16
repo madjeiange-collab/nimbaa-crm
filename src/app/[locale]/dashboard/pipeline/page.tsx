@@ -1,7 +1,7 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { requireRole } from '@/lib/auth/session';
+import { requireUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { AppHeader } from '@/components/shared/app-header';
 import {
@@ -24,14 +24,20 @@ export default async function PipelinePage({
   const { locale } = await params;
   const { life, rep, terr, won } = await searchParams;
   setRequestLocale(locale);
-  await requireRole(['manager', 'admin']);
+  // Open to every role: data visibility is governed by RLS (shared team
+  // model); field users land pre-filtered on themselves.
+  const user = await requireUser();
   const t = await getTranslations('dashboard');
 
   // Map the ?life= link (from dashboard KPIs) onto deal status; carry the
   // dashboard's rep/secteur filter + an optional won-date scope.
   const initialStatus: 'all' | DealStatus =
     life === 'lead' ? 'open' : life === 'customer' ? 'won' : life === 'lost' ? 'lost' : 'all';
-  const initialRepIds = rep ? rep.split(',').filter(Boolean) : [];
+  const initialRepIds = rep
+    ? rep.split(',').filter(Boolean)
+    : user.role === 'rep'
+      ? [user.id]
+      : [];
   const initialTerrIds = terr ? terr.split(',').filter(Boolean) : [];
   const initialWonPeriod: WonPeriod = won === 'week' || won === 'month' ? won : 'all';
 

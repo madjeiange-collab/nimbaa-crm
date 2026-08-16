@@ -15,15 +15,17 @@ export function InstallPipelineBoard({
   installations,
   technicians,
   territories,
+  initialTechIds = [],
 }: {
   installations: ManagerInstallRow[];
   technicians: { id: string; name: string }[];
+  initialTechIds?: string[];
   territories: ManagerTerritory[];
 }) {
   const t = useTranslations('dashboard');
   const tInstall = useTranslations('installation');
   const tStatus = useTranslations('installation.status');
-  const [techIds, setTechIds] = useState<string[]>([]);
+  const [techIds, setTechIds] = useState<string[]>(initialTechIds);
   const [terrIds, setTerrIds] = useState<string[]>([]);
 
   const nameOf = useMemo(() => new Map(technicians.map((tt) => [tt.id, tt.name])), [technicians]);

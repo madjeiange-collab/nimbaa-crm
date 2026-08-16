@@ -1,5 +1,5 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
-import { ArrowUp, ArrowDown, Minus, CalendarClock, AlertTriangle, RotateCcw, Navigation } from 'lucide-react';
+import { ArrowUp, ArrowDown, Minus, CalendarClock, AlertTriangle, RotateCcw, Navigation, KanbanSquare, Images } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { directionsUrl } from '@/lib/geo';
 import { requireUser } from '@/lib/auth/session';
@@ -27,6 +27,7 @@ export default async function StatsPage({
   setRequestLocale(locale);
   const user = await requireUser();
   const t = await getTranslations('stats');
+  const tDash = await getTranslations('dashboard');
 
   // Technicians get an installation-focused statistics view.
   if (user.role === 'technician') {
@@ -322,6 +323,22 @@ export default async function StatsPage({
           <StatTile label={t('customers')} value={customers} accent="green" href="/contacts?tab=customer&mine=1" />
           <StatTile label={t('lost')} value={lost} accent="red" href="/contacts?tab=lost&mine=1" />
           <StatTile label={t('conversion')} value={`${conversion}%`} accent="primary" />
+        </div>
+
+        {/* Drill-downs: my pipeline board + my photo audit */}
+        <div className="grid grid-cols-2 gap-2">
+          <Link href="/dashboard/pipeline" className="block">
+            <Card className="flex flex-col items-center gap-1.5 p-4 transition-colors hover:bg-accent">
+              <KanbanSquare className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium">{tDash('pipeline')}</span>
+            </Card>
+          </Link>
+          <Link href="/dashboard/photos" className="block">
+            <Card className="flex flex-col items-center gap-1.5 p-4 transition-colors hover:bg-accent">
+              <Images className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium">{tDash('photos')}</span>
+            </Card>
+          </Link>
         </div>
 
         <Card>
