@@ -57,7 +57,7 @@ function MiniBoard({
   meId,
 }: {
   title: string;
-  rows: { id: string; name: string; points: number }[];
+  rows: { id: string; name: string; points: number; lines: string[] }[];
   meId: string;
 }) {
   if (rows.length === 0) return null;
@@ -81,6 +81,11 @@ function MiniBoard({
                 {r.name}
                 {r.id === meId && ' 👈'}
               </p>
+              {r.lines.map((line, j) => (
+                <p key={j} className="truncate text-xs text-muted-foreground">
+                  {line}
+                </p>
+              ))}
               <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-primary"
@@ -188,9 +193,29 @@ export default async function HomePage({
       name: i.contacts?.name ?? null,
     }));
 
+  // Same detail lines as the full leaderboard (revenue: managers/admins only).
+  const repMini = reps.slice(0, 5).map((r) => ({
+    id: r.id,
+    name: r.name,
+    points: r.points,
+    lines: [
+      `${tBoard('visits')}: ${r.visits} · ${tBoard('refused')}: ${r.refused} · ${tBoard('interested')}: ${r.interested} · ${tBoard('rdv')}: ${r.rdv} · ${tBoard('sales')}: ${r.sales}`,
+      `${tBoard('leads')}: ${r.leads} · ${tBoard('engagement')}: ${r.engagementPct}% · ${tBoard('conversion')}: ${r.conversionPct}%` +
+        (isManager ? ` · ${tBoard('revenue')}: ${r.fcfa.toLocaleString('fr-FR')} FCFA` : ''),
+    ],
+  }));
+  const techMini = techs.slice(0, 5).map((r) => ({
+    id: r.id,
+    name: r.name,
+    points: r.points,
+    lines: [
+      `${tBoard('done')}: ${r.done} · ${tBoard('revisits')}: ${r.revisits} · ${tBoard('open')}: ${r.open} · ${tBoard('completion')}: ${r.completionPct}%`,
+    ],
+  }));
+
   const miniBoards = [
-    <MiniBoard key="reps" title={tBoard('repsBoard')} rows={reps.slice(0, 5)} meId={user.id} />,
-    <MiniBoard key="techs" title={tBoard('techsBoard')} rows={techs.slice(0, 5)} meId={user.id} />,
+    <MiniBoard key="reps" title={tBoard('repsBoard')} rows={repMini} meId={user.id} />,
+    <MiniBoard key="techs" title={tBoard('techsBoard')} rows={techMini} meId={user.id} />,
   ];
   if (isTechnician) miniBoards.reverse();
 
