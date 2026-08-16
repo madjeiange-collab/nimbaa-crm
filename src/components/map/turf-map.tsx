@@ -264,12 +264,24 @@ function focusBounds(pts: [number, number][]): L.LatLngBounds | null {
   return L.latLngBounds(inliers.length >= 2 ? inliers : pts);
 }
 
+/** A ~15 km-radius view box around a centre point. */
+function focusBox(center: L.LatLng): L.LatLngBounds {
+  const latDelta = FOCUS_RADIUS_KM / 111;
+  const lngDelta =
+    FOCUS_RADIUS_KM / (111 * Math.max(0.1, Math.cos((center.lat * Math.PI) / 180)));
+  return L.latLngBounds(
+    [center.lat - latDelta, center.lng - lngDelta],
+    [center.lat + latDelta, center.lng + lngDelta],
+  );
+}
+
 /**
- * Opening view. Centres on the device's current position (with a "you are
- * here" marker) when location is allowed. If location is denied/unavailable,
- * falls back to framing the data's main cluster (outlier-robust) so the map
- * never opens at a useless world zoom. The "Ma position" button recentres on
- * live GPS on demand. Runs once.
+ * Opening view: frames the DATA (turfs, knocks, installations) at a ~15 km
+ * minimum view — never the device position, so the map always opens on the
+ * work, not on wherever the viewer happens to be. Outlier-robust (a stray GPS
+ * fix can't drag the view out to world zoom); widens beyond 15 km when the
+ * data itself is wider. The "Ma position" button recentres on live GPS on
+ * demand. Runs once.
  */
 function InitialView({
   polygons,
@@ -287,47 +299,22 @@ function InitialView({
     if (done.current) return;
     done.current = true;
 
-    // Fallback: frame the data's main cluster (outlier-robust) so a denied /
-    // unavailable location never leaves the map at a useless world zoom.
-    const fitData = () => {
-      const pts: [number, number][] = [];
-      polygons.forEach((poly) => toLatLngRing(poly).forEach((p) => pts.push(p)));
-      knocks.forEach((k) => {
-        if (k.lat != null && k.lng != null) pts.push([k.lat, k.lng]);
-      });
-      installs.forEach((p) => {
-        if (p.lat != null && p.lng != null) pts.push([p.lat, p.lng]);
-      });
-      const bounds = focusBounds(pts);
-      if (bounds) map.fitBounds(bounds.pad(0.15), { maxZoom: 16 });
-    };
+    const pts: [number, number][] = [];
+    polygons.forEach((poly) => toLatLngRing(poly).forEach((p) => pts.push(p)));
+    knocks.forEach((k) => {
+      if (k.lat != null && k.lng != null) pts.push([k.lat, k.lng]);
+    });
+    installs.forEach((p) => {
+      if (p.lat != null && p.lng != null) pts.push([p.lat, p.lng]);
+    });
 
-    // Preferred: centre on the device's current position and drop a marker.
-    // Requires the user to have allowed location for this site; if it is
-    // denied/unavailable we fall back to framing the data.
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      fitData();
-      return;
+    const bounds = focusBounds(pts);
+    if (bounds) {
+      // At least the 15 km box around the data's centre; wider if data is wider.
+      map.fitBounds(focusBox(bounds.getCenter()).extend(bounds.pad(0.1)));
+    } else {
+      map.fitBounds(focusBox(L.latLng(ABIDJAN[0], ABIDJAN[1])));
     }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        const latDelta = FOCUS_RADIUS_KM / 111;
-        const lngDelta = FOCUS_RADIUS_KM / (111 * Math.max(0.1, Math.cos((latitude * Math.PI) / 180)));
-        map.fitBounds(
-          L.latLngBounds([latitude - latDelta, longitude - lngDelta], [latitude + latDelta, longitude + lngDelta]),
-        );
-        L.circleMarker([latitude, longitude], {
-          radius: 8,
-          color: '#fff',
-          weight: 2,
-          fillColor: '#1d4ed8',
-          fillOpacity: 1,
-        }).addTo(map);
-      },
-      () => fitData(),
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 },
-    );
   }, [map, polygons, knocks, installs]);
 
   return null;

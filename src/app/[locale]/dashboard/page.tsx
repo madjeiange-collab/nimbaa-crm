@@ -74,6 +74,7 @@ export default async function DashboardPage({
             contacts={(contacts ?? []) as DashboardOverviewProps['contacts']}
             flagged={(flagged ?? []) as DashboardOverviewProps['flagged']}
             coverage={(coverage ?? []) as unknown as DashboardOverviewProps['coverage']}
+            installations={installData.installations}
           />
         }
         technician={

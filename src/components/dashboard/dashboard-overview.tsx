@@ -7,6 +7,8 @@ import { Link } from '@/i18n/navigation';
 import { StatTile } from '@/components/charts/stat-tile';
 import { Funnel } from '@/components/charts/funnel';
 import { CoverageMap } from '@/components/charts/coverage-map';
+import type { InstallPoint } from '@/components/map/turf-map';
+import type { ManagerInstallRow } from '@/lib/installations/manager-data';
 import { RepMultiFilter, TerritoryFilter } from '@/components/dashboard/rep-multi-filter';
 import { pointInAnyPolygon } from '@/lib/geo';
 import { Card, CardContent } from '@/components/ui/card';
@@ -57,6 +59,7 @@ export interface DashboardOverviewProps {
   contacts: OverviewContact[];
   flagged: OverviewFlag[];
   coverage: OverviewCoverage[];
+  installations?: ManagerInstallRow[];
 }
 
 export function DashboardOverview({
@@ -67,9 +70,11 @@ export function DashboardOverview({
   contacts,
   flagged,
   coverage,
+  installations = [],
 }: DashboardOverviewProps) {
   const t = useTranslations('dashboard');
   const tS = useTranslations('stats');
+  const tStatus = useTranslations('installation.status');
   const [repIds, setRepIds] = useState<string[]>([]);
   const [terrIds, setTerrIds] = useState<string[]>([]);
   const inSel = (id: string | null) => repIds.length === 0 || (!!id && repIds.includes(id));
@@ -125,6 +130,25 @@ export function DashboardOverview({
         })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [coverage, repIds, terrIds, selectedPolys],
+  );
+
+  // Installation jobs on the same map (status-coloured 🔧), territory-filtered.
+  const covInstalls: InstallPoint[] = useMemo(
+    () =>
+      installations
+        .filter((i) => i.lat != null && i.lng != null && inTerr(i.lat, i.lng))
+        .map((i) => ({
+          id: i.id,
+          lat: i.lat as number,
+          lng: i.lng as number,
+          status: i.status,
+          statusLabel: tStatus(i.status),
+          title: i.title,
+          contactId: i.contactId,
+          name: i.contactName,
+        })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [installations, terrIds, selectedPolys],
   );
 
   const inWin = (from: Date) => vs.filter((v) => new Date(v.visited_at) >= from);
@@ -196,7 +220,7 @@ export function DashboardOverview({
       <Card>
         <CardContent className="space-y-2 pt-4">
           <p className="text-sm font-semibold">{t('coverageTitle')}</p>
-          <CoverageMap polygons={selectedPolys} knocks={covKnocks} />
+          <CoverageMap polygons={selectedPolys} knocks={covKnocks} installs={covInstalls} />
         </CardContent>
       </Card>
 

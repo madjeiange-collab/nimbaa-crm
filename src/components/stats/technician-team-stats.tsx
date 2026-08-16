@@ -13,8 +13,8 @@ import { TechMultiFilter, TerritoryFilter } from '@/components/dashboard/rep-mul
 import { pointInAnyPolygon } from '@/lib/geo';
 import { Card, CardContent } from '@/components/ui/card';
 import { INSTALL_STATUSES } from '@/lib/installations/protocol';
-import type { InstallStatus, DispositionType } from '@/types/database';
-import type { TurfKnock } from '@/components/map/turf-map';
+import type { InstallStatus } from '@/types/database';
+import type { InstallPoint } from '@/components/map/turf-map';
 import type { ManagerInstallRow, ManagerTerritory } from '@/lib/installations/manager-data';
 
 const STATUS_CSS: Record<string, string> = {
@@ -22,15 +22,6 @@ const STATUS_CSS: Record<string, string> = {
   blue: 'hsl(217 91% 60%)',
   amber: 'hsl(var(--brand-amber))',
   green: 'hsl(var(--knock-green))',
-};
-
-// Reuse the map's disposition palette to colour installation spots.
-const STATUS_TO_DISPOSITION: Record<InstallStatus, DispositionType> = {
-  pending: 'no_answer', // grey
-  scheduled: 'appointment_set', // yellow
-  in_progress: 'interested', // yellow
-  needs_revisit: 'refused', // red
-  done: 'sold', // green
 };
 
 /** Rich, filterable team-wide installation statistics for managers. */
@@ -141,16 +132,17 @@ export function TechnicianTeamStats({
     .sort((a, b) => (a.when! < b.when! ? -1 : 1))
     .slice(0, 8);
 
-  const mapPoints: TurfKnock[] = rows
+  const mapPoints: InstallPoint[] = rows
     .filter((r) => r.lat != null && r.lng != null)
     .map((r) => ({
       id: r.id,
       lat: r.lat as number,
       lng: r.lng as number,
-      disposition: STATUS_TO_DISPOSITION[r.status],
+      status: r.status,
+      statusLabel: tStatus(r.status as InstallStatus),
+      title: r.title,
       contactId: r.contactId,
       name: r.contactName,
-      lifecycle: 'customer',
     }));
 
   return (
@@ -310,7 +302,7 @@ export function TechnicianTeamStats({
         <Card>
           <CardContent className="space-y-2 pt-4">
             <p className="text-sm font-semibold">{t('mapTitle')}</p>
-            <CoverageMap polygons={selectedPolys} knocks={mapPoints} />
+            <CoverageMap polygons={selectedPolys} knocks={[]} installs={mapPoints} />
           </CardContent>
         </Card>
       )}

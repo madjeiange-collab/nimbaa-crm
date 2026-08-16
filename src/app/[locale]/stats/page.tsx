@@ -13,7 +13,7 @@ import { Donut } from '@/components/charts/donut';
 import { CoverageMap } from '@/components/charts/coverage-map';
 import { Card, CardContent } from '@/components/ui/card';
 import { dispositionCssColor } from '@/lib/visits/dispositions';
-import type { TurfKnock } from '@/components/map/turf-map';
+import type { InstallPoint, TurfKnock } from '@/components/map/turf-map';
 import { TechnicianStats } from '@/components/stats/technician-stats';
 
 const DAILY_GOAL = 30; // admin-settable per rep in Phase 6
@@ -141,6 +141,32 @@ export default async function StatsPage({
   const polygons: number[][][][] = ((turfs ?? []) as { geojson?: { coordinates?: number[][][] } }[])
     .map((row) => row.geojson?.coordinates)
     .filter(Boolean) as number[][][][];
+
+  // Installations on the rep's own customers → 🔧 markers on the coverage map.
+  const { data: insRows } = await supabase
+    .from('installations')
+    .select('id, status, title, contact_id, contacts!inner(name, lat, lng, assigned_rep_id)')
+    .eq('contacts.assigned_rep_id', user.id)
+    .limit(500);
+  const tInstallStatus = await getTranslations('installation.status');
+  const coverageInstalls: InstallPoint[] = ((insRows ?? []) as unknown as {
+    id: string;
+    status: string;
+    title: string | null;
+    contact_id: string | null;
+    contacts: { name: string | null; lat: number | null; lng: number | null } | null;
+  }[])
+    .filter((i) => i.contacts?.lat != null && i.contacts?.lng != null)
+    .map((i) => ({
+      id: i.id,
+      lat: i.contacts!.lat as number,
+      lng: i.contacts!.lng as number,
+      status: i.status,
+      statusLabel: tInstallStatus(i.status as never),
+      title: i.title,
+      contactId: i.contact_id,
+      name: i.contacts?.name ?? null,
+    }));
 
   // À faire
   type Appt = { appointment_date: string; contact_id: string | null; contacts: { name: string | null; lifecycle: string; lat: number | null; lng: number | null; address: string | null } | null };
@@ -324,7 +350,7 @@ export default async function StatsPage({
         <Card>
           <CardContent className="space-y-2 pt-4">
             <p className="text-sm font-semibold">{t('coverage')}</p>
-            <CoverageMap polygons={polygons} knocks={coverageKnocks} />
+            <CoverageMap polygons={polygons} knocks={coverageKnocks} installs={coverageInstalls} />
           </CardContent>
         </Card>
       </main>
