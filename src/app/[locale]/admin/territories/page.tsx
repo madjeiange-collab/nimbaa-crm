@@ -17,10 +17,20 @@ export default async function AdminTerritoriesPage({
   const t = await getTranslations('admin');
 
   const supabase = await createClient();
-  const { data: existing } = await supabase
-    .from('territories')
-    .select('id, name, type')
-    .order('created_at', { ascending: false });
+  const [{ data: rows }, { data: geo }] = await Promise.all([
+    supabase
+      .from('territories')
+      .select('id, name, type, description')
+      .order('created_at', { ascending: false }),
+    supabase.rpc('territories_geojson'),
+  ]);
+  const geoById = new Map<string, unknown>(
+    ((geo ?? []) as { id: string; geojson: unknown }[]).map((g) => [g.id, g.geojson]),
+  );
+  const existing = (rows ?? []).map((r) => ({
+    ...r,
+    geojson: (geoById.get(r.id) ?? null) as import('geojson').Polygon | null,
+  }));
 
   return (
     <>
@@ -33,7 +43,7 @@ export default async function AdminTerritoriesPage({
           <ArrowLeft className="h-4 w-4" />
           {t('title')}
         </Link>
-        <TerritoryManager existing={existing ?? []} />
+        <TerritoryManager existing={existing} />
       </main>
     </>
   );

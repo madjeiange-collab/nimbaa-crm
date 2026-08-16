@@ -91,6 +91,7 @@ export interface Database {
           type: TerritoryType;
           manager_id: string | null;
           polygon: unknown | null;
+          description: string | null;
           created_at: string;
         };
         Insert: {
@@ -99,6 +100,7 @@ export interface Database {
           type: TerritoryType;
           manager_id?: string | null;
           polygon?: unknown | null;
+          description?: string | null;
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['territories']['Insert']>;
@@ -445,6 +447,7 @@ export interface Database {
           p_name: string;
           p_type: TerritoryType;
           p_geojson: Record<string, unknown>;
+          p_description?: string | null;
         };
         Returns: string;
       };

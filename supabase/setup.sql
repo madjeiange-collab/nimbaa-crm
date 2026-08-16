@@ -33,12 +33,13 @@ create table users (
 
 -- ============ TERRITORIES + JOINTURE ============
 create table territories (
-  id         uuid primary key default uuid_generate_v4(),
-  name       text not null,
-  type       territory_type not null,
-  manager_id uuid references users(id),
-  polygon    geography(POLYGON,4326),
-  created_at timestamptz not null default now()
+  id          uuid primary key default uuid_generate_v4(),
+  name        text not null,
+  type        territory_type not null,
+  manager_id  uuid references users(id),
+  polygon     geography(POLYGON,4326),
+  description text,
+  created_at  timestamptz not null default now()
 );
 create index territories_polygon_gix on territories using gist (polygon);
 
@@ -338,9 +339,10 @@ insert into pipeline_stages (name, sort_order, is_won, is_lost) values
 -- Crée un secteur à partir d'un polygone GeoJSON dessiné dans l'admin.
 -- Convertit le GeoJSON en geography(POLYGON,4326). Réservé aux admins.
 create or replace function create_territory(
-  p_name    text,
-  p_type    territory_type,
-  p_geojson jsonb
+  p_name        text,
+  p_type        territory_type,
+  p_geojson     jsonb,
+  p_description text default null
 ) returns uuid
   language plpgsql security definer set search_path = public, extensions as $$
 declare
@@ -350,11 +352,12 @@ begin
     raise exception 'Non autorisé' using errcode = '42501';
   end if;
 
-  insert into territories (name, type, polygon)
+  insert into territories (name, type, polygon, description)
   values (
     p_name,
     p_type,
-    st_setsrid(st_geomfromgeojson(p_geojson::text), 4326)::geography
+    st_setsrid(st_geomfromgeojson(p_geojson::text), 4326)::geography,
+    nullif(trim(p_description), '')
   )
   returning id into v_id;
 

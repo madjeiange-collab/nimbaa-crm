@@ -98,10 +98,35 @@ function DrawLayer({
   return null;
 }
 
+/**
+ * Shows the polygon of the territory being edited as a dashed overlay so the
+ * admin sees the current shape while redrawing. Not editable — drawing a new
+ * polygon replaces it on save.
+ */
+function PreviewLayer({ preview }: { preview: GeoJSONPolygon | null }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!preview) return;
+    const layer = L.geoJSON(preview, {
+      style: { color: '#b45309', weight: 2, dashArray: '6 6', fillOpacity: 0.08 },
+    });
+    layer.addTo(map);
+    map.fitBounds(layer.getBounds(), { padding: [24, 24] });
+    return () => {
+      map.removeLayer(layer);
+    };
+  }, [map, preview]);
+
+  return null;
+}
+
 export default function LeafletDrawMap({
   onChange,
+  preview = null,
 }: {
   onChange: (geometry: GeoJSONPolygon | null) => void;
+  preview?: GeoJSONPolygon | null;
 }) {
   const apiRef = useRef<DrawApi | null>(null);
   const [hasPolygon, setHasPolygon] = useState(false);
@@ -113,6 +138,7 @@ export default function LeafletDrawMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <PreviewLayer preview={preview} />
         <DrawLayer onChange={onChange} apiRef={apiRef} onDrawnChange={setHasPolygon} />
       </MapContainer>
 
