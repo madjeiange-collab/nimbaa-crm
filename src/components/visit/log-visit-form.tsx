@@ -290,34 +290,33 @@ export function LogVisitForm({
                 {t('unlink')}
               </button>
             </div>
-            {linkedDeals.length > 0 && (
-              <div>
-                <p className="mb-1 text-xs text-muted-foreground">{t('whichAffaire')}</p>
-                <div className="flex flex-wrap gap-1.5">
+            <div>
+              <p className="mb-1 text-xs text-muted-foreground">{t('whichAffaire')}</p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setDealId(null)}
+                  className={`min-h-touch rounded-full border px-3 py-1 text-sm font-medium ${
+                    dealId === null ? 'border-primary bg-primary/10 text-primary' : 'border-input bg-background'
+                  }`}
+                >
+                  + {t('newAffaire')}
+                </button>
+                {linkedDeals.map((d) => (
                   <button
+                    key={d.id}
                     type="button"
-                    onClick={() => setDealId(null)}
-                    className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                      dealId === null ? 'border-primary bg-primary/10 text-primary' : 'border-input bg-background'
+                    onClick={() => setDealId(d.id)}
+                    className={`min-h-touch rounded-full border px-3 py-1 text-sm font-medium ${
+                      dealId === d.id ? 'border-primary bg-primary/10 text-primary' : 'border-input bg-background'
                     }`}
                   >
-                    {t('newAffaire')}
+                    {d.title || t('affaire')}
+                    {d.status === 'won' ? ' ✓' : d.status === 'lost' ? ' ✗' : ''}
                   </button>
-                  {linkedDeals.map((d) => (
-                    <button
-                      key={d.id}
-                      type="button"
-                      onClick={() => setDealId(d.id)}
-                      className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                        dealId === d.id ? 'border-primary bg-primary/10 text-primary' : 'border-input bg-background'
-                      }`}
-                    >
-                      {d.title || t('affaire')}
-                    </button>
-                  ))}
-                </div>
+                ))}
               </div>
-            )}
+            </div>
           </div>
         ) : (
           <div className="space-y-2">
@@ -340,13 +339,14 @@ export function LogVisitForm({
             )}
 
             {!showPicker ? (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                className="w-full"
                 onClick={() => setShowPicker(true)}
-                className="text-sm font-medium text-primary underline"
               >
-                {t('linkExisting')}
-              </button>
+                🔍 {t('linkExisting')}
+              </Button>
             ) : (
               <div className="space-y-2">
                 <Input
