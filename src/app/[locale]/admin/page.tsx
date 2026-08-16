@@ -1,5 +1,5 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
-import { Map as MapIcon, Users, ListChecks, Upload, Ban, Wrench, Package, type LucideIcon } from 'lucide-react';
+import { Map as MapIcon, Users, ListChecks, Upload, Ban, Trophy, Wrench, Package, type LucideIcon } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { requireRole } from '@/lib/auth/session';
 import { AppHeader } from '@/components/shared/app-header';
@@ -55,6 +55,7 @@ export default async function AdminPage({
         <AdminLink href="/admin/products" icon={Package} label={t('products')} ready />
         <AdminLink href="/admin/protocol" icon={Wrench} label={t('protocol')} ready />
         <AdminLink href="/admin/users" icon={Users} label={t('users')} ready />
+        <AdminLink href="/admin/points" icon={Trophy} label={t('points')} ready />
         <AdminLink href="/admin/stages" icon={ListChecks} label={t('stages')} ready={false} />
         <AdminLink href="/admin/import" icon={Upload} label={t('import')} ready={false} />
         <AdminLink href="/admin/do-not-knock" icon={Ban} label={t('doNotKnock')} ready={false} />

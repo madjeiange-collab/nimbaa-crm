@@ -71,6 +71,18 @@
     "leaderboard": "Leaderboard",
     "leaderboardHint": "Who's ahead this week?"
   },
+  "adminPoints": {
+    "title": "Leaderboard points",
+    "hint": "Point value of each action. Applies to the leaderboard immediately.",
+    "visit": "Visit / door knocked",
+    "interested": "Interested lead",
+    "appointment": "Appointment set",
+    "dealWon": "Deal won",
+    "installDone": "Installation completed",
+    "revisit": "Revisit",
+    "saved": "Points saved",
+    "error": "Invalid values (0 to 1000)"
+  },
   "leaderboard": {
     "title": "Leaderboard",
     "subtitle": "This week's competition",
@@ -85,6 +97,9 @@
     "revisits": "Revisits",
     "open": "Open",
     "empty": "No points yet this period — game on!",
+    "recapTitle": "Daily recap",
+    "generateRecap": "Generate recap",
+    "recapError": "Failed — retry",
     "scoringTitle": "How points are calculated",
     "scoringReps": "Reps: visit ×{v} · interested ×{i} · appointment ×{r} · deal won ×{w}",
     "scoringTechs": "Technicians: completed install ×{d} · revisit ×{r}"
@@ -303,6 +318,7 @@
   "admin": {
     "title": "Administration",
     "users": "Users",
+    "points": "Leaderboard points",
     "territories": "Territories",
     "products": "Products",
     "protocol": "Installation protocol",

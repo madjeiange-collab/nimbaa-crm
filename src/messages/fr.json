@@ -71,6 +71,18 @@
     "leaderboard": "Classement",
     "leaderboardHint": "Qui est en tête cette semaine ?"
   },
+  "adminPoints": {
+    "title": "Points du classement",
+    "hint": "Valeur en points de chaque action. S'applique immédiatement au classement.",
+    "visit": "Visite / porte frappée",
+    "interested": "Prospect intéressé",
+    "appointment": "RDV obtenu",
+    "dealWon": "Affaire gagnée",
+    "installDone": "Installation terminée",
+    "revisit": "Revisite",
+    "saved": "Points enregistrés",
+    "error": "Valeurs invalides (0 à 1000)"
+  },
   "leaderboard": {
     "title": "Classement",
     "subtitle": "La compétition de la semaine",
@@ -85,6 +97,9 @@
     "revisits": "Revisites",
     "open": "En cours",
     "empty": "Pas encore de points sur cette période — à vous de jouer !",
+    "recapTitle": "Récap du jour",
+    "generateRecap": "Générer le récap",
+    "recapError": "Échec — réessayer",
     "scoringTitle": "Comment les points sont calculés",
     "scoringReps": "Commerciaux : visite ×{v} · intéressé ×{i} · RDV ×{r} · affaire gagnée ×{w}",
     "scoringTechs": "Techniciens : installation terminée ×{d} · revisite ×{r}"
@@ -303,6 +318,7 @@
   "admin": {
     "title": "Administration",
     "users": "Utilisateurs",
+    "points": "Points du classement",
     "territories": "Secteurs",
     "products": "Produits",
     "protocol": "Protocole d'installation",

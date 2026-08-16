@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/recap",
+      "schedule": "30 18 * * *"
+    }
+  ]
+}

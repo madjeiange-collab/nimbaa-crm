@@ -1,28 +1,16 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
-import { Trophy } from 'lucide-react';
+import { Trophy, Sparkles } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { requireUser } from '@/lib/auth/session';
 import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  computeBoards,
+  getPointConfig,
+  type BoardRow,
+} from '@/lib/leaderboard/score';
 import { AppHeader } from '@/components/shared/app-header';
 import { Card, CardContent } from '@/components/ui/card';
-
-// Transparent scoring — keep in sync with the legend in the i18n strings.
-const PTS_VISIT = 1;
-const PTS_INTERESTED = 3;
-const PTS_APPOINTMENT = 5;
-const PTS_DEAL_WON = 20;
-const PTS_INSTALL_DONE = 20;
-const PTS_REVISIT = 5;
-
-type Row = {
-  id: string;
-  name: string;
-  points: number;
-  a: number; // visits | installs done
-  b: number; // interested+RDV | revisits handled
-  c: number; // deals won | open jobs
-  fcfa: number;
-};
+import { GenerateRecapButton } from '@/components/leaderboard/generate-recap-button';
 
 function rankBadge(i: number): string {
   return i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
@@ -36,7 +24,7 @@ function Board({
   emptyText,
 }: {
   title: string;
-  rows: Row[];
+  rows: BoardRow[];
   meId: string;
   cols: [string, string, string];
   emptyText: string;
@@ -111,92 +99,23 @@ export default async function LeaderboardPage({
     since.setDate(1);
   }
   since.setHours(0, 0, 0, 0);
-  const sinceIso = since.toISOString();
 
   // Aggregated, non-sensitive board data (names + counts). Reps can't read
-  // colleagues' user rows under RLS, so this page aggregates server-side
-  // with the admin client and exposes only what the board shows.
+  // colleagues' user rows under RLS, so this aggregates with the admin client.
   const admin = createAdminClient();
-  const [{ data: users }, { data: visits }, { data: deals }, { data: installs }] =
-    await Promise.all([
-      admin.from('users').select('id, full_name, username, role, is_active'),
-      admin
-        .from('visits')
-        .select('rep_id, disposition, visit_type')
-        .gte('visited_at', sinceIso)
-        .limit(10000),
-      admin
-        .from('deals')
-        .select('assigned_rep_id, value_xof')
-        .eq('status', 'won')
-        .gte('won_at', sinceIso)
-        .limit(5000),
-      admin
-        .from('installations')
-        .select('installer_id, status, completed_at, next_visit_date')
-        .limit(5000),
-    ]);
-
-  const active = (users ?? []).filter((u) => u.is_active);
-  const nameOf = (u: { full_name: string | null; username: string | null; id: string }) =>
-    u.full_name || u.username || u.id.slice(0, 8);
-
-  // --- Commercials ---------------------------------------------------------
-  const repRows: Row[] = active
-    .filter((u) => u.role === 'rep' || u.role === 'manager')
-    .map((u) => {
-      const mine = (visits ?? []).filter(
-        (v) => v.rep_id === u.id && v.visit_type !== 'installation',
-      );
-      const interested = mine.filter((v) => v.disposition === 'interested').length;
-      const rdv = mine.filter((v) => v.disposition === 'appointment_set').length;
-      const myDeals = (deals ?? []).filter((d) => d.assigned_rep_id === u.id);
-      const fcfa = myDeals.reduce((s, d) => s + (d.value_xof ?? 0), 0);
-      return {
-        id: u.id,
-        name: nameOf(u),
-        a: mine.length,
-        b: interested + rdv,
-        c: myDeals.length,
-        fcfa,
-        points:
-          mine.length * PTS_VISIT +
-          interested * PTS_INTERESTED +
-          rdv * PTS_APPOINTMENT +
-          myDeals.length * PTS_DEAL_WON,
-      };
-    })
-    .filter((r) => r.points > 0 || r.a > 0)
-    .sort((x, y) => y.points - x.points || y.fcfa - x.fcfa);
-
-  // --- Technicians ---------------------------------------------------------
-  const techRows: Row[] = active
-    .filter((u) => u.role === 'technician')
-    .map((u) => {
-      const mine = (installs ?? []).filter((i) => i.installer_id === u.id);
-      const done = mine.filter(
-        (i) => i.status === 'done' && i.completed_at && i.completed_at >= sinceIso,
-      ).length;
-      const revisits = mine.filter(
-        (i) => i.status === 'needs_revisit' || (i.status === 'done' && i.next_visit_date),
-      ).length;
-      const open = mine.filter((i) =>
-        ['pending', 'scheduled', 'in_progress', 'needs_revisit'].includes(i.status),
-      ).length;
-      return {
-        id: u.id,
-        name: nameOf(u),
-        a: done,
-        b: revisits,
-        c: open,
-        fcfa: 0,
-        points: done * PTS_INSTALL_DONE + revisits * PTS_REVISIT,
-      };
-    })
-    .filter((r) => r.points > 0 || r.c > 0)
-    .sort((x, y) => y.points - x.points || y.a - x.a);
+  const pts = await getPointConfig(admin);
+  const [{ reps: repRows, techs: techRows }, { data: recap }] = await Promise.all([
+    computeBoards(admin, since.toISOString(), pts),
+    admin
+      .from('daily_recaps')
+      .select('day, content')
+      .order('day', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   const isTech = user.role === 'technician';
+  const isManager = user.role === 'manager' || user.role === 'admin';
   const boards = [
     <Board
       key="reps"
@@ -221,7 +140,27 @@ export default async function LeaderboardPage({
     <>
       <AppHeader title={t('title')} subtitle={t('subtitle')} />
       <main className="mx-auto max-w-3xl space-y-4 p-4">
-        {/* Period toggle */}
+        {/* Daily recap written by the assistant */}
+        {recap && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="pt-4">
+              <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                <Sparkles className="h-4 w-4 text-primary" />
+                {t('recapTitle')}
+                <span className="font-normal text-muted-foreground">
+                  · {new Date(recap.day + 'T12:00:00').toLocaleDateString('fr-FR', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                  })}
+                </span>
+              </p>
+              <p className="whitespace-pre-wrap text-sm">{recap.content}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Period toggle + manager recap trigger */}
         <div className="flex items-center justify-between">
           <div className="flex gap-1 rounded-lg bg-muted p-1">
             {(['week', 'month'] as const).map((p) => (
@@ -236,7 +175,7 @@ export default async function LeaderboardPage({
               </Link>
             ))}
           </div>
-          <Trophy className="h-5 w-5 text-brand-amber" />
+          {isManager ? <GenerateRecapButton /> : <Trophy className="h-5 w-5 text-brand-amber" />}
         </div>
 
         {boards}
@@ -245,8 +184,15 @@ export default async function LeaderboardPage({
         <Card>
           <CardContent className="pt-4 text-xs text-muted-foreground">
             <p className="mb-1 font-semibold text-foreground">{t('scoringTitle')}</p>
-            <p>{t('scoringReps', { v: PTS_VISIT, i: PTS_INTERESTED, r: PTS_APPOINTMENT, w: PTS_DEAL_WON })}</p>
-            <p>{t('scoringTechs', { d: PTS_INSTALL_DONE, r: PTS_REVISIT })}</p>
+            <p>
+              {t('scoringReps', {
+                v: pts.visit,
+                i: pts.interested,
+                r: pts.appointment,
+                w: pts.deal_won,
+              })}
+            </p>
+            <p>{t('scoringTechs', { d: pts.install_done, r: pts.revisit })}</p>
           </CardContent>
         </Card>
       </main>
