@@ -263,6 +263,24 @@ export const TOOL_DEFINITIONS: OpenAI.Responses.Tool[] = [
   {
     type: 'function' as const,
     strict: true,
+    name: 'monthly_stats',
+    description:
+      "Série mensuelle (mois calendaires) : pour chaque mois — visites, prospects engagés, ventes, nouveaux contacts, installations terminées, et CA pour un manager. LA référence pour comparer un mois à un autre ('juillet vs août'), analyser l'évolution sur plusieurs mois ou la saisonnalité.",
+    parameters: {
+      type: 'object',
+      properties: {
+        months: {
+          type: 'number',
+          description: 'Nombre de mois à couvrir, mois en cours inclus (6 par défaut si hésitation, max 12)',
+        },
+      },
+      required: ['months'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
     name: 'daily_trend',
     description:
       "Tendance jour par jour sur 30 jours : visites et ventes quotidiennes, pour dire si l'activité monte ou descend. Utiliser pour 'ça progresse ?', 'momentum', 'comparer les semaines'.",
@@ -1146,6 +1164,103 @@ async function leaderboardStandings(user: AppUser) {
   };
 }
 
+async function monthlyStats(db: Db, user: AppUser, args: { months: number }) {
+  const isManager = isManagerRole(user);
+  const months = Number.isFinite(args.months) && args.months > 0 ? Math.min(args.months, 12) : 6;
+  const start = new Date();
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
+  start.setMonth(start.getMonth() - (months - 1));
+  const sinceIso = start.toISOString();
+
+  let vq = db
+    .from('visits')
+    .select('rep_id, disposition, visited_at')
+    .neq('visit_type', 'installation')
+    .gte('visited_at', sinceIso)
+    .limit(10000);
+  if (!isManager) vq = vq.eq('rep_id', user.id);
+  let dq = db
+    .from('deals')
+    .select('assigned_rep_id, won_at, value_xof')
+    .eq('status', 'won')
+    .gte('won_at', sinceIso)
+    .limit(5000);
+  if (!isManager) dq = dq.eq('assigned_rep_id', user.id);
+  let cq = db.from('contacts').select('created_by, created_at').gte('created_at', sinceIso).limit(10000);
+  if (!isManager) cq = cq.eq('created_by', user.id);
+  let iq = db
+    .from('installations')
+    .select('installer_id, completed_at')
+    .eq('status', 'done')
+    .gte('completed_at', sinceIso)
+    .limit(5000);
+  if (user.role === 'technician') iq = iq.eq('installer_id', user.id);
+
+  const [{ data: vs, error }, { data: ds }, { data: cs }, { data: is }] = await Promise.all([
+    vq,
+    dq,
+    cq,
+    iq,
+  ]);
+  if (error) return { error: error.message };
+
+  // One bucket per calendar month, oldest → newest, empty months included.
+  const buckets = new Map<
+    string,
+    { visites: number; engages: number; ventes: number; ca: number; nouveaux_contacts: number; installations_terminees: number }
+  >();
+  for (let i = 0; i < months; i++) {
+    const d = new Date(start);
+    d.setMonth(start.getMonth() + i);
+    buckets.set(d.toISOString().slice(0, 7), {
+      visites: 0,
+      engages: 0,
+      ventes: 0,
+      ca: 0,
+      nouveaux_contacts: 0,
+      installations_terminees: 0,
+    });
+  }
+  const bucketOf = (iso: string | null) => (iso ? buckets.get(iso.slice(0, 7)) : undefined);
+
+  for (const v of vs ?? []) {
+    const b = bucketOf(v.visited_at);
+    if (!b) continue;
+    b.visites++;
+    if (['interested', 'appointment_set', 'sold'].includes(v.disposition ?? '')) b.engages++;
+  }
+  for (const d of ds ?? []) {
+    const b = bucketOf(d.won_at);
+    if (!b) continue;
+    b.ventes++;
+    b.ca += d.value_xof ?? 0;
+  }
+  for (const c of cs ?? []) {
+    const b = bucketOf(c.created_at);
+    if (b) b.nouveaux_contacts++;
+  }
+  for (const j of is ?? []) {
+    const b = bucketOf(j.completed_at);
+    if (b) b.installations_terminees++;
+  }
+
+  return {
+    scope: isManager ? 'équipe' : 'moi',
+    note: 'Mois calendaires ; le mois en cours est partiel.',
+    mois: [...buckets.entries()].map(([mois, b]) => ({
+      mois,
+      visites: b.visites,
+      engages: b.engages,
+      taux_engagement_pct: pctOf(b.engages, b.visites),
+      ventes: b.ventes,
+      ...(isManager ? { ca_fcfa: b.ca } : {}),
+      nouveaux_contacts: b.nouveaux_contacts,
+      installations_terminees: b.installations_terminees,
+    })),
+  };
+}
+
 async function dailyTrend(db: Db, user: AppUser) {
   const isManager = isManagerRole(user);
   const since = new Date();
@@ -1236,6 +1351,8 @@ export async function executeTool(
         return await lostAnalysis(db, user, args as { period: string });
       case 'leaderboard_standings':
         return await leaderboardStandings(user);
+      case 'monthly_stats':
+        return await monthlyStats(db, user, args as { months: number });
       case 'daily_trend':
         return await dailyTrend(db, user);
       case 'flagged_visits_summary':
