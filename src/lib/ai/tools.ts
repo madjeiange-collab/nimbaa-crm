@@ -342,7 +342,7 @@ async function productsList(db: Db) {
 
 async function territoriesList(db: Db) {
   const [{ data: terrs, error }, { data: links }] = await Promise.all([
-    db.from('territories').select('id, name, type, description').order('name'),
+    db.from('territories').select('id, name, type, description, is_active').order('name'),
     db.from('user_territories').select('territory_id, users(full_name)'),
   ]);
   if (error) return { error: error.message };
@@ -360,6 +360,7 @@ async function territoriesList(db: Db) {
       nom: t.name,
       type: t.type,
       zones: t.description,
+      actif: t.is_active,
       assigne_a: byTerr.get(t.id) ?? [],
     })),
   };

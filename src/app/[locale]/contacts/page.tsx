@@ -56,7 +56,7 @@ export default async function ContactsPage({
   const [{ data: contacts }, { data: stages }, { data: territories }] = await Promise.all([
     emptyMine ? Promise.resolve({ data: [] as never[] }) : contactsQuery,
     supabase.from('pipeline_stages').select('id, name'),
-    supabase.from('territories').select('id, name').order('name'),
+    supabase.from('territories').select('id, name').eq('is_active', true).order('name'),
   ]);
 
   const stageName = new Map<string, string>(

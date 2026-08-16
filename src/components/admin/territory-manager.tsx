@@ -3,10 +3,15 @@
 import { useMemo, useState, useTransition } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Pencil, Trash2 } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import type { Polygon } from 'geojson';
-import { saveTerritory, updateTerritory, deleteTerritory } from '@/lib/territories/actions';
+import {
+  saveTerritory,
+  updateTerritory,
+  deleteTerritory,
+  setTerritoryActive,
+} from '@/lib/territories/actions';
 import type { TerritoryType } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +33,7 @@ type ExistingTerritory = {
   name: string;
   type: TerritoryType;
   description: string | null;
+  is_active: boolean;
   geojson: Polygon | null;
 };
 
@@ -232,10 +238,17 @@ export function TerritoryManager({ existing }: { existing: ExistingTerritory[] }
                     key={terr.id}
                     className={`flex items-start justify-between gap-1 rounded-md px-1 py-0.5 ${
                       terr.id === editingId ? 'bg-accent' : ''
-                    }`}
+                    } ${terr.is_active ? '' : 'opacity-50'}`}
                   >
                     <span className="min-w-0">
-                      <span className="block truncate">{terr.name}</span>
+                      <span className="block truncate">
+                        {terr.name}
+                        {!terr.is_active && (
+                          <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
+                            {t('inactive')}
+                          </span>
+                        )}
+                      </span>
                       {terr.description && (
                         <span className="block truncate text-xs text-muted-foreground">
                           {terr.description}
@@ -246,6 +259,21 @@ export function TerritoryManager({ existing }: { existing: ExistingTerritory[] }
                       <span className="rounded bg-secondary px-2 py-0.5 text-xs uppercase text-secondary-foreground">
                         {terr.type}
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMessage(null);
+                          startTransition(async () => {
+                            await setTerritoryActive(terr.id, !terr.is_active);
+                            router.refresh();
+                          });
+                        }}
+                        aria-label={terr.is_active ? t('deactivate') : t('activate')}
+                        disabled={isPending}
+                        className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      >
+                        {terr.is_active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                      </button>
                       <button
                         type="button"
                         onClick={() => startEdit(terr)}

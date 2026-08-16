@@ -20,7 +20,7 @@ export default async function AdminTerritoriesPage({
   const [{ data: rows }, { data: geo }] = await Promise.all([
     supabase
       .from('territories')
-      .select('id, name, type, description')
+      .select('id, name, type, description, is_active')
       .order('created_at', { ascending: false }),
     supabase.rpc('territories_geojson'),
   ]);

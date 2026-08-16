@@ -94,6 +94,7 @@ export interface Database {
           manager_id: string | null;
           polygon: unknown | null;
           description: string | null;
+          is_active: boolean;
           created_at: string;
         };
         Insert: {
@@ -103,6 +104,7 @@ export interface Database {
           manager_id?: string | null;
           polygon?: unknown | null;
           description?: string | null;
+          is_active?: boolean;
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['territories']['Insert']>;

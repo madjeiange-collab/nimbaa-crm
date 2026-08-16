@@ -80,6 +80,21 @@ export async function updateTerritory(input: {
   return { ok: true };
 }
 
+/** Activates/deactivates a territory (hidden from maps & filters when off). */
+export async function setTerritoryActive(
+  id: string,
+  active: boolean,
+): Promise<TerritoryActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('territories')
+    .update({ is_active: active })
+    .eq('id', id);
+  if (error) return { ok: false, error: 'territorySaveError' };
+  revalidatePath('/[locale]/admin/territories', 'page');
+  return { ok: true };
+}
+
 /**
  * Deletes a territory. user_territories rows cascade; contacts keep a plain
  * FK, so a territory that still has contacts refuses to delete (23503) and
