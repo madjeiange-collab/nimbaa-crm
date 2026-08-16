@@ -14,6 +14,9 @@ export const AI_MODELS: Record<UserRole, string> = {
 
 export const TRANSCRIBE_MODEL = process.env.AI_MODEL_TRANSCRIBE ?? 'gpt-4o-mini-transcribe';
 
+export const TTS_MODEL = process.env.AI_MODEL_TTS ?? 'gpt-4o-mini-tts';
+export const TTS_VOICE = process.env.AI_TTS_VOICE ?? 'nova';
+
 /** Hard ceiling on questions per user per day (see ai_usage table). */
 export const DAILY_QUESTION_CAP = 25;
 
