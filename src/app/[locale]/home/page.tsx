@@ -19,6 +19,7 @@ import { computeBoards, getPointConfig } from '@/lib/leaderboard/score';
 import { AppHeader } from '@/components/shared/app-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { CoverageMap } from '@/components/charts/coverage-map';
+import { GenerateRecapButton } from '@/components/leaderboard/generate-recap-button';
 import type { InstallPoint, TurfKnock } from '@/components/map/turf-map';
 
 function HomeCard({
@@ -146,12 +147,18 @@ export default async function HomePage({
     .limit(1000);
   if (isTechnician) installsQ = installsQ.eq('installer_id', user.id);
 
-  const [{ reps, techs }, { data: turfs }, { data: knockRows }, { data: installRows }] =
+  const [{ reps, techs }, { data: turfs }, { data: knockRows }, { data: installRows }, { data: recap }] =
     await Promise.all([
       getPointConfig(admin).then((pts) => computeBoards(admin, monday.toISOString(), pts)),
       supabase.rpc('territories_geojson'), // RLS: rep → own turfs, manager → all
       isTechnician ? Promise.resolve({ data: [] as never[] }) : visitsQ,
       installsQ,
+      admin
+        .from('daily_recaps')
+        .select('day, content')
+        .order('day', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ]);
 
   const polygons: number[][][][] = ((turfs ?? []) as { geojson?: { coordinates?: number[][][] } }[])
@@ -318,8 +325,36 @@ export default async function HomePage({
             )}
           </div>
 
-          {/* ---- Right: this week's board + coverage map ---- */}
+          {/* ---- Right: daily AI recap + this week's board + coverage map ---- */}
           <div className="space-y-4">
+            {(recap || isManager) && (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardContent className="pt-4">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+                      <Sparkles className="h-4 w-4 shrink-0 text-primary" />
+                      {tBoard('recapTitle')}
+                      {recap && (
+                        <span className="truncate font-normal text-muted-foreground">
+                          · {new Date(recap.day + 'T12:00:00').toLocaleDateString('fr-FR', {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                          })}
+                        </span>
+                      )}
+                    </p>
+                    {isManager && <GenerateRecapButton />}
+                  </div>
+                  {recap ? (
+                    <p className="whitespace-pre-wrap text-sm">{recap.content}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{tBoard('empty')}</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardContent className="space-y-4 pt-4">
                 <div className="flex items-center justify-between">
