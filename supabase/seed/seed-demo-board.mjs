@@ -35,12 +35,12 @@ const db = createClient(URL_, SERVICE_KEY, { auth: { persistSession: false } });
 
 // --- Démo : personnel --------------------------------------------------------
 const STAFF = [
-  { username: 'awa', full_name: 'Awa Diabaté', role: 'rep', zone: [-4.07, 5.21, -3.88, 5.305] },   // Sud
-  { username: 'kofi', full_name: 'Kofi Mensah', role: 'rep', zone: [-4.12, 5.36, -3.96, 5.52] },   // Nord
-  { username: 'fatou', full_name: 'Fatou Koné', role: 'rep', zone: [-3.99, 5.29, -3.78, 5.42] },   // Est
-  { username: 'yao', full_name: "Yao N'Guessan", role: 'rep', zone: [-4.2, 5.27, -4.03, 5.43] },   // Ouest
-  { username: 'moussa', full_name: 'Moussa Traoré', role: 'technician', zone: null },
-  { username: 'aicha', full_name: 'Aïcha Bamba', role: 'technician', zone: null },
+  { username: 'awa', full_name: 'Awa Diabaté', role: 'rep', zone: [-4.07, 5.21, -3.88, 5.305], secteur: 'Abidjan Sud' },
+  { username: 'kofi', full_name: 'Kofi Mensah', role: 'rep', zone: [-4.12, 5.36, -3.96, 5.52], secteur: 'Abidjan Nord' },
+  { username: 'fatou', full_name: 'Fatou Koné', role: 'rep', zone: [-3.99, 5.29, -3.78, 5.42], secteur: 'Abidjan Est' },
+  { username: 'yao', full_name: "Yao N'Guessan", role: 'rep', zone: [-4.2, 5.27, -4.03, 5.43], secteur: 'Abidjan Ouest' },
+  { username: 'moussa', full_name: 'Moussa Traoré', role: 'technician', zone: null, secteur: null },
+  { username: 'aicha', full_name: 'Aïcha Bamba', role: 'technician', zone: null, secteur: null },
 ];
 
 const BUSINESS_NAMES = [
@@ -109,6 +109,16 @@ async function main() {
   const repIds = STAFF.filter((s) => s.role === 'rep').map((s) => ids[s.username]);
   const techIds = STAFF.filter((s) => s.role === 'technician').map((s) => ids[s.username]);
   const demoIds = [...repIds, ...techIds];
+
+  // 1b. Assign each rep their home secteur (keeps flagged_visits honest).
+  const { data: allTerrs } = await db.from('territories').select('id, name');
+  for (const s of STAFF.filter((x) => x.secteur)) {
+    const terr = allTerrs?.find((t) => t.name === s.secteur);
+    if (!terr) continue;
+    await db
+      .from('user_territories')
+      .upsert({ user_id: ids[s.username], territory_id: terr.id }, { onConflict: 'user_id,territory_id' });
+  }
 
   // 2. Wipe previous demo ACTIVITY (accounts stay).
   await db.from('visits').delete().in('rep_id', demoIds);
