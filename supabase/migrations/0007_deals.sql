@@ -57,7 +57,12 @@ insert into deals (contact_id, title, value_xof, pipeline_stage_id, status, need
 select c.id,
        (select i.title from installations i where i.contact_id = c.id and i.title is not null limit 1),
        c.value_xof, c.pipeline_stage_id,
-       case when ps.is_won then 'won' when ps.is_lost then 'lost' else 'open' end::deal_status,
+       case
+         when ps.is_won or c.lifecycle = 'customer'
+              or exists (select 1 from installations i where i.contact_id = c.id) then 'won'
+         when ps.is_lost or c.lifecycle = 'lost' then 'lost'
+         else 'open'
+       end::deal_status,
        exists (select 1 from installations i where i.contact_id = c.id),
        c.lost_reason, c.assigned_rep_id, c.converted_at, c.created_by, c.created_at
 from contacts c
