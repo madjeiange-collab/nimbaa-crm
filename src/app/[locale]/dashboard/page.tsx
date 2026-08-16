@@ -7,8 +7,8 @@ import {
   DashboardOverview,
   type DashboardOverviewProps,
 } from '@/components/dashboard/dashboard-overview';
-import { InstallationsSummary } from '@/components/dashboard/installations-summary';
-import { loadTechnicianStats } from '@/lib/installations/dashboard-stats';
+import { DashboardTabs } from '@/components/dashboard/dashboard-tabs';
+import { TechnicianTeamStats } from '@/components/stats/technician-team-stats';
 
 export default async function DashboardPage({
   params,
@@ -24,7 +24,7 @@ export default async function DashboardPage({
   const now = new Date();
   const d30 = new Date(now.getTime() - 30 * 864e5);
 
-  const [{ data: users }, { data: visits }, { data: contacts }, { data: flagged }, { data: turfs }, { data: coverage }, techStats] =
+  const [{ data: users }, { data: visits }, { data: contacts }, { data: flagged }, { data: turfs }, { data: coverage }] =
     await Promise.all([
       supabase.from('users').select('id, full_name, username, role'),
       supabase
@@ -43,7 +43,6 @@ export default async function DashboardPage({
         .eq('visit_type', 'd2d_knock')
         .not('lat', 'is', null)
         .limit(2000),
-      loadTechnicianStats(supabase),
     ]);
 
   const reps: DashboardOverviewProps['reps'] = (users ?? []).map(
@@ -62,16 +61,20 @@ export default async function DashboardPage({
   return (
     <>
       <AppHeader title={t('title')} />
-      <DashboardOverview
-        nowIso={now.toISOString()}
-        reps={reps}
-        territories={territories}
-        visits={(visits ?? []) as DashboardOverviewProps['visits']}
-        contacts={(contacts ?? []) as DashboardOverviewProps['contacts']}
-        flagged={(flagged ?? []) as DashboardOverviewProps['flagged']}
-        coverage={(coverage ?? []) as unknown as DashboardOverviewProps['coverage']}
+      <DashboardTabs
+        commercial={
+          <DashboardOverview
+            nowIso={now.toISOString()}
+            reps={reps}
+            territories={territories}
+            visits={(visits ?? []) as DashboardOverviewProps['visits']}
+            contacts={(contacts ?? []) as DashboardOverviewProps['contacts']}
+            flagged={(flagged ?? []) as DashboardOverviewProps['flagged']}
+            coverage={(coverage ?? []) as unknown as DashboardOverviewProps['coverage']}
+          />
+        }
+        technician={<TechnicianTeamStats />}
       />
-      <InstallationsSummary {...techStats} />
     </>
   );
 }

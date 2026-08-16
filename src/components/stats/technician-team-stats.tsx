@@ -143,7 +143,7 @@ export async function TechnicianTeamStats() {
     }));
 
   return (
-    <main className="mx-auto max-w-3xl space-y-4 p-4">
+    <div className="space-y-4">
       {/* KPI tiles (drill down to the queue) */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <StatTile label={t('kpiPending')} value={pending} accent="primary" href="/installs" />
@@ -282,6 +282,6 @@ export async function TechnicianTeamStats() {
           </CardContent>
         </Card>
       )}
-    </main>
+    </div>
   );
 }

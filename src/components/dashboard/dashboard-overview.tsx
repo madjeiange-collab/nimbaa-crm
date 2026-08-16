@@ -164,7 +164,7 @@ export function DashboardOverview({
   ];
 
   return (
-    <main className="mx-auto max-w-3xl space-y-4 p-4">
+    <div className="space-y-4">
       {/* Global filters — searchable multi-select for reps and territories */}
       <div className="flex flex-col gap-2 sm:flex-row">
         <RepMultiFilter reps={reps} selected={repIds} onChange={setRepIds} />
@@ -246,6 +246,6 @@ export function DashboardOverview({
           )}
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

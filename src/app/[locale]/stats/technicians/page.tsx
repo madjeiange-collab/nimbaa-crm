@@ -16,7 +16,9 @@ export default async function TechniciansStatsPage({
   return (
     <>
       <AppHeader title={t('techStatsTitle')} />
-      <TechnicianTeamStats />
+      <main className="mx-auto max-w-3xl p-4">
+        <TechnicianTeamStats />
+      </main>
     </>
   );
 }

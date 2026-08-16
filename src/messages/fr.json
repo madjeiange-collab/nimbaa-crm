@@ -383,6 +383,8 @@
   },
   "dashboard": {
     "title": "Espace manager",
+    "tabCommercial": "Commerciaux",
+    "tabTechnician": "Techniciens",
     "overview": "Vue d'ensemble",
     "pipeline": "Pipeline",
     "photos": "Audit photos",

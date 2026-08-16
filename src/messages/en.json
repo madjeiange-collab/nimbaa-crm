@@ -383,6 +383,8 @@
   },
   "dashboard": {
     "title": "Manager area",
+    "tabCommercial": "Commercials",
+    "tabTechnician": "Technicians",
     "overview": "Overview",
     "pipeline": "Pipeline",
     "photos": "Photo audit",
