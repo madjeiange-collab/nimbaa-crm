@@ -205,7 +205,7 @@ function spotIcon(spot: Spot): L.DivIcon {
   });
 }
 
-const FOCUS_RADIUS_KM = 50;
+const FOCUS_RADIUS_KM = 15;
 
 function median(nums: number[]): number {
   if (nums.length === 0) return 0;

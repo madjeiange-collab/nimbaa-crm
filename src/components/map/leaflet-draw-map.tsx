@@ -8,8 +8,43 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import type { Polygon as GeoJSONPolygon } from 'geojson';
 
-// Abidjan — default map center.
+// Abidjan — default map center (fallback when location is denied).
 const ABIDJAN: [number, number] = [5.348, -4.008];
+const FOCUS_RADIUS_KM = 15;
+
+/**
+ * Opens the map on the device's position (~15 km view), like every other map
+ * in the app. Falls back to the Abidjan default when location is unavailable.
+ * Runs once; the territory-preview fitBounds (edit mode) still takes over.
+ */
+function GeoFocus() {
+  const map = useMap();
+  const done = useRef(false);
+
+  useEffect(() => {
+    if (done.current) return;
+    done.current = true;
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const latDelta = FOCUS_RADIUS_KM / 111;
+        const lngDelta =
+          FOCUS_RADIUS_KM / (111 * Math.max(0.1, Math.cos((latitude * Math.PI) / 180)));
+        map.fitBounds(
+          L.latLngBounds(
+            [latitude - latDelta, longitude - lngDelta],
+            [latitude + latDelta, longitude + lngDelta],
+          ),
+        );
+      },
+      () => undefined, // denied → keep the Abidjan default
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 },
+    );
+  }, [map]);
+
+  return null;
+}
 
 type DrawApi = { start: () => void; clear: () => void };
 
@@ -138,6 +173,7 @@ export default function LeafletDrawMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <GeoFocus />
         <PreviewLayer preview={preview} />
         <DrawLayer onChange={onChange} apiRef={apiRef} onDrawnChange={setHasPolygon} />
       </MapContainer>
