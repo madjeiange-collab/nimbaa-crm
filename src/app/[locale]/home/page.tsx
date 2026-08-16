@@ -62,6 +62,16 @@ export default async function HomePage({
     <>
       <AppHeader title={t('greeting', { name: displayName })} />
       <main className="mx-auto max-w-3xl space-y-3 p-4">
+        {/* Customer base first — the rep's book of business. */}
+        {user.can_do_b2b && (
+          <HomeCard
+            href="/contacts"
+            icon={Users}
+            title={t('myContacts')}
+            hint={t('myContactsHint')}
+          />
+        )}
+
         {/* Primary field action — always available to any rep. */}
         {(user.can_do_b2b || user.can_do_d2d) && (
           <HomeCard
@@ -85,15 +95,6 @@ export default async function HomePage({
 
         {user.can_do_d2d && (
           <HomeCard href="/turf" icon={MapIcon} title={t('myTurf')} hint={t('myTurfHint')} />
-        )}
-
-        {user.can_do_b2b && (
-          <HomeCard
-            href="/contacts"
-            icon={Users}
-            title={t('myContacts')}
-            hint={t('myContactsHint')}
-          />
         )}
 
         {(user.can_do_b2b || user.can_do_d2d) && (
