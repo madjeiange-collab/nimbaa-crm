@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server';
 import { StatTile } from '@/components/charts/stat-tile';
 import { BarDays } from '@/components/charts/bar-days';
 import { Donut } from '@/components/charts/donut';
+import { CoverageMap } from '@/components/charts/coverage-map';
+import type { InstallPoint } from '@/components/map/turf-map';
 import { Card, CardContent } from '@/components/ui/card';
 import { INSTALL_STATUSES } from '@/lib/installations/protocol';
 import type { InstallStatus } from '@/types/database';
@@ -17,7 +19,7 @@ interface JobRow {
   scheduled_date: string | null;
   next_visit_date: string | null;
   contact_id: string | null;
-  contacts: { name: string | null } | null;
+  contacts: { name: string | null; lat: number | null; lng: number | null } | null;
 }
 
 const STATUS_CSS: Record<string, string> = {
@@ -34,11 +36,29 @@ export async function TechnicianStats({ userId }: { userId: string }) {
   const tS = await getTranslations('stats');
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from('installations')
-    .select('id, title, status, completed_at, scheduled_date, next_visit_date, contact_id, contacts(name)')
-    .eq('installer_id', userId);
+  const [{ data }, { data: turfs }] = await Promise.all([
+    supabase
+      .from('installations')
+      .select('id, title, status, completed_at, scheduled_date, next_visit_date, contact_id, contacts(name, lat, lng)')
+      .eq('installer_id', userId),
+    supabase.rpc('territories_geojson'), // RLS-scoped (usually empty for techs)
+  ]);
   const jobs = (data ?? []) as unknown as JobRow[];
+  const polygons: number[][][][] = ((turfs ?? []) as { geojson?: { coordinates?: number[][][] } }[])
+    .map((row) => row.geojson?.coordinates)
+    .filter(Boolean) as number[][][][];
+  const mapPoints: InstallPoint[] = jobs
+    .filter((j) => j.contacts?.lat != null && j.contacts?.lng != null)
+    .map((j) => ({
+      id: j.id,
+      lat: j.contacts!.lat as number,
+      lng: j.contacts!.lng as number,
+      status: j.status,
+      statusLabel: tStatus(j.status),
+      title: j.title,
+      contactId: j.contact_id,
+      name: j.contacts?.name ?? null,
+    }));
 
   const now = new Date();
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -174,6 +194,16 @@ export async function TechnicianStats({ userId }: { userId: string }) {
           <CardContent className="space-y-3 pt-4">
             <p className="text-sm font-semibold">{t('statusBreakdown')}</p>
             <Donut segments={donutSegs} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* My installations map (status-coloured markers) */}
+      {mapPoints.length > 0 && (
+        <Card>
+          <CardContent className="space-y-2 pt-4">
+            <p className="text-sm font-semibold">{t('mapTitle')}</p>
+            <CoverageMap polygons={polygons} knocks={[]} installs={mapPoints} />
           </CardContent>
         </Card>
       )}
