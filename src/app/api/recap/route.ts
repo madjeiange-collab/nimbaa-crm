@@ -415,8 +415,11 @@ export async function GET(request: Request) {
     ]);
 
     const content = publicRes.output_text?.trim();
-    const managerContent = managerRes.output_text?.trim();
-    if (!content || !managerContent) throw new Error('empty recap');
+    const managerBrief = managerRes.output_text?.trim();
+    if (!content || !managerBrief) throw new Error('empty recap');
+
+    // Managers read the same high-level story first, then the full detail.
+    const managerContent = `${content}\n\n────── Détail ──────\n\n${managerBrief}`;
 
     const day = new Date().toISOString().slice(0, 10);
     const [{ error: e1 }, { error: e2 }] = await Promise.all([
