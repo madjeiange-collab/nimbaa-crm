@@ -1,7 +1,7 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { ArrowUp, ArrowDown, Minus, CalendarClock, AlertTriangle, RotateCcw, Navigation, KanbanSquare, Images } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { directionsUrl } from '@/lib/geo';
+import { directionsUrl, pointInAnyPolygon } from '@/lib/geo';
 import { requireUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { AppHeader } from '@/components/shared/app-header';
@@ -16,25 +16,29 @@ import { Card, CardContent } from '@/components/ui/card';
 import { dispositionCssColor } from '@/lib/visits/dispositions';
 import type { InstallPoint, TurfKnock } from '@/components/map/turf-map';
 import { TechnicianStats } from '@/components/stats/technician-stats';
+import { StatsFilters } from '@/components/stats/stats-filters';
 
 const DEFAULT_DAILY_GOAL = 30; // fallback when neither user nor app setting has one
 
 export default async function StatsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ terr?: string; type?: string; tag?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const user = await requireUser();
   const t = await getTranslations('stats');
   const tDash = await getTranslations('dashboard');
+  const tHome = await getTranslations('home');
 
   // Technicians get an installation-focused statistics view.
   if (user.role === 'technician') {
     return (
       <>
-        <AppHeader title={t('title')} />
+        <AppHeader title={tHome('techStats')} />
         <TechnicianStats userId={user.id} />
       </>
     );
@@ -67,7 +71,7 @@ export default async function StatsPage({
         .select('id, visited_at, disposition, lat, lng, contact_id, contacts(name, lifecycle)')
         .eq('rep_id', user.id)
         .gte('visited_at', d30.toISOString()),
-      supabase.from('contacts').select('lifecycle').eq('assigned_rep_id', user.id),
+      supabase.from('contacts').select('id, lifecycle, territory_id').eq('assigned_rep_id', user.id),
       supabase
         .from('visits')
         .select('appointment_date, contact_id, contacts(name, lifecycle, lat, lng, address)')
@@ -85,7 +89,7 @@ export default async function StatsPage({
       supabase.rpc('territories_geojson'),
       supabase
         .from('deals')
-        .select('pipeline_stage_id, status, value_xof')
+        .select('contact_id, pipeline_stage_id, status, value_xof, business_type, tags')
         .eq('assigned_rep_id', user.id)
         .limit(2000),
       supabase
@@ -108,6 +112,46 @@ export default async function StatsPage({
         ? globalGoal
         : DEFAULT_DAILY_GOAL;
 
+  // --- Manager-style filters (secteur / type d'activité / tag), URL-driven --
+  const sp = await searchParams;
+  const terrRows = ((turfs ?? []) as {
+    id: string;
+    name: string;
+    geojson?: { coordinates?: number[][][] };
+  }[]).filter((r) => r.geojson?.coordinates);
+  const terrOptions = terrRows.map((r) => ({ id: r.id, name: r.name }));
+  const dealRows = (myDeals ?? []) as {
+    contact_id: string | null;
+    pipeline_stage_id: string | null;
+    status: 'open' | 'won' | 'lost';
+    value_xof: number | null;
+    business_type: string | null;
+    tags: string[] | null;
+  }[];
+  const typeOptions = [
+    ...new Set(dealRows.map((d) => d.business_type).filter((x): x is string => !!x)),
+  ].sort();
+  const tagOptions = [...new Set(dealRows.flatMap((d) => d.tags ?? []))].sort();
+
+  const terrSel = terrRows.find((r) => r.id === sp.terr) ?? null;
+  const typeSel = typeOptions.includes(sp.type ?? '') ? (sp.type as string) : '';
+  const tagSel = tagOptions.includes(sp.tag ?? '') ? (sp.tag as string) : '';
+  const branchActive = !!typeSel || !!tagSel;
+  const matchDeal = (d: (typeof dealRows)[number]) =>
+    (!typeSel || d.business_type === typeSel) && (!tagSel || (d.tags ?? []).includes(tagSel));
+  const branchContacts = new Set(
+    dealRows.filter((d) => matchDeal(d) && d.contact_id).map((d) => d.contact_id as string),
+  );
+  const inBranch = (cid: string | null) => !branchActive || (!!cid && branchContacts.has(cid));
+  const terrPolys = terrSel ? [terrSel.geojson!.coordinates as number[][][]] : [];
+  const inTerrPt = (lat: number | null, lng: number | null) =>
+    !terrSel || (lat != null && lng != null && pointInAnyPolygon(lat, lng, terrPolys));
+
+  const contactsAll = (contacts ?? []) as { id: string; lifecycle: string; territory_id: string | null }[];
+  const terrContactIds = terrSel
+    ? new Set(contactsAll.filter((c) => c.territory_id === terrSel.id).map((c) => c.id))
+    : null;
+
   const funnelStages = ((stageRows ?? []) as {
     id: string;
     name: string;
@@ -117,13 +161,14 @@ export default async function StatsPage({
   }[])
     .filter((s) => s.is_active || s.is_won || s.is_lost)
     .map((s) => ({ id: s.id, name: s.name, isWon: s.is_won, isLost: s.is_lost }));
-  const funnelDeals = ((myDeals ?? []) as {
-    pipeline_stage_id: string | null;
-    status: 'open' | 'won' | 'lost';
-    value_xof: number | null;
-  }[]).map((d) => ({ stageId: d.pipeline_stage_id, status: d.status, valueXof: d.value_xof }));
+  const funnelDeals = dealRows
+    .filter(
+      (d) =>
+        matchDeal(d) && (!terrContactIds || (d.contact_id && terrContactIds.has(d.contact_id))),
+    )
+    .map((d) => ({ stageId: d.pipeline_stage_id, status: d.status, valueXof: d.value_xof }));
 
-  const vs = (visits ?? []) as unknown as {
+  const vsAll = (visits ?? []) as unknown as {
     id: string;
     visited_at: string;
     disposition: string | null;
@@ -132,6 +177,7 @@ export default async function StatsPage({
     contact_id: string | null;
     contacts: { name: string | null; lifecycle: string } | null;
   }[];
+  const vs = vsAll.filter((v) => inTerrPt(v.lat, v.lng) && inBranch(v.contact_id));
   const inWin = (from: Date, to?: Date) =>
     vs.filter((v) => {
       const at = new Date(v.visited_at);
@@ -149,7 +195,9 @@ export default async function StatsPage({
   const appointments = dispCount(['appointment_set', 'sold']);
   const sold = dispCount(['sold']);
 
-  const cs = (contacts ?? []) as { lifecycle: string }[];
+  const cs = contactsAll.filter(
+    (c) => (!terrSel || c.territory_id === terrSel.id) && inBranch(c.id),
+  );
   const leads = cs.filter((c) => c.lifecycle === 'lead').length;
   const customers = cs.filter((c) => c.lifecycle === 'customer').length;
   const lost = cs.filter((c) => c.lifecycle === 'lost').length;
@@ -238,7 +286,7 @@ export default async function StatsPage({
 
   return (
     <>
-      <AppHeader title={t('title')} />
+      <AppHeader title={tHome('commercialStats')} />
       <main className="mx-auto max-w-3xl space-y-4 p-4">
         {/* Drill-downs up top, like the manager area: my pipeline + my photos */}
         <div className="grid grid-cols-2 gap-2">
@@ -255,6 +303,14 @@ export default async function StatsPage({
             </Card>
           </Link>
         </div>
+
+        {/* Manager-style filters: secteur, type d'activité, tag */}
+        <StatsFilters
+          territories={terrOptions}
+          types={typeOptions}
+          tags={tagOptions}
+          current={{ terr: terrSel?.id ?? '', type: typeSel, tag: tagSel }}
+        />
 
         {/* Goal ring */}
         <Card>
