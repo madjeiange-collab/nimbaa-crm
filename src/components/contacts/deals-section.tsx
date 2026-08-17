@@ -13,6 +13,8 @@ import {
 import { addContactPerson, assignDealPerson } from '@/lib/contacts/people-actions';
 import { PhoneInput } from '@/components/shared/phone-input';
 import { RoleSelect, DEFAULT_ROLE } from '@/components/shared/role-select';
+import { BusinessTypeSelect } from '@/components/shared/business-type-select';
+import { TagsInput } from '@/components/shared/tags-input';
 import { assignInstaller } from '@/lib/installations/actions';
 import { INSTALL_STATUS_BADGE, INSTALL_STATUS_BY_KEY } from '@/lib/installations/protocol';
 import type { DealStatus, InstallStatus } from '@/types/database';
@@ -41,6 +43,8 @@ export interface DealCard {
   pipelineStageId: string | null;
   needsInstallation: boolean;
   contactPersonId: string | null;
+  businessType: string | null;
+  tags: string[];
   installs: DealInstall[];
 }
 
@@ -312,6 +316,27 @@ function DealRow({
               </option>
             ))}
           </select>
+        </div>
+      </div>
+
+      {/* Business type + free tags — categorization for later analysis */}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label className="text-xs">{t('businessType')}</Label>
+          <BusinessTypeSelect
+            value={deal.businessType}
+            onCommit={(type) => run(() => updateDeal(deal.id, { businessType: type }))}
+            emptyLabel={t('noBusinessType')}
+            otherPlaceholder={t('businessTypeOther')}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">{t('tags')}</Label>
+          <TagsInput
+            tags={deal.tags}
+            onCommit={(tags) => run(() => updateDeal(deal.id, { tags }))}
+            placeholder={t('tagsPlaceholder')}
+          />
         </div>
       </div>
 

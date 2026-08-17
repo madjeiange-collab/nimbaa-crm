@@ -142,6 +142,8 @@ export async function updateDeal(
     value?: number | null;
     productId?: string | null;
     needsInstallation?: boolean;
+    businessType?: string | null;
+    tags?: string[];
   },
 ): Promise<ActionResult> {
   const supabase = await createClient();
@@ -159,6 +161,10 @@ export async function updateDeal(
   if (fields.title !== undefined) patch.title = fields.title?.trim() || null;
   if (fields.value !== undefined) patch.value_xof = fields.value;
   if (fields.needsInstallation !== undefined) patch.needs_installation = fields.needsInstallation;
+  if (fields.businessType !== undefined) patch.business_type = fields.businessType?.trim() || null;
+  if (fields.tags !== undefined) {
+    patch.tags = fields.tags.map((t) => t.trim()).filter(Boolean).slice(0, 12);
+  }
   // Choosing a product snapshots its price as the deal value.
   if (fields.productId !== undefined) {
     if (fields.productId) {

@@ -178,6 +178,18 @@ export default async function ContactDetailPage({
     contact_person_id: string | null;
     installations?: InstRow[];
   };
+  // Type + tags fetched separately: pre-0019 DB degrades to empty values
+  // instead of breaking the whole deals list.
+  const { data: dealMetaRows } = await supabase
+    .from('deals')
+    .select('id, business_type, tags')
+    .eq('contact_id', id);
+  const dealMeta = new Map(
+    ((dealMetaRows ?? []) as { id: string; business_type: string | null; tags: string[] | null }[]).map(
+      (m) => [m.id, m],
+    ),
+  );
+
   const deals: DealCard[] = ((dealRows ?? []) as unknown as DealRow[]).map((d) => ({
     id: d.id,
     title: d.title,
@@ -187,6 +199,8 @@ export default async function ContactDetailPage({
     pipelineStageId: d.pipeline_stage_id,
     needsInstallation: d.needs_installation,
     contactPersonId: d.contact_person_id ?? null,
+    businessType: dealMeta.get(d.id)?.business_type ?? null,
+    tags: dealMeta.get(d.id)?.tags ?? [],
     installs: (d.installations ?? []).map((i) => ({
       id: i.id,
       status: i.status,
