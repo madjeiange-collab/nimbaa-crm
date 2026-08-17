@@ -141,7 +141,8 @@
     "status_pending": "En attente",
     "status_paid": "Payée",
     "status_expired": "Expirée",
-    "payLine": "Payer"
+    "payLine": "Payer",
+    "personFilterHint": "Touchez une personne pour voir son détail ci-dessous (bouton « Payer » sur chaque ligne acquise) ; touchez à nouveau pour tout réafficher."
   },
   "dealFunnel": {
     "title": "Affaires par étape",

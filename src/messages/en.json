@@ -141,7 +141,8 @@
     "status_pending": "Pending",
     "status_paid": "Paid",
     "status_expired": "Expired",
-    "payLine": "Pay"
+    "payLine": "Pay",
+    "personFilterHint": "Tap a person to see their detail below (a \"Pay\" button sits on every earned line); tap again to show everyone."
   },
   "dealFunnel": {
     "title": "Deals by stage",

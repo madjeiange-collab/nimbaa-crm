@@ -68,9 +68,9 @@ export function CommissionsPanel({
 
   // Per-person payable breakdown (sale vs install).
   const byPerson = useMemo(() => {
-    const m = new Map<string, { name: string; role: string; sale: number; install: number }>();
+    const m = new Map<string, { repId: string; name: string; role: string; sale: number; install: number }>();
     for (const r of earned) {
-      const cur = m.get(r.repId) ?? { name: r.name, role: r.role, sale: 0, install: 0 };
+      const cur = m.get(r.repId) ?? { repId: r.repId, name: r.name, role: r.role, sale: 0, install: 0 };
       cur[r.kind === 'install' ? 'install' : 'sale'] += r.amount;
       m.set(r.repId, cur);
     }
@@ -114,13 +114,29 @@ export function CommissionsPanel({
               <Download className="h-4 w-4" />
             </Button>
           </div>
+          {byPerson.length > 0 && (
+            <p className="text-xs text-muted-foreground">{t('personFilterHint')}</p>
+          )}
           {byPerson.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('nothingToPay')}</p>
           ) : (
             byPerson.map((p) => (
-              <div key={p.name} className="flex items-center justify-between rounded-lg border p-2.5 text-sm">
+              <button
+                key={p.repId}
+                type="button"
+                aria-pressed={fPerson === p.repId}
+                onClick={() => setFPerson(fPerson === p.repId ? '' : p.repId)}
+                className={`flex w-full items-center justify-between rounded-lg border p-2.5 text-left text-sm transition-colors ${
+                  fPerson === p.repId
+                    ? 'border-primary bg-primary/5'
+                    : 'hover:bg-accent'
+                }`}
+              >
                 <div className="min-w-0">
-                  <p className="truncate font-medium">{p.name}</p>
+                  <p className="truncate font-medium">
+                    {p.name}
+                    {fPerson === p.repId && ' ✓'}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {p.sale > 0 && `${t('kindSale')}: ${fcfa(p.sale)}`}
                     {p.sale > 0 && p.install > 0 && ' · '}
@@ -128,7 +144,7 @@ export function CommissionsPanel({
                   </p>
                 </div>
                 <span className="shrink-0 font-semibold">{fcfa(p.sale + p.install)}</span>
-              </div>
+              </button>
             ))
           )}
           {msg && <p className="text-sm font-medium text-knock-green">{msg}</p>}
