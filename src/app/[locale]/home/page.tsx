@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { computeBoards, getPointConfig } from '@/lib/leaderboard/score';
 import { AppHeader } from '@/components/shared/app-header';
+import { LocaleSwitch } from '@/components/shared/locale-switch';
 import { Avatar } from '@/components/shared/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { CoverageMap } from '@/components/charts/coverage-map';
@@ -264,6 +265,10 @@ export default async function HomePage({
     <>
       <AppHeader title={t('greeting', { name: displayName })} />
       <main className="mx-auto max-w-6xl p-4">
+        {/* Language toggle — the rest of the app follows the chosen locale */}
+        <div className="mb-3 flex justify-end">
+          <LocaleSwitch />
+        </div>
         <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
           {/* ---- Left: action buttons ---- */}
           <div className="space-y-2.5">
