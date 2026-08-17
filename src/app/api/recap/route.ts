@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { AI_MODELS } from '@/lib/ai/config';
 import { computeBoards, getPointConfig } from '@/lib/leaderboard/score';
+import { runCommissionSweep } from '@/lib/commissions/core';
 
 export const maxDuration = 60;
 
@@ -60,6 +61,9 @@ export async function GET(request: Request) {
     if (existing) return NextResponse.json({ skipped: true, reason: 'already_sent' });
     // else: at/past the hour with no recap today → generate (catch-up included).
   }
+
+  // Commission accrual rides the daily run: earn due slices, expire dead ones.
+  await runCommissionSweep(admin);
 
   const pts = await getPointConfig(admin);
 

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { DISPOSITION_BY_KEY, type KnockDisposition } from '@/lib/visits/dispositions';
 import { ensurePendingInstallation } from '@/lib/installations/seed';
+import { ensureCommissionForWonDeal } from '@/lib/commissions/core';
 import { recomputeContactRollup } from '@/lib/deals/rollup';
 
 export interface SaveVisitInput {
@@ -186,6 +187,7 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
           .eq('id', dealId);
         await ensurePendingInstallation(supabase, { dealId, contactId, title: null, createdBy: user.id });
       }
+      if (won) await ensureCommissionForWonDeal(supabase, dealId);
     } else if (engaged) {
       // No affaire chosen but engaged → open a new one at the mapped stage.
       const { data: deal } = await supabase
@@ -204,6 +206,7 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
       dealId = deal?.id ?? null;
       if (won && dealId) {
         await ensurePendingInstallation(supabase, { dealId, contactId, title: null, createdBy: user.id });
+        await ensureCommissionForWonDeal(supabase, dealId);
       }
     }
 

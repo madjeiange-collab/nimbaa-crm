@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { ensurePendingInstallation } from '@/lib/installations/seed';
+import { ensureCommissionForWonDeal } from '@/lib/commissions/core';
 import { recomputeContactRollup } from '@/lib/deals/rollup';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -100,6 +101,7 @@ export async function setDealStage(dealId: string, stageId: string): Promise<Act
       createdBy: user?.id ?? null,
     });
   }
+  if (status === 'won') await ensureCommissionForWonDeal(supabase, dealId);
 
   await recomputeContactRollup(supabase, deal.contact_id);
   revalidate(deal.contact_id);
