@@ -552,7 +552,7 @@ export async function GET(request: Request) {
           "7) « Cap fin de mois : » projection ventes/CA au rythme actuel vs le mois dernier, et la meilleure journée du mois ; termine par « À surveiller : » visites suspectes, affaires dormantes, secteurs sans activité et personnes non connectées, avec une recommandation concrète chacun. " +
           "Omets toute section vide. Ton direct de chef d'équipe, sans flatterie. Tirets simples, pas de markdown lourd." +
           (weeklyEdition
-            ? " ÉDITION HEBDO : la semaine vient de se terminer — ouvre le brief par une section « 📅 Bilan de la semaine : » (4-8 lignes) : totaux équipe, meilleur commercial et meilleur technicien de la semaine, les vraies tendances vs la semaine précédente (les données semaine_vs_semaine_derniere_a_date couvrent la semaine COMPLÈTE), puis 1-2 leçons et les priorités pour la semaine qui commence."
+            ? " ÉDITION HEBDO : la semaine vient de se terminer. Le récap public affiché AU-DESSUS de ce brief contient déjà un « 📅 Bilan de la semaine » — ne répète NI ce titre NI les totaux/meilleurs de la semaine. À la place, termine la section 3 (dont les données couvrent la semaine COMPLÈTE) par 1-2 leçons de la semaine écoulée et les priorités concrètes de la semaine qui commence."
             : ''),
         input: JSON.stringify(managerFacts),
       }),
