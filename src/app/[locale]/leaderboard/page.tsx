@@ -14,11 +14,31 @@ function rankBadge(i: number): string {
   return i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
 }
 
+/**
+ * Consecutive active days (≥1 visit / ≥1 completed install), counting back
+ * from today — or yesterday when today has no activity yet (a morning view
+ * must not zero everyone's streak). An inactive Sunday is a rest day and
+ * does not break the chain.
+ */
+function computeStreak(activeDays: Set<string>, startToday: Date): number {
+  let streak = 0;
+  const d = new Date(startToday);
+  if (!activeDays.has(d.toISOString().slice(0, 10))) d.setDate(d.getDate() - 1);
+  for (let i = 0; i < 30; i++) {
+    const key = d.toISOString().slice(0, 10);
+    if (activeDays.has(key)) streak++;
+    else if (d.getDay() !== 0) break;
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
 type DisplayRow = {
   id: string;
   name: string;
   avatarUrl: string | null;
   points: number;
+  badges: string[];
   lines: string[];
 };
 
@@ -55,9 +75,19 @@ function Board({
                   </span>
                   <Avatar url={r.avatarUrl} name={r.name} size={40} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {r.name}
-                      {r.id === meId && ' 👈'}
+                    <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                      <span className="truncate">
+                        {r.name}
+                        {r.id === meId && ' 👈'}
+                      </span>
+                      {r.badges.map((b, j) => (
+                        <span
+                          key={j}
+                          className="shrink-0 rounded bg-brand-amber/15 px-1.5 py-0.5 text-[10px] font-semibold text-brand-brown"
+                        >
+                          {b}
+                        </span>
+                      ))}
                     </p>
                     {r.lines.map((line, j) => (
                       <p key={j} className="text-xs text-muted-foreground">
@@ -110,7 +140,19 @@ export default async function LeaderboardPage({
   // colleagues' user rows under RLS, so this aggregates with the admin client.
   const admin = createAdminClient();
   const pts = await getPointConfig(admin);
-  const [{ reps: repRows, techs: techRows }, { data: recap }] = await Promise.all([
+  const startToday = new Date(now);
+  startToday.setHours(0, 0, 0, 0);
+  const since30 = new Date(startToday.getTime() - 29 * 86400_000);
+  const prevPeriodStart = new Date(since.getTime() - 7 * 86400_000);
+  const prevPeriodCutoff = new Date(now.getTime() - 7 * 86400_000);
+  const [
+    { reps: repRows, techs: techRows },
+    { data: recap },
+    { data: recentVisits },
+    { data: recentInstalls },
+    { data: goalRow },
+    prevWeek,
+  ] = await Promise.all([
     computeBoards(admin, since.toISOString(), pts),
     admin
       .from('daily_recaps')
@@ -118,7 +160,63 @@ export default async function LeaderboardPage({
       .order('day', { ascending: false })
       .limit(1)
       .maybeSingle(),
+    admin
+      .from('visits')
+      .select('rep_id, visited_at')
+      .neq('visit_type', 'installation')
+      .gte('visited_at', since30.toISOString())
+      .limit(10000),
+    admin
+      .from('installations')
+      .select('installer_id, completed_at')
+      .eq('status', 'done')
+      .gte('completed_at', since30.toISOString())
+      .limit(5000),
+    admin.from('app_settings').select('value').eq('key', 'daily_visit_goal').maybeSingle(),
+    // 📈 badge compares this week vs last week at the same point (week view only).
+    period === 'week'
+      ? computeBoards(admin, prevPeriodStart.toISOString(), pts, prevPeriodCutoff.toISOString())
+      : Promise.resolve(null),
   ]);
+
+  // Active-day sets for streaks + today's visit counts for the goal badge.
+  const todayKey = startToday.toISOString().slice(0, 10);
+  const repDays = new Map<string, Set<string>>();
+  const todayVisits = new Map<string, number>();
+  for (const v of (recentVisits ?? []) as { rep_id: string; visited_at: string }[]) {
+    const day = v.visited_at.slice(0, 10);
+    if (!repDays.has(v.rep_id)) repDays.set(v.rep_id, new Set());
+    repDays.get(v.rep_id)!.add(day);
+    if (day === todayKey) todayVisits.set(v.rep_id, (todayVisits.get(v.rep_id) ?? 0) + 1);
+  }
+  const techDays = new Map<string, Set<string>>();
+  for (const j of (recentInstalls ?? []) as { installer_id: string | null; completed_at: string | null }[]) {
+    if (!j.installer_id || !j.completed_at) continue;
+    if (!techDays.has(j.installer_id)) techDays.set(j.installer_id, new Set());
+    techDays.get(j.installer_id)!.add(j.completed_at.slice(0, 10));
+  }
+  const dailyGoal =
+    Number((goalRow?.value as { goal?: number } | null)?.goal) > 0
+      ? Number((goalRow!.value as { goal: number }).goal)
+      : 30;
+
+  const repBadges = (r: (typeof repRows)[number]): string[] => {
+    const b: string[] = [];
+    const streak = computeStreak(repDays.get(r.id) ?? new Set(), startToday);
+    if (streak >= 2) b.push(`🔥 ${streak} j`);
+    if ((todayVisits.get(r.id) ?? 0) >= dailyGoal) b.push('🎯');
+    const prev = prevWeek?.reps.find((p) => p.id === r.id);
+    if (prevWeek && r.points > 0 && r.points > (prev?.points ?? 0)) b.push('📈');
+    return b;
+  };
+  const techBadges = (r: (typeof techRows)[number]): string[] => {
+    const b: string[] = [];
+    const streak = computeStreak(techDays.get(r.id) ?? new Set(), startToday);
+    if (streak >= 2) b.push(`🔥 ${streak} j`);
+    const prev = prevWeek?.techs.find((p) => p.id === r.id);
+    if (prevWeek && r.points > 0 && r.points > (prev?.points ?? 0)) b.push('📈');
+    return b;
+  };
 
   const isTech = user.role === 'technician';
   const isManager = user.role === 'manager' || user.role === 'admin';
@@ -129,6 +227,7 @@ export default async function LeaderboardPage({
     name: r.name,
     avatarUrl: r.avatarUrl,
     points: r.points,
+    badges: repBadges(r),
     lines: [
       `${t('visits')}: ${r.visits} · ${t('refused')}: ${r.refused} · ${t('interested')}: ${r.interested} · ${t('rdv')}: ${r.rdv} · ${t('sales')}: ${r.sales}`,
       `${t('leads')}: ${r.leads} · ${t('customers')}: ${r.sales} · ${t('engagement')}: ${r.engagementPct}% · ${t('conversion')}: ${r.conversionPct}%` +
@@ -140,6 +239,7 @@ export default async function LeaderboardPage({
     name: r.name,
     avatarUrl: r.avatarUrl,
     points: r.points,
+    badges: techBadges(r),
     lines: [
       `${t('done')}: ${r.done} · ${t('revisits')}: ${r.revisits} · ${t('open')}: ${r.open}`,
       `${t('completion')}: ${r.completionPct}%`,
@@ -214,6 +314,7 @@ export default async function LeaderboardPage({
               })}
             </p>
             <p>{t('scoringTechs', { d: pts.install_done, r: pts.revisit })}</p>
+            <p className="mt-1">{t('badgesLegend', { goal: dailyGoal })}</p>
           </CardContent>
         </Card>
       </main>

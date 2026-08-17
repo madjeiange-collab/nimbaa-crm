@@ -225,7 +225,8 @@
     "recapError": "Échec — réessayer",
     "scoringTitle": "Comment les points sont calculés",
     "scoringReps": "Commerciaux : visite ×{v} · intéressé ×{i} · RDV ×{r} · affaire gagnée ×{w}",
-    "scoringTechs": "Techniciens : installation terminée ×{d} · revisite ×{r}"
+    "scoringTechs": "Techniciens : installation terminée ×{d} · revisite ×{r}",
+    "badgesLegend": "Badges : 🔥 jours actifs d'affilée (dimanche non compté) · 🎯 objectif du jour atteint ({goal} visites) · 📈 fait mieux que la semaine dernière"
   },
   "assistant": {
     "title": "Assistant Nimbaa",

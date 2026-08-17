@@ -225,7 +225,8 @@
     "recapError": "Failed — retry",
     "scoringTitle": "How points are calculated",
     "scoringReps": "Reps: visit ×{v} · interested ×{i} · appointment ×{r} · deal won ×{w}",
-    "scoringTechs": "Technicians: completed install ×{d} · revisit ×{r}"
+    "scoringTechs": "Technicians: completed install ×{d} · revisit ×{r}",
+    "badgesLegend": "Badges: 🔥 active days in a row (Sundays don't count against you) · 🎯 daily goal reached ({goal} visits) · 📈 doing better than last week"
   },
   "assistant": {
     "title": "Nimbaa Assistant",
