@@ -1,5 +1,6 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import {
+  BookOpen,
   DoorOpen,
   Map as MapIcon,
   Users,
@@ -30,23 +31,38 @@ function HomeCard({
   icon: Icon,
   title,
   hint,
+  external,
 }: {
   href: string;
   icon: LucideIcon;
   title: string;
   hint: string;
+  /** Static file outside the localised routes (e.g. the manual) → opens in a new tab. */
+  external?: boolean;
 }) {
+  const card = (
+    <Card className="flex items-center gap-3 p-3 transition-colors hover:bg-accent active:bg-accent">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold leading-tight">{title}</p>
+        {hint && <p className="truncate text-xs text-muted-foreground">{hint}</p>}
+      </div>
+    </Card>
+  );
+
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className="block">
+        {card}
+      </a>
+    );
+  }
+
   return (
     <Link href={href} className="block">
-      <Card className="flex items-center gap-3 p-3 transition-colors hover:bg-accent active:bg-accent">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold leading-tight">{title}</p>
-          {hint && <p className="truncate text-xs text-muted-foreground">{hint}</p>}
-        </div>
-      </Card>
+      {card}
     </Link>
   );
 }
@@ -362,6 +378,15 @@ export default async function HomePage({
             {isAdmin && (
               <HomeCard href="/admin" icon={Settings} title={t('adminArea')} hint="" />
             )}
+
+            {/* Illustrated user manual — a static page, so it opens in a new tab. */}
+            <HomeCard
+              href="/manuel.html"
+              icon={BookOpen}
+              title={t('manual')}
+              hint={t('manualHint')}
+              external
+            />
           </div>
 
           {/* ---- Right: daily AI recap + this week's board + coverage map ---- */}

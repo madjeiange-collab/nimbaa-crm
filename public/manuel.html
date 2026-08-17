@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Manuel Nimbaa CRM</title>
+<link rel="icon" href="/icons/icon-192.png" />
+<style>
+  :root {
+    --paper: #FAF9F4;
+    --card: #FFFFFF;
+    --ink: #202A1C;
+    --muted: #67705E;
+    --line: #E3E2D6;
+    --accent: #3E7B27;
+    --accent-soft: #EAF2E2;
+    --amber: #B47C10;
+    --amber-soft: #F8EED8;
+    --blue: #2B5C8A;
+    --blue-soft: #E3EDF6;
+    --red: #A83A2E;
+    --red-soft: #F7E6E2;
+    --shadow: 0 1px 3px rgba(32, 42, 28, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #161B12;
+      --card: #1F261A;
+      --ink: #E8EAE0;
+      --muted: #A2AA96;
+      --line: #333D2B;
+      --accent: #8CC163;
+      --accent-soft: #26331C;
+      --amber: #D9A441;
+      --amber-soft: #383018;
+      --blue: #7FAFD9;
+      --blue-soft: #1D2B38;
+      --red: #DB8A7E;
+      --red-soft: #3A231F;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #161B12;
+    --card: #1F261A;
+    --ink: #E8EAE0;
+    --muted: #A2AA96;
+    --line: #333D2B;
+    --accent: #8CC163;
+    --accent-soft: #26331C;
+    --amber: #D9A441;
+    --amber-soft: #383018;
+    --blue: #7FAFD9;
+    --blue-soft: #1D2B38;
+    --red: #DB8A7E;
+    --red-soft: #3A231F;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 1.25rem 5rem;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+
+  h1, h2, h3 {
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+  h1 { font-size: 2.1rem; margin: 0 0 0.25rem; letter-spacing: -0.01em; }
+  h2 {
+    font-size: 1.45rem;
+    margin: 0;
+    padding-top: 3rem;
+    border-top: none;
+  }
+  h3 { font-size: 1.1rem; margin: 1.6rem 0 0.5rem; }
+  p { margin: 0.7rem 0; max-width: 68ch; }
+  li { margin: 0.3rem 0; }
+  ul, ol { padding-left: 1.3rem; max-width: 66ch; }
+  strong { font-weight: 650; }
+  a { color: var(--accent); }
+
+  header.masthead {
+    padding: 3.2rem 0 1.6rem;
+    border-bottom: 2px solid var(--accent);
+    margin-bottom: 1.6rem;
+  }
+  .kicker {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.72rem;
+    font-weight: 650;
+    color: var(--accent);
+    margin-bottom: 0.6rem;
+  }
+  .sub { color: var(--muted); font-size: 1.02rem; max-width: 60ch; }
+  .meta { color: var(--muted); font-size: 0.85rem; margin-top: 0.9rem; }
+  .meta code {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.82rem;
+  }
+
+  nav.toc {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 0.5rem;
+    margin: 1.4rem 0 0;
+  }
+  nav.toc a {
+    display: block;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.55rem 0.8rem;
+    text-decoration: none;
+    color: var(--ink);
+    font-size: 0.9rem;
+    box-shadow: var(--shadow);
+  }
+  nav.toc a:hover, nav.toc a:focus-visible { border-color: var(--accent); outline: none; }
+  nav.toc a .n { color: var(--accent); font-weight: 650; margin-right: 0.45rem; font-variant-numeric: tabular-nums; }
+
+  .roles {
+    display: inline-flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    margin: 0.35rem 0 0.2rem;
+  }
+  .chip {
+    font-size: 0.72rem;
+    font-weight: 650;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 0.14rem 0.6rem;
+  }
+  .chip.com { background: var(--accent-soft); color: var(--accent); }
+  .chip.tec { background: var(--blue-soft); color: var(--blue); }
+  .chip.man { background: var(--amber-soft); color: var(--amber); }
+  .chip.adm { background: var(--red-soft); color: var(--red); }
+
+  section.screen {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 270px;
+    gap: 2rem;
+    align-items: start;
+    padding-bottom: 1.2rem;
+    border-bottom: 1px solid var(--line);
+  }
+  section.screen.noshot { grid-template-columns: minmax(0, 1fr); }
+  section.screen > .txt { min-width: 0; }
+  @media (max-width: 720px) {
+    section.screen { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  figure.phone {
+    margin: 3.2rem 0 0.8rem;
+    position: sticky;
+    top: 1rem;
+  }
+  @media (max-width: 720px) {
+    figure.phone { position: static; margin-top: 0.4rem; }
+  }
+  figure.phone img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+  }
+  figure.phone figcaption {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 0.45rem;
+    line-height: 1.4;
+  }
+
+  .callout {
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    margin: 1rem 0;
+    font-size: 0.93rem;
+    max-width: 68ch;
+  }
+  .callout p { margin: 0.25rem 0; }
+  .callout.tip { background: var(--accent-soft); }
+  .callout.warn { background: var(--amber-soft); }
+  .callout.danger { background: var(--red-soft); }
+  .callout .lbl {
+    font-weight: 650;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    display: block;
+    margin-bottom: 0.15rem;
+  }
+  .callout.tip .lbl { color: var(--accent); }
+  .callout.warn .lbl { color: var(--amber); }
+  .callout.danger .lbl { color: var(--red); }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.9rem;
+    margin: 0.8rem 0;
+  }
+  .tablewrap { overflow-x: auto; }
+  th, td {
+    text-align: left;
+    padding: 0.5rem 0.7rem;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+  }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .btn-ref {
+    display: inline-block;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 0.05rem 0.5rem;
+    font-size: 0.88em;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .formula {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.88rem;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.6rem 0.9rem;
+    display: inline-block;
+    font-variant-numeric: tabular-nums;
+  }
+
+  footer {
+    margin-top: 3.5rem;
+    padding-top: 1.2rem;
+    border-top: 2px solid var(--accent);
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+</style>
+
+<style>
+  .backbar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    background: var(--card); border-bottom: 1px solid var(--line);
+    padding: 0.6rem 1.25rem; margin: 0 -1.25rem;
+    font-size: 0.88rem;
+  }
+  .backbar a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .backbar a:hover, .backbar a:focus-visible { text-decoration: underline; }
+  .backbar span { color: var(--muted); }
+  @media print {
+    .backbar, nav.toc { display: none; }
+    figure.phone { position: static; }
+    section.screen { break-inside: avoid; }
+  }
+</style>
+
+</head>
+<body>
+
+<div class="backbar">
+  <a href="/fr/home">&larr; Retour à l'application</a>
+  <span>Manuel · Nimbaa CRM</span>
+</div>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="kicker">Guide de l'équipe terrain · Abidjan</div>
+  <h1>Manuel Nimbaa CRM</h1>
+  <p class="sub">Comment utiliser l'application au quotidien : visites porte-à-porte, clients et affaires, installations, statistiques, assistant IA et commissions — pour les commerciaux, techniciens, managers et administrateurs.</p>
+  <p class="meta">Application : <code>nimbaa-crm.vercel.app</code> · Version du 17 août 2026 · Interface disponible en Français et Anglais</p>
+
+  <nav class="toc" aria-label="Sommaire">
+    <a href="#demarrage"><span class="n">1</span>Démarrage &amp; connexion</a>
+    <a href="#accueil"><span class="n">2</span>L'écran d'accueil</a>
+    <a href="#roles"><span class="n">3</span>Rôles et accès</a>
+    <a href="#visite"><span class="n">4</span>Enregistrer une visite</a>
+    <a href="#contacts"><span class="n">5</span>Clients &amp; prospects</a>
+    <a href="#secteur"><span class="n">6</span>Mon secteur (carte)</a>
+    <a href="#installation"><span class="n">7</span>Installations (technicien)</a>
+    <a href="#classement"><span class="n">8</span>Classement &amp; badges</a>
+    <a href="#stats"><span class="n">9</span>Statistiques &amp; mes commissions</a>
+    <a href="#assistant"><span class="n">10</span>Assistant Nimbaa (IA)</a>
+    <a href="#manager"><span class="n">11</span>Espace manager</a>
+    <a href="#commissions"><span class="n">12</span>Commissions : règles &amp; paiement</a>
+    <a href="#admin"><span class="n">13</span>Administration</a>
+    <a href="#horsligne"><span class="n">14</span>Mode hors ligne</a>
+  </nav>
+</header>
+
+<!-- ============ 1. DÉMARRAGE ============ -->
+<section class="screen" id="demarrage">
+  <div class="txt">
+    <h2>1 · Démarrage &amp; connexion</h2>
+    <div class="roles"><span class="chip com">Commercial</span><span class="chip tec">Technicien</span><span class="chip man">Manager</span><span class="chip adm">Admin</span></div>
+    <p>Ouvrez <strong>nimbaa-crm.vercel.app</strong> dans le navigateur de votre téléphone. Saisissez votre <strong>nom d'utilisateur</strong> (pas d'e-mail) et votre <strong>mot de passe</strong>, fournis par votre manager. Votre compte détermine automatiquement ce que vous voyez : un commercial et un technicien n'ont pas les mêmes écrans qu'un manager.</p>
+    <h3>Installer l'application sur l'écran d'accueil</h3>
+    <p>Nimbaa CRM est une application web installable (PWA). Sur Android/Chrome : menu ⋮ → <span class="btn-ref">Ajouter à l'écran d'accueil</span>. Sur iPhone/Safari : Partager → <span class="btn-ref">Sur l'écran d'accueil</span>. L'application s'ouvre alors comme une app normale, en plein écran.</p>
+    <h3>Changer la langue</h3>
+    <p>En haut de l'écran d'accueil, le sélecteur <span class="btn-ref">FR</span> / <span class="btn-ref">EN</span> bascule toute l'interface entre français et anglais, immédiatement.</p>
+    <div class="callout danger">
+      <span class="lbl">Sécurité</span>
+      <p>Au premier accès, changez votre mot de passe dans <strong>Profil</strong> (icône ronde en haut à droite). Ne partagez jamais vos identifiants.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/01-login.png" alt="Écran de connexion Nimbaa CRM avec champs nom d'utilisateur et mot de passe" />
+    <figcaption>Connexion : nom d'utilisateur + mot de passe.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 2. ACCUEIL ============ -->
+<section class="screen" id="accueil">
+  <div class="txt">
+    <h2>2 · L'écran d'accueil</h2>
+    <div class="roles"><span class="chip com">Commercial</span><span class="chip tec">Technicien</span><span class="chip man">Manager</span><span class="chip adm">Admin</span></div>
+    <p>L'accueil regroupe tout : les <strong>tuiles d'action</strong> en haut, puis le <strong>brief du jour</strong>, le <strong>classement de la semaine</strong> et la <strong>carte de couverture</strong>. Vous ne voyez que les tuiles correspondant à votre rôle.</p>
+    <div class="tablewrap"><table>
+      <tr><th>Tuile</th><th>À quoi ça sert</th></tr>
+      <tr><td><strong>Mes clients &amp; prospects</strong></td><td>Liste et fiches de vos leads et clients</td></tr>
+      <tr><td><strong>Enregistrer une visite</strong></td><td>Noter le résultat d'une porte frappée (photo + GPS)</td></tr>
+      <tr><td><strong>Enregistrer une installation</strong></td><td>Suivi des poses chez le client (technicien)</td></tr>
+      <tr><td><strong>Mon secteur</strong></td><td>Carte de vos portes frappées et de vos secteurs</td></tr>
+      <tr><td><strong>Assistant Nimbaa</strong></td><td>Poser une question en langage naturel (IA)</td></tr>
+      <tr><td><strong>Classement</strong></td><td>Points, badges et séries de la semaine</td></tr>
+      <tr><td><strong>Statistiques commerciales / techniciens</strong></td><td>Vos chiffres — visites, ventes, installations</td></tr>
+      <tr><td><strong>Espace manager</strong> · <strong>Administration</strong></td><td>Pilotage d'équipe et configuration (accès restreint)</td></tr>
+    </table></div>
+    <h3>Le brief quotidien</h3>
+    <p>Chaque matin à <strong>6 h 00</strong> (heure d'Abidjan), l'IA publie un brief : bilan de la veille, priorités du jour, félicitations et relances. Les managers reçoivent en plus un <strong>brief manager</strong> avec les chiffres d'équipe, et chacun reçoit un mot personnel. Le dimanche paraît une <strong>édition hebdomadaire</strong> plus complète. Le bouton <span class="btn-ref">✦ Générer</span> permet de rafraîchir le brief à la demande.</p>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/02-home.png" alt="Écran d'accueil : tuiles d'action, brief manager, classement de la semaine et carte de couverture" />
+    <figcaption>Accueil (vue admin) : tuiles, sélecteur FR/EN, brief du jour, classement, carte.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 3. RÔLES ============ -->
+<section class="screen noshot" id="roles">
+  <div class="txt">
+    <h2>3 · Rôles et accès</h2>
+    <div class="tablewrap"><table>
+      <tr><th>Rôle</th><th>Ce qu'il voit et fait</th></tr>
+      <tr><td><span class="chip com">Commercial</span></td><td>Visites, ses contacts et affaires, son secteur, classement, ses statistiques et <strong>ses propres commissions</strong>.</td></tr>
+      <tr><td><span class="chip tec">Technicien</span></td><td>Installations (planifier, terminer, photos), ses statistiques et <strong>ses propres commissions</strong> d'installation.</td></tr>
+      <tr><td><span class="chip man">Manager</span></td><td>Tout ce qui précède + <strong>Espace manager</strong> : chiffres de toute l'équipe, pipeline, montants en FCFA, paiement des commissions, résiliation d'abonnements.</td></tr>
+      <tr><td><span class="chip adm">Admin</span></td><td>Tout + <strong>Administration</strong> : produits, utilisateurs, territoires, imports, réglages du récap.</td></tr>
+    </table></div>
+    <div class="callout tip">
+      <span class="lbl">Règle d'or sur les montants</span>
+      <p>Les <strong>totaux en FCFA</strong> (chiffre d'affaires, commissions de l'équipe, MRR) ne sont visibles que par les managers et admins. Un commercial ou technicien voit uniquement <strong>ses propres commissions</strong>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. VISITE ============ -->
+<section class="screen" id="visite">
+  <div class="txt">
+    <h2>4 · Enregistrer une visite</h2>
+    <div class="roles"><span class="chip com">Commercial</span></div>
+    <p>C'est le geste central du porte-à-porte. Depuis l'accueil, touchez <span class="btn-ref">Enregistrer une visite</span> :</p>
+    <ol>
+      <li><strong>Photo + GPS.</strong> Touchez <span class="btn-ref">Prendre la photo (GPS)</span> — une photo géolocalisée est <strong>obligatoire</strong> pour chaque visite. L'adresse détectée s'affiche sous le bouton.</li>
+      <li><strong>Résultat.</strong> Choisissez l'issue de la visite : <em>Pas de réponse</em>, <em>Absent</em>, <em>Refus</em>, <em>Intéressé</em>, <em>Rendez-vous</em> ou <em>Vendu</em>.</li>
+      <li><strong>Contact (optionnel).</strong> <span class="btn-ref">Lier à un contact existant</span> rattache la visite à une fiche déjà créée. Sans lien, si le résultat est <em>Vendu</em>, <em>Rendez-vous</em> ou <em>Intéressé</em>, l'application crée automatiquement le contact et l'affaire.</li>
+      <li><strong>Notes.</strong> Tapez ou touchez <span class="btn-ref">🎤 Dicter</span> pour dicter vos notes à la voix.</li>
+      <li><span class="btn-ref">Enregistrer</span>.</li>
+    </ol>
+    <div class="callout tip">
+      <span class="lbl">Pas de réseau ? Continuez.</span>
+      <p>Sans connexion, la visite est <strong>mise en file d'attente sur le téléphone</strong> et envoyée automatiquement dès le retour du réseau. Voir la section 14.</p>
+    </div>
+    <div class="callout warn">
+      <span class="lbl">Portes à ne pas frapper</span>
+      <p>Si une adresse figure sur la liste « Ne pas frapper » (gérée par l'admin), l'application vous en avertit. Respectez ces consignes.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/03-visit-new.png" alt="Formulaire de visite : photo GPS obligatoire, six boutons de résultat, notes avec dictée" />
+    <figcaption>La visite : photo géolocalisée, résultat en un geste, dictée des notes.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 5. CONTACTS ============ -->
+<section class="screen" id="contacts">
+  <div class="txt">
+    <h2>5 · Clients &amp; prospects</h2>
+    <div class="roles"><span class="chip com">Commercial</span><span class="chip man">Manager</span></div>
+    <p><span class="btn-ref">Mes clients &amp; prospects</span> liste vos fiches, avec recherche et filtres. Chaque fiche regroupe :</p>
+    <ul>
+      <li><strong>Coordonnées</strong> — le téléphone est saisi avec l'indicatif pays (🇨🇮 +225 par défaut, modifiable). Le bouton <strong>WhatsApp</strong> ouvre une conversation directement, avec un brouillon de message proposé par l'IA.</li>
+      <li><strong>Interlocuteurs</strong> — les personnes chez le client (rôle par défaut : <em>Gérant</em>), reliables aux affaires.</li>
+      <li><strong>Affaires (deals)</strong> — le produit proposé, l'étape du pipeline, le <strong>type d'activité</strong> (Maquis, Restaurant, Glacier, Chawarma, Supérette…) et des <strong>tags</strong> libres pour catégoriser.</li>
+      <li><strong>Abonnement</strong> — sur un client gagné : le forfait actif, sa date de début et son statut. Le manager peut y déclarer une <strong>résiliation</strong>.</li>
+      <li><strong>Historique</strong> — visites, photos et installations liées.</li>
+    </ul>
+    <div class="callout tip">
+      <span class="lbl">Astuce</span>
+      <p>Renseignez toujours le <strong>type d'activité</strong> et quelques <strong>tags</strong> : ils alimentent les briefs IA, les filtres de statistiques et le pipeline.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/05-contact-detail.png" alt="Fiche client avec coordonnées, bouton WhatsApp, affaires et abonnement actif" />
+    <figcaption>Fiche client : WhatsApp, interlocuteurs, affaires et abonnement.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 6. SECTEUR ============ -->
+<section class="screen" id="secteur">
+  <div class="txt">
+    <h2>6 · Mon secteur (carte)</h2>
+    <div class="roles"><span class="chip com">Commercial</span><span class="chip man">Manager</span></div>
+    <p>La carte montre vos <strong>portes frappées</strong> (pastilles colorées par résultat, regroupées en grappes) et les contours de vos secteurs. À l'ouverture, elle cadre automatiquement <strong>votre activité sur ~10 km</strong> — visites et installations — pour que vous voyiez tout de suite votre zone de travail.</p>
+    <ul>
+      <li><span class="btn-ref">Aller au secteur…</span> recentre la carte sur un secteur précis en un geste.</li>
+      <li>Le bouton de <strong>localisation</strong> (en haut à droite) vous recentre sur votre position GPS.</li>
+      <li>Le compteur en bas totalise vos portes frappées ; <span class="btn-ref">Frapper une porte</span> ouvre directement le formulaire de visite.</li>
+    </ul>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/06-turf.png" alt="Carte du secteur avec grappes de visites autour d'Abidjan, sélecteur de secteur et bouton Frapper une porte" />
+    <figcaption>Mon secteur : activité cadrée à 10 km, accès direct à la visite.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 7. INSTALLATION ============ -->
+<section class="screen" id="installation">
+  <div class="txt">
+    <h2>7 · Installations</h2>
+    <div class="roles"><span class="chip tec">Technicien</span><span class="chip man">Manager</span></div>
+    <p>Quand une vente est conclue, une installation est planifiée chez le client. Le technicien utilise <span class="btn-ref">Enregistrer une installation</span> :</p>
+    <ol>
+      <li>Choisir le <strong>client</strong> et l'affaire concernée.</li>
+      <li>Renseigner le statut : <em>planifiée</em>, <em>en cours</em>, <em>terminée</em> (ou <em>revisite</em> si un second passage est nécessaire).</li>
+      <li>Ajouter des <strong>photos</strong> de la pose et des notes (dictée vocale disponible).</li>
+      <li>Enregistrer — hors ligne si besoin, l'envoi se fera automatiquement.</li>
+    </ol>
+    <div class="callout tip">
+      <span class="lbl">Commission technicien</span>
+      <p>Marquer une installation <strong>terminée</strong> déclenche la commission du technicien (taux propre à chaque produit). Elle apparaît immédiatement dans « Mes commissions ».</p>
+    </div>
+    <p>Les managers suivent l'ensemble dans l'Espace manager : pipeline d'installations, photos à contrôler, taux de complétion par technicien.</p>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/07-install-new.png" alt="Formulaire d'installation : choix du client, statut, photos et notes" />
+    <figcaption>Enregistrer une installation : client, statut, photos.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 8. CLASSEMENT ============ -->
+<section class="screen" id="classement">
+  <div class="txt">
+    <h2>8 · Classement &amp; badges</h2>
+    <div class="roles"><span class="chip com">Commercial</span><span class="chip tec">Technicien</span><span class="chip man">Manager</span></div>
+    <p>Le classement de la semaine attribue des <strong>points</strong> pour chaque action (visite, rendez-vous, vente, installation terminée — barème réglable par l'admin). S'y ajoutent :</p>
+    <ul>
+      <li><strong>Badges</strong> — récompenses de jalons (premières ventes, volumes de visites…).</li>
+      <li><strong>Séries (streaks)</strong> — jours consécutifs d'activité : gardez la flamme allumée 🔥.</li>
+      <li>Un classement séparé pour les <strong>techniciens</strong>, basé sur les installations.</li>
+    </ul>
+    <p>Le podium de la semaine est aussi mis en avant chaque matin dans le brief.</p>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/08-leaderboard.png" alt="Classement hebdomadaire avec points, badges et séries" />
+    <figcaption>Classement : points de la semaine, badges et séries.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 9. STATS ============ -->
+<section class="screen" id="stats">
+  <div class="txt">
+    <h2>9 · Statistiques &amp; mes commissions</h2>
+    <div class="roles"><span class="chip com">Commercial</span><span class="chip tec">Technicien</span><span class="chip man">Manager</span></div>
+    <p><span class="btn-ref">Statistiques commerciales</span> montre vos chiffres : visites, taux de conversion, ventes, entonnoir par affaire, pipeline et audit photo. Les listes se filtrent par <strong>secteur</strong>, <strong>type d'activité</strong>, <strong>tag</strong> — et, pour les managers, par <strong>commercial</strong>.</p>
+    <h3>Mes commissions</h3>
+    <p>En bas de vos statistiques, le bloc <strong>Mes commissions</strong> récapitule ce que vous avez gagné :</p>
+    <ul>
+      <li><strong>Acquises</strong> — validées, en attente de paiement.</li>
+      <li><strong>À venir</strong> — mensualités futures de vos abonnements en cours, avec la date de la prochaine.</li>
+      <li><strong>Payées</strong> — déjà versées.</li>
+      <li>Chaque ligne affiche le détail : client, produit, mensualité, et le calcul <em>base × taux = montant</em>.</li>
+    </ul>
+    <p>La page <span class="btn-ref">Statistiques techniciens</span> suit la même logique pour les installations.</p>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/09-stats.png" alt="Statistiques commerciales avec filtres par secteur, type et tag" />
+    <figcaption>Statistiques : vos chiffres, filtrables ; « Mes commissions » en bas de page.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 10. ASSISTANT ============ -->
+<section class="screen" id="assistant">
+  <div class="txt">
+    <h2>10 · Assistant Nimbaa (IA)</h2>
+    <div class="roles"><span class="chip com">Commercial</span><span class="chip tec">Technicien</span><span class="chip man">Manager</span><span class="chip adm">Admin</span></div>
+    <p>Posez vos questions en français, à l'écrit ou <strong>à la voix</strong> ; la réponse s'affiche en direct. L'assistant connaît vos clients, visites, ventes, installations, objectifs — et vos <strong>commissions</strong>. Exemples :</p>
+    <ul>
+      <li>« Quels clients dois-je relancer cette semaine ? »</li>
+      <li>« Combien de ventes hier par type d'activité ? »</li>
+      <li>« Mes commissions ce mois-ci, comparées au mois dernier ? »</li>
+      <li>« Rédige un message WhatsApp de relance pour la Supérette Le Panier. »</li>
+    </ul>
+    <p>Les périodes <em>aujourd'hui / cette semaine / ce mois</em> sont comprises, avec la <strong>comparaison</strong> à la période précédente. Chacun n'obtient que ce que son rôle permet : un commercial interroge <strong>ses</strong> chiffres ; un manager, ceux de <strong>toute l'équipe</strong>, personne par personne.</p>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/10-assistant.png" alt="Assistant Nimbaa : zone de question avec entrée vocale" />
+    <figcaption>L'assistant répond en direct, à l'écrit comme à la voix.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 11. MANAGER ============ -->
+<section class="screen" id="manager">
+  <div class="txt">
+    <h2>11 · Espace manager</h2>
+    <div class="roles"><span class="chip man">Manager</span><span class="chip adm">Admin</span></div>
+    <p>Le tableau de bord d'équipe : activité du jour, chiffres par commercial et technicien, objectifs, montants en FCFA. De là, quatre outils :</p>
+    <ul>
+      <li><strong>Pipeline</strong> — toutes les affaires par étape, avec type d'activité et tags sur chaque carte, filtres et export CSV.</li>
+      <li><strong>Audit photos</strong> — contrôle des photos de visites et d'installations.</li>
+      <li><strong>Pipeline installations</strong> — suivi des poses en attente, en cours, terminées.</li>
+      <li><strong>Commissions</strong> — le panneau de paie (section 12).</li>
+    </ul>
+    <p>Les listes se filtrent par <strong>secteur</strong>, <strong>type d'activité</strong>, <strong>tag</strong> et <strong>personne</strong> — les mêmes filtres que sur les statistiques.</p>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/11-dashboard.png" alt="Espace manager : chiffres d'équipe et accès au pipeline, à l'audit photos et aux commissions" />
+    <figcaption>Espace manager : l'équipe en un coup d'œil.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 12. COMMISSIONS ============ -->
+<section class="screen" id="commissions">
+  <div class="txt">
+    <h2>12 · Commissions : règles &amp; paiement</h2>
+    <div class="roles"><span class="chip man">Manager</span><span class="chip adm">Admin</span></div>
+    <h3>Comment une commission naît</h3>
+    <ul>
+      <li><strong>Forfait mensuel vendu</strong> (affaire gagnée) → un <strong>abonnement</strong> est créé et la commission est étalée en <strong>mensualités</strong> (par défaut 3, réglable par produit). La 1<sup>re</sup> mensualité est acquise à la vente ; les suivantes le deviennent chaque mois <strong>tant que l'abonnement reste actif</strong>.</li>
+      <li><strong>Produit une fois</strong> (ex. Plus Day, Plus Week) → une commission unique, acquise immédiatement.</li>
+      <li><strong>Installation terminée</strong> → commission du technicien, au taux technicien du produit.</li>
+      <li><strong>Résiliation</strong> déclarée sur la fiche client → les mensualités restantes <strong>expirent</strong> (jamais de reprise sur ce qui est déjà acquis).</li>
+    </ul>
+    <p>Chaque ligne montre son calcul :</p>
+    <p><span class="formula">25 000 FCFA × 10 % = 2 500 FCFA</span></p>
+    <h3>Payer l'équipe</h3>
+    <ol>
+      <li>Ouvrez <span class="btn-ref">Espace manager → Commissions</span>. Les tuiles résument : <strong>À payer</strong>, <strong>En attente</strong>, <strong>Payées</strong>, <strong>MRR</strong> (revenu mensuel des abonnements actifs).</li>
+      <li>Dans <strong>À payer par personne</strong>, touchez une personne : le rapport détaillé en dessous se filtre sur elle. Touchez à nouveau pour tout réafficher.</li>
+      <li>Payez <strong>ligne par ligne</strong> avec le bouton <span class="btn-ref">Payer</span> de chaque ligne acquise, ou soldez tout avec <span class="btn-ref">✓ Marquer le mois comme payé</span>.</li>
+      <li>Exportez le <strong>CSV détaillé</strong> (base, taux, montant par ligne) avant de payer — c'est votre justificatif de paie.</li>
+    </ol>
+    <div class="callout warn">
+      <span class="lbl">Attention</span>
+      <p>« Payé » est <strong>définitif</strong> — c'est l'historique de paie. Exportez le CSV d'abord, puis marquez payé.</p>
+    </div>
+    <p>Le <strong>rapport détaillé</strong> se filtre par personne, type (ventes / installations), statut et mois. Chaque ligne relie le client — touchez son nom pour ouvrir la fiche.</p>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/13-commissions.png" alt="Page commissions : tuiles À payer / En attente / Payées / MRR, liste à payer par personne, rapport détaillé avec calculs" />
+    <figcaption>Commissions : tuiles, paie par personne, rapport détaillé avec le calcul de chaque ligne.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 13. ADMIN ============ -->
+<section class="screen" id="admin">
+  <div class="txt">
+    <h2>13 · Administration</h2>
+    <div class="roles"><span class="chip adm">Admin</span></div>
+    <p>Le hub Administration configure toute l'application :</p>
+    <div class="tablewrap"><table>
+      <tr><th>Écran</th><th>Rôle</th></tr>
+      <tr><td><strong>Produits</strong></td><td>Catalogue des forfaits : prix, périodicité (mensuel / une fois), <strong>mode de commission</strong> (récurrent / une fois), <strong>taux commercial</strong>, <strong>nombre de mensualités</strong>, <strong>taux technicien</strong>.</td></tr>
+      <tr><td><strong>Utilisateurs</strong></td><td>Comptes, rôles, objectifs individuels (visites / ventes).</td></tr>
+      <tr><td><strong>Territoires</strong></td><td>Dessin des secteurs sur la carte et affectation aux commerciaux.</td></tr>
+      <tr><td><strong>Import</strong></td><td>Import CSV de contacts en masse (modèle fourni).</td></tr>
+      <tr><td><strong>Ne pas frapper</strong></td><td>Liste des adresses à exclure du porte-à-porte.</td></tr>
+      <tr><td><strong>Étapes du pipeline</strong> · <strong>Dispositions</strong></td><td>Personnalisation des étapes d'affaire et des résultats de visite.</td></tr>
+      <tr><td><strong>Points</strong></td><td>Barème du classement (points par action).</td></tr>
+      <tr><td><strong>Récap</strong></td><td>Heure d'envoi du brief quotidien (6 h 00 par défaut) et options.</td></tr>
+      <tr><td><strong>Protocole</strong></td><td>Le script de vente / consignes terrain affichés à l'équipe.</td></tr>
+    </table></div>
+    <div class="callout tip">
+      <span class="lbl">Produits &amp; commissions</span>
+      <p>Le taux, la fenêtre de mensualités et le taux technicien sont <strong>réglables par produit</strong> et à tout moment. Les commissions déjà créées gardent les valeurs en vigueur au moment de la vente.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/15-products.png" alt="Éditeur de produits : prix, périodicité, mode et taux de commission, mensualités, taux technicien" />
+    <figcaption>Produits : chaque forfait porte ses propres règles de commission.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 14. HORS LIGNE ============ -->
+<section class="screen" id="horsligne">
+  <div class="txt">
+    <h2>14 · Mode hors ligne</h2>
+    <div class="roles"><span class="chip com">Commercial</span><span class="chip tec">Technicien</span></div>
+    <p>Le terrain n'attend pas le réseau :</p>
+    <ul>
+      <li>Les <strong>visites</strong> et <strong>installations</strong> enregistrées sans connexion sont stockées sur le téléphone et <strong>envoyées automatiquement</strong> au retour du réseau (ou à la prochaine ouverture de l'application). Un indicateur affiche le nombre d'éléments en attente.</li>
+      <li>Les pages déjà visitées restent consultables hors ligne.</li>
+      <li>Aucun doublon : chaque enregistrement porte un identifiant unique, un renvoi accidentel est ignoré.</li>
+    </ul>
+    <div class="callout warn">
+      <span class="lbl">Avant de se déconnecter</span>
+      <p>La déconnexion envoie d'abord la file d'attente, puis efface les données locales. Si des éléments sont en attente, attendez le retour du réseau avant de vous déconnecter.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p><strong>Nimbaa CRM</strong> · Manuel d'utilisation · 17 août 2026. Captures d'écran réalisées sur l'application de production (données de démonstration). Pour toute question, utilisez l'Assistant Nimbaa ou contactez votre manager.</p>
+</footer>
+
+</div>
+
+</body>
+</html>

@@ -72,6 +72,8 @@
     "assistantHint": "Ask a question about your customers and sales",
     "leaderboard": "Leaderboard",
     "leaderboardHint": "Who's ahead this week?",
+    "manual": "User manual",
+    "manualHint": "Illustrated guide to the app (in French)",
     "seeAll": "See all",
     "coverageTitle": "Coverage map"
   },

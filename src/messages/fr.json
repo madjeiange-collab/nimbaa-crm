@@ -72,6 +72,8 @@
     "assistantHint": "Posez une question sur vos clients et vos ventes",
     "leaderboard": "Classement",
     "leaderboardHint": "Qui est en tête cette semaine ?",
+    "manual": "Manuel d'utilisation",
+    "manualHint": "Guide illustré de l'application",
     "seeAll": "Voir tout",
     "coverageTitle": "Carte de couverture"
   },
