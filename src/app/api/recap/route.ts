@@ -86,8 +86,27 @@ export async function GET(request: Request) {
   // --- Manager brief facts: full per-person detail + attention points ------
   const startToday = new Date();
   startToday.setHours(0, 0, 0, 0);
+  const startTomorrow = new Date(startToday.getTime() + 86400_000);
+  const startAfterTomorrow = new Date(startToday.getTime() + 2 * 86400_000);
+  const tomorrowDate = startTomorrow.toISOString().slice(0, 10);
+  const monthStart = new Date(startToday.getFullYear(), startToday.getMonth(), 1);
+  const prevMonthStart = new Date(startToday.getFullYear(), startToday.getMonth() - 1, 1);
   const staleCutoff = new Date(Date.now() - 7 * 86400_000).toISOString();
-  const [{ data: flaggedToday }, { count: staleCount }] = await Promise.all([
+
+  const [
+    { data: flaggedToday },
+    { count: staleCount },
+    { data: rdvTomorrow },
+    { data: lateInstalls },
+    { data: revisitsTomorrow },
+    { data: salesToday },
+    { data: lostWeek },
+    { data: hotDeals },
+    { data: visitsTodayTimes },
+    { data: terrAssign },
+    { data: monthDeals },
+    { data: goalSetting },
+  ] = await Promise.all([
     admin
       .from('flagged_visits')
       .select('rep_id, out_of_turf, implausible_rate, rapid_fire')
@@ -98,12 +117,143 @@ export async function GET(request: Request) {
       .select('id', { count: 'exact', head: true })
       .eq('status', 'open')
       .lt('updated_at', staleCutoff),
+    admin
+      .from('visits')
+      .select('rep_id, appointment_date, contacts(name)')
+      .gte('appointment_date', startTomorrow.toISOString())
+      .lt('appointment_date', startAfterTomorrow.toISOString())
+      .limit(100),
+    admin
+      .from('installations')
+      .select('scheduled_date, installer_id, contacts(name)')
+      .in('status', ['pending', 'scheduled', 'in_progress'])
+      .lt('scheduled_date', startToday.toISOString().slice(0, 10))
+      .limit(50),
+    admin
+      .from('installations')
+      .select('installer_id, contacts(name)')
+      .eq('next_visit_date', tomorrowDate)
+      .limit(50),
+    admin
+      .from('deals')
+      .select('value_xof, assigned_rep_id, won_at, title, products(name), contacts(name)')
+      .eq('status', 'won')
+      .gte('won_at', startToday.toISOString())
+      .limit(50),
+    admin
+      .from('deals')
+      .select('lost_reason, assigned_rep_id, contacts(name)')
+      .eq('status', 'lost')
+      .gte('updated_at', weekStartIso)
+      .limit(50),
+    admin
+      .from('deals')
+      .select('title, value_xof, updated_at, assigned_rep_id, pipeline_stages(name), contacts(name)')
+      .eq('status', 'open')
+      .order('value_xof', { ascending: false, nullsFirst: false })
+      .limit(6),
+    admin
+      .from('visits')
+      .select('rep_id, visited_at')
+      .neq('visit_type', 'installation')
+      .gte('visited_at', startToday.toISOString())
+      .limit(2000),
+    admin
+      .from('territories')
+      .select('name, is_active, user_territories(user_id)')
+      .eq('is_active', true),
+    admin
+      .from('deals')
+      .select('assigned_rep_id, won_at, value_xof')
+      .eq('status', 'won')
+      .gte('won_at', prevMonthStart.toISOString())
+      .limit(5000),
+    admin.from('app_settings').select('value').eq('key', 'daily_visit_goal').maybeSingle(),
   ]);
 
+  const nameById = new Map(
+    [...today.reps, ...today.techs, ...week.reps, ...week.techs].map((r) => [r.id, r.name]),
+  );
+  const repName = (id: string | null) => (id ? (nameById.get(id) ?? '—') : '—');
+  const dailyGoal =
+    Number((goalSetting?.value as { goal?: number } | null)?.goal) > 0
+      ? Number((goalSetting!.value as { goal: number }).goal)
+      : 30;
+
+  // Amplitude of each rep's day (first → last visit).
+  const times = new Map<string, { first: string; last: string }>();
+  for (const v of (visitsTodayTimes ?? []) as { rep_id: string; visited_at: string }[]) {
+    const t = times.get(v.rep_id);
+    if (!t) times.set(v.rep_id, { first: v.visited_at, last: v.visited_at });
+    else {
+      if (v.visited_at < t.first) t.first = v.visited_at;
+      if (v.visited_at > t.last) t.last = v.visited_at;
+    }
+  }
+  const hhmm = (iso: string) => iso.slice(11, 16);
+
+  // Secteurs with no visits this week from their assigned reps.
+  const weekVisitsByRep = new Map(week.reps.map((r) => [r.id, r.visits]));
+  const secteursSansActivite = ((terrAssign ?? []) as unknown as {
+    name: string;
+    user_territories: { user_id: string }[];
+  }[])
+    .filter(
+      (t) =>
+        t.user_territories.length === 0 ||
+        t.user_territories.every((u) => (weekVisitsByRep.get(u.user_id) ?? 0) === 0),
+    )
+    .map((t) => t.name);
+
+  // Auth activity: who has not signed in today (data-entry risk).
+  let nonConnectes: string[] = [];
+  try {
+    const { data: authUsers } = await admin.auth.admin.listUsers({ perPage: 200 });
+    const fieldIds = new Set([...week.reps, ...week.techs].map((r) => r.id));
+    nonConnectes = (authUsers?.users ?? [])
+      .filter(
+        (u) =>
+          fieldIds.has(u.id) &&
+          (!u.last_sign_in_at || new Date(u.last_sign_in_at) < startToday),
+      )
+      .map((u) => repName(u.id));
+  } catch {
+    // auth admin unavailable — skip silently
+  }
+
+  // Month-end projection (run rate) vs last month.
+  type MonthDeal = { assigned_rep_id: string | null; won_at: string | null; value_xof: number | null };
+  const mDeals = (monthDeals ?? []) as MonthDeal[];
+  const curMonth = mDeals.filter((d) => d.won_at && d.won_at >= monthStart.toISOString());
+  const prevMonth = mDeals.filter((d) => d.won_at && d.won_at < monthStart.toISOString());
+  const dayOfMonth = startToday.getDate();
+  const daysInMonth = new Date(startToday.getFullYear(), startToday.getMonth() + 1, 0).getDate();
+  const project = (n: number) => Math.round((n / Math.max(1, dayOfMonth)) * daysInMonth);
+
+  // Streaks & records: days since each rep's last sale + best team day this month.
+  const lastSaleByRep = new Map<string, string>();
+  for (const d of mDeals) {
+    if (!d.assigned_rep_id || !d.won_at) continue;
+    const prev = lastSaleByRep.get(d.assigned_rep_id);
+    if (!prev || d.won_at > prev) lastSaleByRep.set(d.assigned_rep_id, d.won_at);
+  }
+  const salesByDay = new Map<string, number>();
+  for (const d of curMonth) {
+    if (!d.won_at) continue;
+    const day = d.won_at.slice(0, 10);
+    salesByDay.set(day, (salesByDay.get(day) ?? 0) + 1);
+  }
+  const bestDay = [...salesByDay.entries()].sort((a, b) => b[1] - a[1])[0] ?? null;
+
   const managerFacts = {
+    objectif_visites_par_jour: dailyGoal,
     aujourd_hui_par_commercial: today.reps.map((r) => ({
       nom: r.name,
       visites: r.visits,
+      objectif_atteint_pct: Math.round((r.visits / dailyGoal) * 100),
+      amplitude_journee: times.has(r.id)
+        ? `${hhmm(times.get(r.id)!.first)}–${hhmm(times.get(r.id)!.last)}`
+        : null,
       refus: r.refused,
       interesses: r.interested,
       rdv: r.rdv,
@@ -111,6 +261,11 @@ export async function GET(request: Request) {
       ca_fcfa: r.fcfa,
       taux_engagement_pct: r.engagementPct,
       leads_crees: r.leads,
+      jours_depuis_derniere_vente: lastSaleByRep.has(r.id)
+        ? Math.floor(
+            (Date.now() - new Date(lastSaleByRep.get(r.id)!).getTime()) / 86400_000,
+          )
+        : null,
     })),
     aujourd_hui_par_technicien: today.techs.map((r) => ({
       nom: r.name,
@@ -139,9 +294,92 @@ export async function GET(request: Request) {
         };
       }),
     },
+    ventes_du_jour: ((salesToday ?? []) as unknown as {
+      value_xof: number | null;
+      assigned_rep_id: string | null;
+      title: string | null;
+      products: { name: string } | null;
+      contacts: { name: string | null } | null;
+    }[]).map((d) => ({
+      client: d.contacts?.name ?? '—',
+      produit: d.products?.name || d.title || '—',
+      ca_fcfa: d.value_xof ?? 0,
+      vendeur: repName(d.assigned_rep_id),
+    })),
+    affaires_chaudes_a_pousser: ((hotDeals ?? []) as unknown as {
+      title: string | null;
+      value_xof: number | null;
+      updated_at: string;
+      assigned_rep_id: string | null;
+      pipeline_stages: { name: string } | null;
+      contacts: { name: string | null } | null;
+    }[]).map((d) => ({
+      client: d.contacts?.name ?? '—',
+      affaire: d.title || '—',
+      valeur_fcfa: d.value_xof ?? 0,
+      etape: d.pipeline_stages?.name ?? '—',
+      commercial: repName(d.assigned_rep_id),
+      jours_sans_activite: Math.floor(
+        (Date.now() - new Date(d.updated_at).getTime()) / 86400_000,
+      ),
+    })),
+    demain: {
+      rdv: ((rdvTomorrow ?? []) as unknown as {
+        rep_id: string;
+        appointment_date: string;
+        contacts: { name: string | null } | null;
+      }[]).map((r) => ({
+        commercial: repName(r.rep_id),
+        heure: hhmm(r.appointment_date),
+        client: r.contacts?.name ?? '—',
+      })),
+      revisites_installation: ((revisitsTomorrow ?? []) as unknown as {
+        installer_id: string | null;
+        contacts: { name: string | null } | null;
+      }[]).map((r) => ({
+        technicien: repName(r.installer_id),
+        client: r.contacts?.name ?? '—',
+      })),
+    },
+    installations_en_retard: ((lateInstalls ?? []) as unknown as {
+      scheduled_date: string | null;
+      installer_id: string | null;
+      contacts: { name: string | null } | null;
+    }[]).map((r) => ({
+      client: r.contacts?.name ?? '—',
+      technicien: repName(r.installer_id),
+      prevue_le: r.scheduled_date,
+    })),
+    pertes_de_la_semaine: ((lostWeek ?? []) as unknown as {
+      lost_reason: string | null;
+      assigned_rep_id: string | null;
+      contacts: { name: string | null } | null;
+    }[]).map((d) => ({
+      client: d.contacts?.name ?? '—',
+      raison: d.lost_reason?.trim() || 'non précisée',
+      commercial: repName(d.assigned_rep_id),
+    })),
+    cap_fin_de_mois: {
+      jour_du_mois: `${dayOfMonth}/${daysInMonth}`,
+      ventes_mois_en_cours: curMonth.length,
+      ca_mois_en_cours_fcfa: curMonth.reduce((s, d) => s + (d.value_xof ?? 0), 0),
+      projection_ventes_fin_de_mois: project(curMonth.length),
+      projection_ca_fin_de_mois_fcfa: project(
+        curMonth.reduce((s, d) => s + (d.value_xof ?? 0), 0),
+      ),
+      mois_precedent: {
+        ventes: prevMonth.length,
+        ca_fcfa: prevMonth.reduce((s, d) => s + (d.value_xof ?? 0), 0),
+      },
+      meilleure_journee_du_mois: bestDay
+        ? { date: bestDay[0], ventes: bestDay[1] }
+        : null,
+    },
     points_attention: {
       visites_suspectes_aujourd_hui: (flaggedToday ?? []).length,
       affaires_ouvertes_sans_activite_7j: staleCount ?? 0,
+      secteurs_sans_activite_cette_semaine: secteursSansActivite,
+      pas_connectes_aujourd_hui: nonConnectes,
     },
   };
 
@@ -163,12 +401,15 @@ export async function GET(request: Request) {
         model: AI_MODELS.manager,
         instructions:
           'Tu écris le BRIEF MANAGER quotidien de Nimbaa (CRM de vente terrain, Abidjan) — réservé aux managers. ' +
-          'À partir des données JSON, rédige en français un brief factuel et actionnable (12 à 24 lignes), structuré ainsi : ' +
-          '1) « Commerciaux : » une ligne par commercial actif — nom, visites, engagés, ventes, CA FCFA, avec une mention si le taux d\'engagement est faible (<20%) ou fort (>40%) ; signale aussi tout commercial à zéro visite. ' +
-          '2) « Techniciens : » une ligne par technicien — terminées, en cours, revisites. ' +
-          "3) « Semaine vs semaine dernière (à date comparable) : » pour chaque commercial et technicien, l'évolution (visites, ventes, CA / terminées) avec le sens (↗/↘/=) — souligne les progressions nettes et les baisses inquiétantes. " +
-          '4) « À surveiller : » les points d\'attention (visites suspectes, affaires sans activité depuis 7j) avec une recommandation concrète chacun. ' +
-          'Ton direct de chef d\'équipe, sans flatterie inutile. Tirets simples, pas de markdown lourd.',
+          'À partir des données JSON, rédige en français un brief factuel et actionnable (20 à 40 lignes), structuré en sections courtes : ' +
+          "1) « Commerciaux : » une ligne par commercial actif — visites (+ % objectif et amplitude de journée si dispo), engagés, ventes, CA FCFA ; mentionne un taux d'engagement faible (<20%) ou fort (>40%), tout commercial à zéro visite, et une série sans vente ≥5 jours. " +
+          '2) « Techniciens : » une ligne par technicien — terminées, en cours, revisites — plus les installations EN RETARD (client + technicien) s\'il y en a. ' +
+          "3) « Semaine vs semaine dernière (à date comparable) : » évolution par personne (visites, ventes, CA / terminées) avec ↗/↘/= — souligne les vraies progressions et les baisses inquiétantes. " +
+          "4) « Conclu aujourd'hui : » chaque vente du jour (client, produit, CA, vendeur) — et les pertes de la semaine avec leur raison si présentes. " +
+          '5) « À pousser : » les 3 à 5 affaires chaudes les plus intéressantes (client, valeur, étape, jours sans activité, commercial). ' +
+          '6) « Demain : » les RDV (heure, client, commercial) et les revisites d\'installation prévues. ' +
+          "7) « Cap fin de mois : » projection ventes/CA au rythme actuel vs le mois dernier, et la meilleure journée du mois ; termine par « À surveiller : » visites suspectes, affaires dormantes, secteurs sans activité et personnes non connectées aujourd'hui, avec une recommandation concrète chacun. " +
+          "Omets toute section vide. Ton direct de chef d'équipe, sans flatterie. Tirets simples, pas de markdown lourd.",
         input: JSON.stringify(managerFacts),
       }),
     ]);
