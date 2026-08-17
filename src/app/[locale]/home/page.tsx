@@ -156,7 +156,24 @@ export default async function HomePage({
     .limit(1000);
   if (isTechnician) installsQ = installsQ.eq('installer_id', user.id);
 
-  const [{ reps, techs }, { data: turfs }, { data: knockRows }, { data: installRows }, { data: recap }] =
+  // Managers get the detailed per-person brief; field users get "Mon brief"
+  // (team story + their personal analysis). Fallback: the public recap.
+  const detailRecapQ = isManager
+    ? admin
+        .from('manager_recaps')
+        .select('day, content')
+        .order('day', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : admin
+        .from('user_recaps')
+        .select('day, content')
+        .eq('user_id', user.id)
+        .order('day', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+  const [{ reps, techs }, { data: turfs }, { data: knockRows }, { data: installRows }, { data: recap }, { data: detailRecap }] =
     await Promise.all([
       getPointConfig(admin).then((pts) => computeBoards(admin, monday.toISOString(), pts)),
       supabase.rpc('territories_geojson'), // RLS: rep → own turfs, manager → all
@@ -168,31 +185,10 @@ export default async function HomePage({
         .order('day', { ascending: false })
         .limit(1)
         .maybeSingle(),
+      detailRecapQ,
     ]);
 
-  // Managers get the detailed per-person brief; field users get "Mon brief"
-  // (team story + their personal analysis). Fallback: the public recap.
-  let managerRecap: { day: string; content: string } | null = null;
-  let myRecap: { day: string; content: string } | null = null;
-  if (isManager) {
-    const { data } = await admin
-      .from('manager_recaps')
-      .select('day, content')
-      .order('day', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    managerRecap = data ?? null;
-  } else {
-    const { data } = await admin
-      .from('user_recaps')
-      .select('day, content')
-      .eq('user_id', user.id)
-      .order('day', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    myRecap = data ?? null;
-  }
-  const shownRecap = managerRecap ?? myRecap ?? recap;
+  const shownRecap = (detailRecap as { day: string; content: string } | null) ?? recap;
 
   const turfRows = ((turfs ?? []) as {
     name?: string | null;
@@ -368,9 +364,9 @@ export default async function HomePage({
             {(shownRecap || isManager) && (
               <RecapCard
                 title={
-                  managerRecap
+                  detailRecap && isManager
                     ? tBoard('managerRecapTitle')
-                    : myRecap
+                    : detailRecap
                       ? tBoard('myRecapTitle')
                       : tBoard('recapTitle')
                 }

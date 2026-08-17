@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { cache } from 'react';
 import { redirect } from '@/i18n/navigation';
 import { getLocale } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
@@ -10,8 +11,10 @@ export type AppUser = Database['public']['Tables']['users']['Row'];
 /**
  * Returns the current authenticated app user (row from public.users), or null.
  * Use in Server Components / layouts to gate access and route by capability.
+ * Wrapped in React cache(): the page guard and the AppHeader both call this,
+ * and without the cache every page paid the auth + profile round trips twice.
  */
-export async function getCurrentUser(): Promise<AppUser | null> {
+export const getCurrentUser = cache(async (): Promise<AppUser | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -26,7 +29,7 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     .single();
 
   return profile ?? null;
-}
+});
 
 /**
  * Returns the current user, or redirects to /login if not authenticated.
