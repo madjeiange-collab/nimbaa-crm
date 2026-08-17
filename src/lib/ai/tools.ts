@@ -187,6 +187,21 @@ export const TOOL_DEFINITIONS: OpenAI.Responses.Tool[] = [
   {
     type: 'function' as const,
     strict: true,
+    name: 'commission_stats',
+    description:
+      "Commissions : acquises, payées, en attente et expirées sur la période, séparées ventes (commerciaux) / installations (techniciens), avec comparaison à la période précédente équivalente (jour vs veille, semaine vs semaine dernière à date, mois vs mois dernier à date). Managers/admins voient tout le monde (+ détail par personne) ; commerciaux et techniciens uniquement leurs propres commissions. Utiliser pour 'mes commissions', 'combien de commissions ce mois', 'commissions à payer', 'évolution des commissions'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', enum: ['today', 'week', 'month'], description: 'Période' },
+      },
+      required: ['period'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
     name: 'business_type_stats',
     description:
       "Analyse par type d'activité (maquis, restaurant, glacier, chawarma, boutique…) : affaires gagnées et pipeline ouvert par type, plus les tags les plus fréquents. Utiliser pour 'quel type de commerce achète le plus', 'combien de maquis ce mois', 'analyse par tag'.",
@@ -1321,6 +1336,96 @@ async function dailyTrend(db: Db, user: AppUser) {
   };
 }
 
+async function commissionStats(db: Db, user: AppUser, args: { period: string }) {
+  const isManager = isManagerRole(user);
+  const now = new Date();
+  const since = periodStart(args.period, now);
+  const prevSince = new Date(since.getTime() - (now.getTime() - since.getTime()));
+
+  let q = db
+    .from('commission_entries')
+    .select('rep_id, kind, amount_xof, status, period_month, earned_at, paid_at')
+    .limit(5000);
+  if (!isManager) q = q.eq('rep_id', user.id);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+
+  type Row = {
+    rep_id: string;
+    kind: string | null;
+    amount_xof: number;
+    status: string;
+    period_month: string;
+    earned_at: string | null;
+    paid_at: string | null;
+  };
+  const rows = (data ?? []) as Row[];
+  const inWin = (iso: string | null, from: Date, to: Date) =>
+    !!iso && iso >= from.toISOString() && iso < to.toISOString();
+
+  const summarize = (from: Date, to: Date) => {
+    // Earned/paid are dated by when they were EARNED; pending/expired by the
+    // month slice they belong to.
+    const earnedRows = rows.filter(
+      (r) => (r.status === 'earned' || r.status === 'paid') && inWin(r.earned_at, from, to),
+    );
+    const paidRows = rows.filter((r) => r.status === 'paid' && inWin(r.paid_at, from, to));
+    const sum = (rs: Row[]) => rs.reduce((s, r) => s + r.amount_xof, 0);
+    return {
+      acquises: { nombre: earnedRows.length, fcfa: sum(earnedRows) },
+      dont_ventes_fcfa: sum(earnedRows.filter((r) => r.kind !== 'install')),
+      dont_installations_fcfa: sum(earnedRows.filter((r) => r.kind === 'install')),
+      payees: { nombre: paidRows.length, fcfa: sum(paidRows) },
+    };
+  };
+
+  const cur = summarize(since, now);
+  const prev = summarize(prevSince, since);
+  const pendingUpcoming = rows.filter((r) => r.status === 'pending');
+  const expired = rows.filter((r) => r.status === 'expired');
+  const toPayNow = rows.filter((r) => r.status === 'earned');
+
+  const result: Record<string, unknown> = {
+    periode: args.period,
+    scope: isManager ? 'équipe' : 'moi',
+    periode_actuelle: cur,
+    periode_precedente_equivalente: prev,
+    variation_acquises_fcfa: cur.acquises.fcfa - prev.acquises.fcfa,
+    a_payer_maintenant_fcfa: toPayNow.reduce((s, r) => s + r.amount_xof, 0),
+    mensualites_a_venir: {
+      nombre: pendingUpcoming.length,
+      fcfa: pendingUpcoming.reduce((s, r) => s + r.amount_xof, 0),
+      prochaine: pendingUpcoming.map((r) => r.period_month).sort()[0] ?? null,
+    },
+    expirees_fcfa: expired.reduce((s, r) => s + r.amount_xof, 0),
+    note: "acquise = due (client actif), payée = versée ; ventes = commission commerciale, installations = commission technicien",
+  };
+
+  if (isManager) {
+    const { data: users } = await db.from('users').select('id, full_name, username');
+    const nameOf = new Map(
+      ((users ?? []) as { id: string; full_name: string | null; username: string | null }[]).map(
+        (u) => [u.id, u.full_name || u.username || '—'],
+      ),
+    );
+    const byPerson = new Map<string, { acquises_fcfa: number; a_payer_fcfa: number }>();
+    for (const r of rows) {
+      const cur2 = byPerson.get(r.rep_id) ?? { acquises_fcfa: 0, a_payer_fcfa: 0 };
+      if ((r.status === 'earned' || r.status === 'paid') && inWin(r.earned_at, since, now)) {
+        cur2.acquises_fcfa += r.amount_xof;
+      }
+      if (r.status === 'earned') cur2.a_payer_fcfa += r.amount_xof;
+      byPerson.set(r.rep_id, cur2);
+    }
+    result.par_personne = [...byPerson.entries()]
+      .map(([id, v]) => ({ nom: nameOf.get(id) ?? '—', ...v }))
+      .filter((p) => p.acquises_fcfa > 0 || p.a_payer_fcfa > 0)
+      .sort((a, b) => b.acquises_fcfa - a.acquises_fcfa);
+  }
+
+  return result;
+}
+
 async function businessTypeStats(db: Db, user: AppUser, args: { period: string }) {
   const isManager = isManagerRole(user);
   const since = periodStart(args.period, new Date());
@@ -1426,6 +1531,8 @@ export async function executeTool(
         return await productStats(db, user, args as { period: string });
       case 'business_type_stats':
         return await businessTypeStats(db, user, args as { period: string });
+      case 'commission_stats':
+        return await commissionStats(db, user, args as { period: string });
       case 'stale_deals':
         return await staleDeals(db, user, args as { min_days: number });
       case 'neglected_contacts':
