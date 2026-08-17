@@ -4,13 +4,16 @@ import { useMemo, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { BadgeDollarSign, Check, Download } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
-import { payEarnedCommissions } from '@/lib/commissions/actions';
+import { payEarnedCommissions, payCommissionEntry } from '@/lib/commissions/actions';
+import { Link } from '@/i18n/navigation';
 import { downloadCsv } from '@/lib/csv';
 import { StatTile } from '@/components/charts/stat-tile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
 export interface CommissionRow {
+  id: string;
+  contactId: string | null;
   repId: string;
   name: string;
   role: string;
@@ -163,6 +166,15 @@ function DetailedReport({
   fMonth: string; setFMonth: (v: string) => void;
 }) {
   const t = useTranslations('commissions');
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  function payLine(id: string) {
+    startTransition(async () => {
+      await payCommissionEntry(id);
+      router.refresh();
+    });
+  }
 
   const people = useMemo(
     () => [...new Map(rows.map((r) => [r.repId, r.name])).entries()].sort((a, b) => a[1].localeCompare(b[1])),
@@ -239,13 +251,20 @@ function DetailedReport({
           <p className="text-sm text-muted-foreground">{t('detailEmpty')}</p>
         ) : (
           <div className="space-y-1.5">
-            {filtered.slice(0, 100).map((r, i) => (
-              <div key={i} className="flex items-center gap-2 rounded-lg border p-2 text-sm">
+            {filtered.slice(0, 100).map((r) => (
+              <div key={r.id} className="flex items-center gap-2 rounded-lg border p-2 text-sm">
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">
                     {r.name}
                     <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                      {r.kind === 'install' ? t('kindInstall') : t('kindSale')} · {r.client} · {r.product}
+                      {r.kind === 'install' ? t('kindInstall') : t('kindSale')} ·{' '}
+                      {r.contactId ? (
+                        <Link href={`/contacts/${r.contactId}`} className="text-primary underline">
+                          {r.client} · {r.product}
+                        </Link>
+                      ) : (
+                        <>{r.client} · {r.product}</>
+                      )}
                     </span>
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -258,6 +277,17 @@ function DetailedReport({
                   {t(`status_${r.status}` as never)}
                 </span>
                 <span className="w-24 shrink-0 text-right font-semibold">{fcfa(r.amount)}</span>
+                {r.status === 'earned' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    disabled={isPending}
+                    onClick={() => payLine(r.id)}
+                  >
+                    {t('payLine')}
+                  </Button>
+                )}
               </div>
             ))}
             {filtered.length > 100 && (

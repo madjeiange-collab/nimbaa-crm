@@ -140,7 +140,8 @@
     "status_earned": "Earned",
     "status_pending": "Pending",
     "status_paid": "Paid",
-    "status_expired": "Expired"
+    "status_expired": "Expired",
+    "payLine": "Pay"
   },
   "dealFunnel": {
     "title": "Deals by stage",

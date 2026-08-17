@@ -6,6 +6,23 @@ import { getCurrentUser } from '@/lib/auth/session';
 
 export type CommissionResult = { ok: true } | { ok: false; error: string };
 
+/** Pay a single EARNED entry (line-level payroll). Manager/admin only. */
+export async function payCommissionEntry(entryId: string): Promise<CommissionResult> {
+  const me = await getCurrentUser();
+  if (!me) return { ok: false, error: 'unauthenticated' };
+  if (me.role !== 'manager' && me.role !== 'admin') return { ok: false, error: 'forbidden' };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('commission_entries')
+    .update({ status: 'paid', paid_at: new Date().toISOString() })
+    .eq('id', entryId)
+    .eq('status', 'earned');
+  if (error) return { ok: false, error: 'saveFailed' };
+  revalidatePath('/[locale]/dashboard/commissions', 'page');
+  return { ok: true };
+}
+
 /**
  * Payroll cut: flips every EARNED entry to PAID (they leave "à payer" and
  * enter the history). Manager/admin only.

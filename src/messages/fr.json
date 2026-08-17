@@ -140,7 +140,8 @@
     "status_earned": "Acquise",
     "status_pending": "En attente",
     "status_paid": "Payée",
-    "status_expired": "Expirée"
+    "status_expired": "Expirée",
+    "payLine": "Payer"
   },
   "dealFunnel": {
     "title": "Affaires par étape",

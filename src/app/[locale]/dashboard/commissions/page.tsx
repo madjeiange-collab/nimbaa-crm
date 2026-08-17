@@ -21,7 +21,7 @@ export default async function CommissionsPage({
   const [{ data: entries }, { data: users }, { data: subs }] = await Promise.all([
     supabase
       .from('commission_entries')
-      .select('rep_id, kind, period_index, amount_xof, base_xof, rate_pct, status, period_month, earned_at, paid_at, deals(title, value_xof, contacts(name), products(name))')
+      .select('id, rep_id, kind, period_index, amount_xof, base_xof, rate_pct, status, period_month, earned_at, paid_at, deals(title, value_xof, contacts(id, name), products(name))')
       .order('period_month', { ascending: false })
       .limit(5000),
     supabase.from('users').select('id, full_name, username, role'),
@@ -41,6 +41,7 @@ export default async function CommissionsPage({
   );
 
   const rows: CommissionRow[] = ((entries ?? []) as unknown as {
+    id: string;
     rep_id: string;
     kind: string | null;
     period_index: number;
@@ -52,10 +53,12 @@ export default async function CommissionsPage({
     deals: {
       title: string | null;
       value_xof: number | null;
-      contacts: { name: string | null } | null;
+      contacts: { id: string; name: string | null } | null;
       products: { name: string } | null;
     } | null;
   }[]).map((e) => ({
+    id: e.id,
+    contactId: e.deals?.contacts?.id ?? null,
     repId: e.rep_id,
     name: nameById.get(e.rep_id) ?? '—',
     role: roleById.get(e.rep_id) ?? 'rep',
