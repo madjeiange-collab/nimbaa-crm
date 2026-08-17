@@ -70,7 +70,7 @@
   }
   .wrap { max-width: 880px; margin: 0 auto; }
 
-  h1, h2, h3 {
+  h1, h2, h3, h4 {
     font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
     line-height: 1.25;
     text-wrap: balance;
@@ -83,6 +83,26 @@
     border-top: none;
   }
   h3 { font-size: 1.1rem; margin: 1.6rem 0 0.5rem; }
+  h4 {
+    font-size: 0.94rem;
+    margin: 1.5rem 0 0.2rem;
+    color: var(--accent);
+  }
+
+  /* Stage path: one long line, scrolls on its own rather than the page. */
+  .path {
+    font-size: 0.85rem;
+    color: var(--muted);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.55rem 0.85rem;
+    margin: 0.8rem 0 0.2rem;
+    overflow-x: auto;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  .path strong { color: var(--accent); }
   p { margin: 0.7rem 0; max-width: 68ch; }
   li { margin: 0.3rem 0; }
   ul, ol { padding-left: 1.3rem; max-width: 66ch; }
@@ -160,6 +180,9 @@
     border-bottom: 1px solid var(--line);
   }
   section.screen.noshot { grid-template-columns: minmax(0, 1fr); }
+  /* Continuation of the section above: led by an h3, so less top air. */
+  section.screen.sub { padding-top: 1.6rem; }
+  section.screen.sub > .txt > h3:first-child { margin-top: 0; }
   section.screen > .txt { min-width: 0; }
   @media (max-width: 720px) {
     section.screen { grid-template-columns: minmax(0, 1fr); }
@@ -170,6 +193,7 @@
     position: sticky;
     top: 1rem;
   }
+  section.screen.sub figure.phone { margin-top: 0.4rem; }
   @media (max-width: 720px) {
     figure.phone { position: static; margin-top: 0.4rem; }
   }
@@ -302,7 +326,7 @@
     <a href="#accueil"><span class="n">2</span>L'écran d'accueil</a>
     <a href="#roles"><span class="n">3</span>Rôles et accès</a>
     <a href="#visite"><span class="n">4</span>Enregistrer une visite</a>
-    <a href="#contacts"><span class="n">5</span>Clients &amp; prospects</a>
+    <a href="#contacts"><span class="n">5</span>Clients, prospects &amp; conversion</a>
     <a href="#secteur"><span class="n">6</span>Mon secteur (carte)</a>
     <a href="#installation"><span class="n">7</span>Installations (technicien)</a>
     <a href="#classement"><span class="n">8</span>Classement &amp; badges</a>
@@ -411,13 +435,13 @@
 <!-- ============ 5. CONTACTS ============ -->
 <section class="screen" id="contacts">
   <div class="txt">
-    <h2>5 · Clients &amp; prospects</h2>
+    <h2>5 · Clients, prospects &amp; conversion</h2>
     <div class="roles"><span class="chip com">Commercial</span><span class="chip man">Manager</span></div>
     <p><span class="btn-ref">Mes clients &amp; prospects</span> liste vos fiches, avec recherche et filtres. Chaque fiche regroupe :</p>
     <ul>
       <li><strong>Coordonnées</strong> — le téléphone est saisi avec l'indicatif pays (🇨🇮 +225 par défaut, modifiable). Le bouton <strong>WhatsApp</strong> ouvre une conversation directement, avec un brouillon de message proposé par l'IA.</li>
       <li><strong>Interlocuteurs</strong> — les personnes chez le client (rôle par défaut : <em>Gérant</em>), reliables aux affaires.</li>
-      <li><strong>Affaires (deals)</strong> — le produit proposé, l'étape du pipeline, le <strong>type d'activité</strong> (Maquis, Restaurant, Glacier, Chawarma, Supérette…) et des <strong>tags</strong> libres pour catégoriser.</li>
+      <li><strong>Affaires (deals)</strong> — le produit proposé, l'étape du pipeline, le <strong>type d'activité</strong> (Maquis, Restaurant, Glacier, Chawarma, Supérette…) et des <strong>tags</strong> libres pour catégoriser. C'est ici que se joue le passage de prospect à client — voir juste après.</li>
       <li><strong>Abonnement</strong> — sur un client gagné : le forfait actif, sa date de début et son statut. Le manager peut y déclarer une <strong>résiliation</strong>.</li>
       <li><strong>Historique</strong> — visites, photos et installations liées.</li>
     </ul>
@@ -429,6 +453,49 @@
   <figure class="phone">
     <img src="/manuel/05-contact-detail.png" alt="Fiche client avec coordonnées, bouton WhatsApp, affaires et abonnement actif" />
     <figcaption>Fiche client : WhatsApp, interlocuteurs, affaires et abonnement.</figcaption>
+  </figure>
+</section>
+
+<!-- ---- 5b. Conversion prospect → client ---- -->
+<section class="screen sub" id="conversion">
+  <div class="txt">
+    <h3>Convertir un prospect en client</h3>
+    <p>Il n'y a <strong>pas de bouton « convertir »</strong> sur la fiche : c'est <strong>l'affaire qui décide</strong>. Un prospect devient client dès qu'<strong>une</strong> de ses affaires atteint l'étape <strong>Gagné (Client)</strong>. Le contact passe alors tout seul de l'onglet <em>Prospects</em> à l'onglet <em>Clients</em>.</p>
+    <p class="path">Nouveau → Contacté → Intéressé → RDV → Négociation → <strong>Gagné (Client)</strong></p>
+
+    <h4>Depuis la fiche — vente préparée</h4>
+    <ol>
+      <li>Ouvrez la fiche du prospect et descendez à la section <strong>Affaires</strong>.</li>
+      <li>Choisissez le <strong>Produit</strong> : la valeur de l'affaire se remplit automatiquement au prix du forfait.</li>
+      <li>Cochez <strong>Installation requise</strong> si une pose chez le client est nécessaire.</li>
+      <li>Dans le menu <strong>Étape</strong>, choisissez <strong>Gagné (Client)</strong>.</li>
+    </ol>
+    <p>C'est tout : l'enregistrement est immédiat, il n'y a rien à valider ensuite.</p>
+
+    <h4>Depuis le terrain — vente sur place</h4>
+    <p>Enregistrez la visite avec le résultat <strong>Vendu</strong> (section 4). L'affaire est créée et gagnée dans la foulée, et le prospect devient client sans autre manipulation. Si le contact avait déjà plusieurs affaires, choisissez celle qui est vendue dans le sélecteur « Quelle affaire ? ».</p>
+
+    <h4>Ce qui se déclenche automatiquement</h4>
+    <ul>
+      <li>Le contact devient <strong>Client</strong> et sa date de conversion est enregistrée.</li>
+      <li>Une <strong>installation</strong> est planifiée si « Installation requise » était coché.</li>
+      <li>L'<strong>abonnement</strong> démarre et la <strong>commission</strong> est créée — la 1<sup>re</sup> mensualité est acquise immédiatement (section 12).</li>
+      <li>Le chiffre d'affaires du contact et les statistiques sont recalculés.</li>
+    </ul>
+
+    <div class="callout tip">
+      <span class="lbl">Plusieurs affaires, un seul statut</span>
+      <p>Le statut suit <strong>la meilleure affaire</strong> : un contact qui a une affaire gagnée <strong>reste client</strong> même si une autre est perdue. Vous pouvez donc mener plusieurs ventes en parallèle chez la même enseigne.</p>
+    </div>
+    <div class="callout warn">
+      <span class="lbl">Étape choisie par erreur</span>
+      <p>Passer une affaire en <em>Gagné</em> crée l'abonnement et la commission. Remettre l'affaire sur une étape en cours ne les supprime pas : prévenez votre <strong>manager</strong>, qui peut résilier l'abonnement depuis la fiche client.</p>
+    </div>
+    <p><strong>Prospect perdu ?</strong> Choisissez l'étape <strong>Perdu</strong>. Si le contact n'a plus aucune affaire ouverte ni gagnée, il bascule dans l'onglet <em>Perdus</em> — sa fiche et son historique restent consultables.</p>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/16-deal-stage.png" alt="Section Affaires d'un prospect : sélecteur Produit, menu Étape sur Intéressé, case Installation requise" />
+    <figcaption>La section <strong>Affaires</strong> d'un prospect. Le menu <strong>Étape</strong> — ici sur « Intéressé » — est le seul geste qui transforme le prospect en client.</figcaption>
   </figure>
 </section>
 
