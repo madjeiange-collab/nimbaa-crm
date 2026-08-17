@@ -162,6 +162,7 @@
     "empty": "No points yet this period — game on!",
     "recapTitle": "Daily recap",
     "managerRecapTitle": "Manager brief",
+    "myRecapTitle": "My brief",
     "generateRecap": "Generate recap",
     "recapError": "Failed — retry",
     "scoringTitle": "How points are calculated",

@@ -169,8 +169,10 @@ export default async function HomePage({
         .maybeSingle(),
     ]);
 
-  // Managers get the detailed per-person brief instead of the public recap.
+  // Managers get the detailed per-person brief; field users get "Mon brief"
+  // (team story + their personal analysis). Fallback: the public recap.
   let managerRecap: { day: string; content: string } | null = null;
+  let myRecap: { day: string; content: string } | null = null;
   if (isManager) {
     const { data } = await admin
       .from('manager_recaps')
@@ -179,8 +181,17 @@ export default async function HomePage({
       .limit(1)
       .maybeSingle();
     managerRecap = data ?? null;
+  } else {
+    const { data } = await admin
+      .from('user_recaps')
+      .select('day, content')
+      .eq('user_id', user.id)
+      .order('day', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    myRecap = data ?? null;
   }
-  const shownRecap = managerRecap ?? recap;
+  const shownRecap = managerRecap ?? myRecap ?? recap;
 
   const polygons: number[][][][] = ((turfs ?? []) as { geojson?: { coordinates?: number[][][] } }[])
     .map((row) => row.geojson?.coordinates)
@@ -356,7 +367,11 @@ export default async function HomePage({
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <p className="flex min-w-0 items-center gap-2 text-sm font-semibold">
                       <Sparkles className="h-4 w-4 shrink-0 text-primary" />
-                      {managerRecap ? tBoard('managerRecapTitle') : tBoard('recapTitle')}
+                      {managerRecap
+                        ? tBoard('managerRecapTitle')
+                        : myRecap
+                          ? tBoard('myRecapTitle')
+                          : tBoard('recapTitle')}
                       {shownRecap && (
                         <span className="truncate font-normal text-muted-foreground">
                           · {new Date(shownRecap.day + 'T12:00:00').toLocaleDateString('fr-FR', {

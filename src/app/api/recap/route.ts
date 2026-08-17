@@ -171,6 +171,17 @@ export async function GET(request: Request) {
     admin.from('app_settings').select('value').eq('key', 'daily_visit_goal').maybeSingle(),
   ]);
 
+  // Extra lookups for the personal briefs.
+  const [{ data: roleRows }, { data: schedTomorrow }] = await Promise.all([
+    admin.from('users').select('id, role'),
+    admin
+      .from('installations')
+      .select('installer_id, contacts(name)')
+      .eq('scheduled_date', tomorrowDate)
+      .limit(50),
+  ]);
+  const roleOf = new Map((roleRows ?? []).map((u) => [u.id, u.role as string]));
+
   const nameById = new Map(
     [...today.reps, ...today.techs, ...week.reps, ...week.techs].map((r) => [r.id, r.name]),
   );
@@ -431,7 +442,212 @@ export async function GET(request: Request) {
     if (e1) throw new Error(e1.message);
     if (e2 && !/manager_recaps/.test(e2.message)) throw new Error(e2.message);
 
-    return NextResponse.json({ ok: true, day });
+    // --- Personal briefs for ACTIVE field users -------------------------
+    // Active = worked today or has something planned tomorrow.
+    type Sched = { installer_id: string | null; contacts: { name: string | null } | null };
+    type Rdv = { rep_id: string; appointment_date: string; contacts: { name: string | null } | null };
+    const rdvRows = (rdvTomorrow ?? []) as unknown as Rdv[];
+    const schedRows = (schedTomorrow ?? []) as unknown as Sched[];
+    const revisitRows = (revisitsTomorrow ?? []) as unknown as Sched[];
+
+    const activeReps = week.reps.filter(
+      (r) =>
+        roleOf.get(r.id) === 'rep' &&
+        (today.reps.find((t) => t.id === r.id)?.visits ?? 0) +
+          (today.reps.find((t) => t.id === r.id)?.sales ?? 0) >
+          0,
+    );
+    for (const r of week.reps) {
+      if (
+        roleOf.get(r.id) === 'rep' &&
+        !activeReps.some((a) => a.id === r.id) &&
+        rdvRows.some((x) => x.rep_id === r.id)
+      )
+        activeReps.push(r);
+    }
+    const activeTechs = week.techs.filter(
+      (t) =>
+        roleOf.get(t.id) === 'technician' &&
+        ((today.techs.find((x) => x.id === t.id)?.done ?? 0) > 0 ||
+          schedRows.some((s) => s.installer_id === t.id) ||
+          revisitRows.some((s) => s.installer_id === t.id)),
+    );
+
+    // Own open deals to push (per active rep).
+    const activeRepIds = activeReps.map((r) => r.id);
+    let ownDeals: {
+      assigned_rep_id: string | null;
+      title: string | null;
+      value_xof: number | null;
+      updated_at: string;
+      pipeline_stages: { name: string } | null;
+      contacts: { name: string | null } | null;
+    }[] = [];
+    if (activeRepIds.length > 0) {
+      const { data } = await admin
+        .from('deals')
+        .select('assigned_rep_id, title, value_xof, updated_at, pipeline_stages(name), contacts(name)')
+        .eq('status', 'open')
+        .in('assigned_rep_id', activeRepIds)
+        .order('value_xof', { ascending: false, nullsFirst: false })
+        .limit(120);
+      ownDeals = (data ?? []) as unknown as typeof ownDeals;
+    }
+
+    const personalInstructions =
+      'Tu écris « Mon brief » — le récap personnel quotidien d\'UN employé terrain de Nimbaa (Abidjan). ' +
+      'Tutoie la personne. Ton de coach : encourageant mais honnête sur les signaux faibles. ' +
+      'À partir des données JSON, rédige 8 à 16 lignes en français, sections courtes (omets celles qui sont vides) : ' +
+      '« Aujourd\'hui : » tes chiffres du jour ; ' +
+      '« Ma semaine : » évolution vs la semaine dernière à date (↗/↘/=) avec UNE observation utile (ex. engagement en baisse → soigner l\'argumentaire) ; ' +
+      '« Conclu : » tes ventes/installations du jour ; ' +
+      '« À pousser : » tes 2-3 affaires ouvertes les plus intéressantes ; ' +
+      '« Demain : » tes RDV / chantiers prévus ; ' +
+      '« Classement : » ton rang, tes points, et l\'écart avec la personne devant toi (motive sans écraser). ' +
+      'Pas de markdown lourd, tirets simples, 1-2 emojis max.';
+
+    const buildRepFacts = (r: (typeof week.reps)[number]) => {
+      const t = today.reps.find((x) => x.id === r.id);
+      const prev = prevWeekToDate.reps.find((p) => p.id === r.id);
+      const rank = week.reps.findIndex((x) => x.id === r.id);
+      const ahead = rank > 0 ? week.reps[rank - 1] : null;
+      return {
+        prenom: r.name,
+        objectif_visites_jour: dailyGoal,
+        aujourd_hui: t
+          ? {
+              visites: t.visits,
+              objectif_atteint_pct: Math.round((t.visits / dailyGoal) * 100),
+              amplitude: times.has(r.id)
+                ? `${hhmm(times.get(r.id)!.first)}–${hhmm(times.get(r.id)!.last)}`
+                : null,
+              interesses: t.interested,
+              rdv: t.rdv,
+              ventes: t.sales,
+              ca_fcfa: t.fcfa,
+              taux_engagement_pct: t.engagementPct,
+            }
+          : null,
+        ma_semaine_vs_precedente_a_date: {
+          visites: { cette_semaine: r.visits, semaine_derniere: prev?.visits ?? 0 },
+          ventes: { cette_semaine: r.sales, semaine_derniere: prev?.sales ?? 0 },
+          taux_engagement_pct: {
+            cette_semaine: r.engagementPct,
+            semaine_derniere: prev?.engagementPct ?? 0,
+          },
+        },
+        conclu_aujourd_hui: ((salesToday ?? []) as unknown as {
+          assigned_rep_id: string | null;
+          value_xof: number | null;
+          title: string | null;
+          products: { name: string } | null;
+          contacts: { name: string | null } | null;
+        }[])
+          .filter((d) => d.assigned_rep_id === r.id)
+          .map((d) => ({
+            client: d.contacts?.name ?? '—',
+            produit: d.products?.name || d.title || '—',
+            ca_fcfa: d.value_xof ?? 0,
+          })),
+        a_pousser: ownDeals
+          .filter((d) => d.assigned_rep_id === r.id)
+          .slice(0, 3)
+          .map((d) => ({
+            client: d.contacts?.name ?? '—',
+            valeur_fcfa: d.value_xof ?? 0,
+            etape: d.pipeline_stages?.name ?? '—',
+            jours_sans_activite: Math.floor(
+              (Date.now() - new Date(d.updated_at).getTime()) / 86400_000,
+            ),
+          })),
+        demain_rdv: rdvRows
+          .filter((x) => x.rep_id === r.id)
+          .map((x) => ({ heure: hhmm(x.appointment_date), client: x.contacts?.name ?? '—' })),
+        classement: {
+          rang: rank + 1,
+          points: r.points,
+          devant_moi: ahead ? { nom: ahead.name, points: ahead.points } : null,
+        },
+      };
+    };
+
+    const buildTechFacts = (t: (typeof week.techs)[number]) => {
+      const td = today.techs.find((x) => x.id === t.id);
+      const prev = prevWeekToDate.techs.find((p) => p.id === t.id);
+      const rank = week.techs.findIndex((x) => x.id === t.id);
+      const ahead = rank > 0 ? week.techs[rank - 1] : null;
+      return {
+        prenom: t.name,
+        aujourd_hui: td
+          ? { terminees: td.done, en_cours: td.open, revisites: td.revisits, taux_completion_pct: td.completionPct }
+          : null,
+        ma_semaine_vs_precedente_a_date: {
+          terminees: { cette_semaine: t.done, semaine_derniere: prev?.done ?? 0 },
+        },
+        en_retard: ((lateInstalls ?? []) as unknown as {
+          installer_id: string | null;
+          scheduled_date: string | null;
+          contacts: { name: string | null } | null;
+        }[])
+          .filter((x) => x.installer_id === t.id)
+          .map((x) => ({ client: x.contacts?.name ?? '—', prevue_le: x.scheduled_date })),
+        demain: [
+          ...schedRows
+            .filter((x) => x.installer_id === t.id)
+            .map((x) => ({ type: 'chantier programmé', client: x.contacts?.name ?? '—' })),
+          ...revisitRows
+            .filter((x) => x.installer_id === t.id)
+            .map((x) => ({ type: 'revisite', client: x.contacts?.name ?? '—' })),
+        ],
+        classement_techniciens: {
+          rang: rank + 1,
+          points: t.points,
+          devant_moi: ahead ? { nom: ahead.name, points: ahead.points } : null,
+        },
+      };
+    };
+
+    const personTargets = [
+      ...activeReps.map((r) => ({ id: r.id, facts: buildRepFacts(r) })),
+      ...activeTechs.map((t) => ({ id: t.id, facts: buildTechFacts(t) })),
+    ];
+
+    // Generate in small parallel batches on the budget model; one failure
+    // never sinks the run.
+    let personalCount = 0;
+    for (let i = 0; i < personTargets.length; i += 6) {
+      const batch = personTargets.slice(i, i + 6);
+      const results = await Promise.all(
+        batch.map(async (p) => {
+          try {
+            const res = await openai.responses.create({
+              model: AI_MODELS.rep,
+              instructions: personalInstructions,
+              input: JSON.stringify(p.facts),
+            });
+            const text = res.output_text?.trim();
+            return text ? { id: p.id, text } : null;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      const rows = results
+        .filter((r): r is { id: string; text: string } => !!r)
+        .map((r) => ({
+          day,
+          user_id: r.id,
+          content: `${content}\n\n────── Mon brief ──────\n\n${r.text}`,
+        }));
+      if (rows.length > 0) {
+        const { error } = await admin
+          .from('user_recaps')
+          .upsert(rows, { onConflict: 'day,user_id' });
+        if (!error) personalCount += rows.length;
+      }
+    }
+
+    return NextResponse.json({ ok: true, day, personal: personalCount });
   } catch (e) {
     console.error('[recap]', e);
     return NextResponse.json({ error: 'ai_error' }, { status: 502 });

@@ -162,6 +162,7 @@
     "empty": "Pas encore de points sur cette période — à vous de jouer !",
     "recapTitle": "Récap du jour",
     "managerRecapTitle": "Brief manager",
+    "myRecapTitle": "Mon brief",
     "generateRecap": "Générer le récap",
     "recapError": "Échec — réessayer",
     "scoringTitle": "Comment les points sont calculés",
