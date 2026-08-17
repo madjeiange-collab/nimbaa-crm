@@ -163,6 +163,8 @@
     "recapTitle": "Récap du jour",
     "managerRecapTitle": "Brief manager",
     "myRecapTitle": "Mon brief",
+    "recapExpand": "Voir tout",
+    "recapCollapse": "Réduire",
     "generateRecap": "Générer le récap",
     "recapError": "Échec — réessayer",
     "scoringTitle": "Comment les points sont calculés",

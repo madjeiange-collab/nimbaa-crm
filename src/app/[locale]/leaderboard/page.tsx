@@ -1,5 +1,5 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
-import { Trophy, Sparkles } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { requireUser } from '@/lib/auth/session';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -8,6 +8,7 @@ import { AppHeader } from '@/components/shared/app-header';
 import { Avatar } from '@/components/shared/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { GenerateRecapButton } from '@/components/leaderboard/generate-recap-button';
+import { RecapCard } from '@/components/leaderboard/recap-card';
 
 function rankBadge(i: number): string {
   return i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
@@ -169,22 +170,15 @@ export default async function LeaderboardPage({
       <main className="mx-auto max-w-3xl space-y-4 p-4">
         {/* Daily recap written by the assistant */}
         {recap && (
-          <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="pt-4">
-              <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                <Sparkles className="h-4 w-4 text-primary" />
-                {t('recapTitle')}
-                <span className="font-normal text-muted-foreground">
-                  · {new Date(recap.day + 'T12:00:00').toLocaleDateString('fr-FR', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                  })}
-                </span>
-              </p>
-              <p className="whitespace-pre-wrap text-sm">{recap.content}</p>
-            </CardContent>
-          </Card>
+          <RecapCard
+            title={t('recapTitle')}
+            dateLabel={new Date(recap.day + 'T12:00:00').toLocaleDateString('fr-FR', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+            })}
+            content={recap.content}
+          />
         )}
 
         {/* Period toggle + manager recap trigger */}

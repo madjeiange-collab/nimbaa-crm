@@ -21,6 +21,7 @@ import { Avatar } from '@/components/shared/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { CoverageMap } from '@/components/charts/coverage-map';
 import { GenerateRecapButton } from '@/components/leaderboard/generate-recap-button';
+import { RecapCard } from '@/components/leaderboard/recap-card';
 import type { InstallPoint, TurfKnock } from '@/components/map/turf-map';
 
 function HomeCard({
@@ -362,35 +363,26 @@ export default async function HomePage({
           {/* ---- Right: daily AI recap + this week's board + coverage map ---- */}
           <div className="space-y-4">
             {(shownRecap || isManager) && (
-              <Card className="border-primary/30 bg-primary/5">
-                <CardContent className="pt-4">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <p className="flex min-w-0 items-center gap-2 text-sm font-semibold">
-                      <Sparkles className="h-4 w-4 shrink-0 text-primary" />
-                      {managerRecap
-                        ? tBoard('managerRecapTitle')
-                        : myRecap
-                          ? tBoard('myRecapTitle')
-                          : tBoard('recapTitle')}
-                      {shownRecap && (
-                        <span className="truncate font-normal text-muted-foreground">
-                          · {new Date(shownRecap.day + 'T12:00:00').toLocaleDateString('fr-FR', {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'long',
-                          })}
-                        </span>
-                      )}
-                    </p>
-                    {isManager && <GenerateRecapButton />}
-                  </div>
-                  {shownRecap ? (
-                    <p className="whitespace-pre-wrap text-sm">{shownRecap.content}</p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">{tBoard('empty')}</p>
-                  )}
-                </CardContent>
-              </Card>
+              <RecapCard
+                title={
+                  managerRecap
+                    ? tBoard('managerRecapTitle')
+                    : myRecap
+                      ? tBoard('myRecapTitle')
+                      : tBoard('recapTitle')
+                }
+                dateLabel={
+                  shownRecap
+                    ? new Date(shownRecap.day + 'T12:00:00').toLocaleDateString('fr-FR', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                      })
+                    : null
+                }
+                content={shownRecap?.content ?? null}
+                action={isManager ? <GenerateRecapButton /> : undefined}
+              />
             )}
 
             <Card>

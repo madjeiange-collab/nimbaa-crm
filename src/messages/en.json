@@ -163,6 +163,8 @@
     "recapTitle": "Daily recap",
     "managerRecapTitle": "Manager brief",
     "myRecapTitle": "My brief",
+    "recapExpand": "See all",
+    "recapCollapse": "Collapse",
     "generateRecap": "Generate recap",
     "recapError": "Failed — retry",
     "scoringTitle": "How points are calculated",
