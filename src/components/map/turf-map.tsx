@@ -237,7 +237,7 @@ function spotIcon(spot: Spot): L.DivIcon {
   });
 }
 
-const FOCUS_RADIUS_KM = 15;
+const FOCUS_RADIUS_KM = 10;
 
 function median(nums: number[]): number {
   if (nums.length === 0) return 0;
@@ -264,7 +264,7 @@ function focusBounds(pts: [number, number][]): L.LatLngBounds | null {
   return L.latLngBounds(inliers.length >= 2 ? inliers : pts);
 }
 
-/** A ~15 km-radius view box around a centre point. */
+/** A ~FOCUS_RADIUS_KM-radius view box around a centre point. */
 function focusBox(center: L.LatLng): L.LatLngBounds {
   const latDelta = FOCUS_RADIUS_KM / 111;
   const lngDelta =
@@ -276,12 +276,12 @@ function focusBox(center: L.LatLng): L.LatLngBounds {
 }
 
 /**
- * Opening view: frames the DATA (turfs, knocks, installations) at a ~15 km
- * minimum view — never the device position, so the map always opens on the
- * work, not on wherever the viewer happens to be. Outlier-robust (a stray GPS
- * fix can't drag the view out to world zoom); widens beyond 15 km when the
- * data itself is wider. The "Ma position" button recentres on live GPS on
- * demand. Runs once.
+ * Opening view: frames the DATA (turfs, knocks, installations) at a
+ * ~FOCUS_RADIUS_KM minimum view — never the device position, so the map always
+ * opens on the work, not on wherever the viewer happens to be. Outlier-robust
+ * (a stray GPS fix can't drag the view out to world zoom); widens beyond the
+ * focus radius when the data itself is wider. The "Ma position" button
+ * recentres on live GPS on demand. Runs once.
  */
 function InitialView({
   polygons,
@@ -310,7 +310,7 @@ function InitialView({
 
     const bounds = focusBounds(pts);
     if (bounds) {
-      // At least the 15 km box around the data's centre; wider if data is wider.
+      // At least the focus box around the data's centre; wider if data is wider.
       map.fitBounds(focusBox(bounds.getCenter()).extend(bounds.pad(0.1)));
     } else {
       map.fitBounds(focusBox(L.latLng(ABIDJAN[0], ABIDJAN[1])));
