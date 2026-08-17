@@ -296,6 +296,8 @@
     font-size: 0.88rem;
   }
   .backbar a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  /* Keep anchor-jump targets clear of the sticky bar. */
+  section[id] { scroll-margin-top: 3.4rem; }
   .backbar a:hover, .backbar a:focus-visible { text-decoration: underline; }
   .backbar span { color: var(--muted); }
   @media print {
