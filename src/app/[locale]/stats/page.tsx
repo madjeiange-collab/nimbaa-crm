@@ -226,6 +226,22 @@ export default async function StatsPage({
     <>
       <AppHeader title={t('title')} />
       <main className="mx-auto max-w-3xl space-y-4 p-4">
+        {/* Drill-downs up top, like the manager area: my pipeline + my photos */}
+        <div className="grid grid-cols-2 gap-2">
+          <Link href="/dashboard/pipeline" className="block">
+            <Card className="flex flex-col items-center gap-1.5 p-4 transition-colors hover:bg-accent">
+              <KanbanSquare className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium">{tDash('pipeline')}</span>
+            </Card>
+          </Link>
+          <Link href="/dashboard/photos" className="block">
+            <Card className="flex flex-col items-center gap-1.5 p-4 transition-colors hover:bg-accent">
+              <Images className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium">{tDash('photos')}</span>
+            </Card>
+          </Link>
+        </div>
+
         {/* Goal ring */}
         <Card>
           <CardContent className="pt-4">
@@ -358,22 +374,6 @@ export default async function StatsPage({
           <StatTile label={t('customers')} value={customers} accent="green" href="/contacts?tab=customer&mine=1" />
           <StatTile label={t('lost')} value={lost} accent="red" href="/contacts?tab=lost&mine=1" />
           <StatTile label={t('conversion')} value={`${conversion}%`} accent="primary" />
-        </div>
-
-        {/* Drill-downs: my pipeline board + my photo audit */}
-        <div className="grid grid-cols-2 gap-2">
-          <Link href="/dashboard/pipeline" className="block">
-            <Card className="flex flex-col items-center gap-1.5 p-4 transition-colors hover:bg-accent">
-              <KanbanSquare className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium">{tDash('pipeline')}</span>
-            </Card>
-          </Link>
-          <Link href="/dashboard/photos" className="block">
-            <Card className="flex flex-col items-center gap-1.5 p-4 transition-colors hover:bg-accent">
-              <Images className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium">{tDash('photos')}</span>
-            </Card>
-          </Link>
         </div>
 
         <Card>
