@@ -142,9 +142,13 @@ export default async function ControlsPage({
       if (contactMeters > CONTACT_DISTANCE_M) flags.push('farFromContact');
     }
 
-    // Device clock vs server receipt. Offline-queued saves legitimately drift,
-    // so this is a review signal, not proof.
-    if (minutesBetween(v.visited_at, v.created_at) > CLOCK_DRIFT_MIN) flags.push('clockDrift');
+    // Device clock vs server receipt. Only for visits carrying photo
+    // forensics (0024+) — legacy/seeded rows have backdated visited_at and
+    // would drown the list. Offline-queued saves legitimately drift, so this
+    // is a review signal, not proof.
+    if (ph.length > 0 && minutesBetween(v.visited_at, v.created_at) > CLOCK_DRIFT_MIN) {
+      flags.push('clockDrift');
+    }
 
     if (flags.length > 0) flagged.push({ visit: v, flags, durationMin, pairMeters, contactMeters });
   }

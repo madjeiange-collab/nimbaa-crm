@@ -224,9 +224,13 @@ export function LogVisitForm({
         by: repName,
       });
       const phash = await dHash(blob);
+      // Read the requested kind NOW — the setPhotos updater runs later, after
+      // the ref is cleared below.
+      const requestedKind = nextKindRef.current;
+      nextKindRef.current = null;
       setPhotos((prev) => {
         const kind =
-          nextKindRef.current ??
+          requestedKind ??
           (prev.some((p) => p.meta.kind === 'arrival') ? 'extra' : 'arrival');
         const meta: PhotoMeta = {
           kind,
@@ -247,7 +251,6 @@ export function LogVisitForm({
         }
         return [...base, { blob, url: URL.createObjectURL(blob), meta }];
       });
-      nextKindRef.current = null;
     } catch {
       setResult({ kind: 'error', text: t('photoError') });
     } finally {
