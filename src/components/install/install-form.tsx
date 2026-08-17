@@ -115,15 +115,17 @@ export function InstallForm({
 
   const doneCount = checklist.filter((c) => c.done).length;
 
-  // Marking the job DONE needs a completion photo on top of the arrival one —
-  // it stamps completed_at and proves the technician stayed for the work.
+  // EVERY trip closes with an end-of-work photo on top of the arrival one:
+  // it measures the time actually spent on site (and stamps completed_at
+  // when the job is marked done).
+  const hasArrival = photos.some((p) => p.meta.kind === 'arrival');
   const hasCompletion = photos.some((p) => p.meta.kind === 'completion');
-  const needsCompletion = status === 'done' && !hasCompletion;
+  const needsCompletion = hasArrival && !hasCompletion;
 
   const canSave =
     gpsResolved &&
-    photos.length >= 1 &&
-    !needsCompletion &&
+    hasArrival &&
+    hasCompletion &&
     !processing &&
     (status !== 'needs_revisit' || !!nextVisitDate);
 
@@ -335,12 +337,18 @@ export function InstallForm({
           </div>
           <span
             className={`rounded px-2 py-0.5 text-xs font-medium ${
-              photos.length > 0
+              hasCompletion
                 ? 'bg-knock-green/15 text-knock-green'
-                : 'bg-destructive/10 text-destructive'
+                : hasArrival
+                  ? 'bg-brand-amber/20 text-brand-brown'
+                  : 'bg-destructive/10 text-destructive'
             }`}
           >
-            {photos.length > 0 ? t('photoCount', { n: photos.length }) : t('photoRequired')}
+            {hasCompletion
+              ? t('photoCount', { n: photos.length })
+              : hasArrival
+                ? tVisit('photoEndMissing')
+                : tVisit('photoPairRequired')}
           </span>
         </div>
 
@@ -397,7 +405,7 @@ export function InstallForm({
           </div>
         )}
 
-        {/* Done needs the end-of-work photo — stamps completed_at */}
+        {/* Every trip closes with the end-of-work photo — that pair is the duration */}
         {photos.length > 0 && needsCompletion && (
           <button
             type="button"
@@ -409,7 +417,7 @@ export function InstallForm({
             {processing ? t('processingPhoto') : tVisit('captureCompletion')}
           </button>
         )}
-        {photos.length > 0 && status === 'done' && hasCompletion && (
+        {photos.length > 0 && hasCompletion && (
           <p className="text-xs font-medium text-knock-green">✓ {tVisit('completionDone')}</p>
         )}
 

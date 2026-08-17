@@ -168,17 +168,18 @@ export function LogVisitForm({
   const needsAppointment = meta?.needsAppointment ?? false;
   const isEngaged = meta?.createsContact ?? false;
 
-  // Anti-fraud photo pair: engaged visits (Intéressé / RDV / Vendu) need a
-  // completion photo on top of the arrival one — proves presence over time.
+  // Anti-fraud photo pair: EVERY visit needs an arrival and an end photo —
+  // proves presence over time and measures how long the rep stayed.
+  const hasArrival = photos.some((p) => p.meta.kind === 'arrival');
   const hasCompletion = photos.some((p) => p.meta.kind === 'completion');
-  const needsCompletion = isEngaged && !hasCompletion;
+  const needsCompletion = hasArrival && !hasCompletion;
 
   const canSave =
     gpsResolved &&
     !dnkBlocked &&
     disposition != null &&
-    photos.length >= 1 &&
-    !needsCompletion &&
+    hasArrival &&
+    hasCompletion &&
     !processing &&
     (!needsAppointment || !!appointmentDate);
 
@@ -504,12 +505,18 @@ export function LogVisitForm({
           </div>
           <span
             className={`rounded px-2 py-0.5 text-xs font-medium ${
-              photos.length > 0
+              hasCompletion
                 ? 'bg-knock-green/15 text-knock-green'
-                : 'bg-destructive/10 text-destructive'
+                : hasArrival
+                  ? 'bg-brand-amber/20 text-brand-brown'
+                  : 'bg-destructive/10 text-destructive'
             }`}
           >
-            {photos.length > 0 ? t('photoCount', { n: photos.length }) : t('photoRequired')}
+            {hasCompletion
+              ? t('photoCount', { n: photos.length })
+              : hasArrival
+                ? t('photoEndMissing')
+                : t('photoPairRequired')}
           </span>
         </div>
 
@@ -567,7 +574,7 @@ export function LogVisitForm({
           </div>
         )}
 
-        {/* Engaged visit → a completion photo closes the loop (time on site) */}
+        {/* Every visit closes with an end photo — that pair is the time on site */}
         {photos.length > 0 && needsCompletion && (
           <button
             type="button"
@@ -579,7 +586,7 @@ export function LogVisitForm({
             {processing ? t('processingPhoto') : t('captureCompletion')}
           </button>
         )}
-        {photos.length > 0 && isEngaged && hasCompletion && (
+        {photos.length > 0 && hasCompletion && (
           <p className="text-xs font-medium text-knock-green">✓ {t('completionDone')}</p>
         )}
 

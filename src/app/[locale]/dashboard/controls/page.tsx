@@ -189,24 +189,62 @@ export default async function ControlsPage({
   );
 
   // ---- time-spent averages (the positive side of the same data) ------------
-  const engagedDurations = visits
-    .filter(
-      (v) =>
-        v.started_at &&
-        v.visit_type !== 'installation' &&
-        v.disposition &&
-        DISPOSITION_BY_KEY[v.disposition as KnockDisposition]?.createsContact,
-    )
-    .map((v) => minutesBetween(v.started_at as string, v.visited_at));
-  const avgVisitMin = engagedDurations.length
-    ? Math.round(engagedDurations.reduce((s, n) => s + n, 0) / engagedDurations.length)
-    : null;
-  const installDurations = installs
-    .map((i) => i.durationMin)
-    .filter((n): n is number => n != null && n >= MIN_INSTALL_MIN);
-  const avgInstallMin = installDurations.length
-    ? Math.round(installDurations.reduce((s, n) => s + n, 0) / installDurations.length)
-    : null;
+  const mean = (xs: number[]) =>
+    xs.length ? Math.round(xs.reduce((s, n) => s + n, 0) / xs.length) : null;
+
+  // Time ON SITE comes from the arrival→end photo pair of each trip. (The job's
+  // started_at→completed_at span is lead time, not presence: a chantier can sit
+  // open for days between trips.)
+  const timedVisits = visits.filter((v) => v.started_at && v.visit_type !== 'installation');
+  const timedInstallTrips = visits.filter((v) => v.started_at && v.visit_type === 'installation');
+  const avgAllVisitMin = mean(
+    timedVisits.map((v) => minutesBetween(v.started_at as string, v.visited_at)),
+  );
+  const avgVisitMin = mean(
+    timedVisits
+      .filter(
+        (v) =>
+          v.disposition &&
+          DISPOSITION_BY_KEY[v.disposition as KnockDisposition]?.createsContact,
+      )
+      .map((v) => minutesBetween(v.started_at as string, v.visited_at)),
+  );
+  const avgInstallMin = mean(
+    timedInstallTrips.map((v) => minutesBetween(v.started_at as string, v.visited_at)),
+  );
+
+  // ---- time on site per person (visits + installations) --------------------
+  const perPerson = new Map<string, { visits: number; visitMin: number; installs: number; installMin: number }>();
+  const bump = (id: string | null, patch: Partial<{ visits: number; visitMin: number; installs: number; installMin: number }>) => {
+    if (!id) return;
+    const row = perPerson.get(id) ?? { visits: 0, visitMin: 0, installs: 0, installMin: 0 };
+    perPerson.set(id, {
+      visits: row.visits + (patch.visits ?? 0),
+      visitMin: row.visitMin + (patch.visitMin ?? 0),
+      installs: row.installs + (patch.installs ?? 0),
+      installMin: row.installMin + (patch.installMin ?? 0),
+    });
+  };
+  for (const v of timedVisits) {
+    bump(v.rep_id, { visits: 1, visitMin: minutesBetween(v.started_at as string, v.visited_at) });
+  }
+  for (const v of timedInstallTrips) {
+    bump(v.rep_id, { installs: 1, installMin: minutesBetween(v.started_at as string, v.visited_at) });
+  }
+  const timeRows = [...perPerson.entries()]
+    .map(([id, r]) => ({
+      id,
+      name: nameOf.get(id) ?? '—',
+      ...r,
+      totalMin: Math.round(r.visitMin + r.installMin),
+      avgVisit: r.visits ? Math.round(r.visitMin / r.visits) : null,
+      avgInstall: r.installs ? Math.round(r.installMin / r.installs) : null,
+    }))
+    .filter((r) => r.visits > 0 || r.installs > 0)
+    .sort((a, b) => b.totalMin - a.totalMin);
+
+  const fmtHours = (min: number) =>
+    min >= 60 ? `${Math.floor(min / 60)} h ${String(Math.round(min % 60)).padStart(2, '0')}` : `${min} min`;
 
   const counts = {
     pairFar: flagged.filter((f) => f.flags.includes('pairFar')).length,
@@ -245,7 +283,12 @@ export default async function ControlsPage({
         )}
 
         {/* Time actually spent with customers */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
+          <StatTile
+            label={t('avgAllVisitDuration')}
+            value={avgAllVisitMin != null ? `${avgAllVisitMin} min` : '—'}
+            accent="green"
+          />
           <StatTile
             label={t('avgVisitDuration')}
             value={avgVisitMin != null ? `${avgVisitMin} min` : '—'}
@@ -257,6 +300,47 @@ export default async function ControlsPage({
             accent="green"
           />
         </div>
+
+        {/* Time on site, person by person */}
+        <Card>
+          <CardContent className="space-y-2 pt-4">
+            <p className="text-sm font-semibold">{t('timePerPerson')}</p>
+            {timeRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('timeNoData')}</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                      <th className="py-1 pr-3 font-medium">{t('timeCol_person')}</th>
+                      <th className="py-1 pr-3 text-right font-medium">{t('timeCol_visits')}</th>
+                      <th className="py-1 pr-3 text-right font-medium">{t('timeCol_avgVisit')}</th>
+                      <th className="py-1 pr-3 text-right font-medium">{t('timeCol_installs')}</th>
+                      <th className="py-1 pr-3 text-right font-medium">{t('timeCol_avgInstall')}</th>
+                      <th className="py-1 text-right font-medium">{t('timeCol_total')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {timeRows.map((r) => (
+                      <tr key={r.id} className="tabular-nums">
+                        <td className="py-1.5 pr-3 font-medium">{r.name}</td>
+                        <td className="py-1.5 pr-3 text-right">{r.visits || '—'}</td>
+                        <td className="py-1.5 pr-3 text-right">
+                          {r.avgVisit != null ? `${r.avgVisit} min` : '—'}
+                        </td>
+                        <td className="py-1.5 pr-3 text-right">{r.installs || '—'}</td>
+                        <td className="py-1.5 pr-3 text-right">
+                          {r.avgInstall != null ? `${r.avgInstall} min` : '—'}
+                        </td>
+                        <td className="py-1.5 text-right font-semibold">{fmtHours(r.totalMin)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Flag summary */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
