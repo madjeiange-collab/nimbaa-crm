@@ -14,7 +14,17 @@ if ((!url || !key) && existsSync('.env.local')) {
   url = url || get('NEXT_PUBLIC_SUPABASE_URL');
   key = key || get('SUPABASE_SERVICE_ROLE_KEY');
 }
-if (!url || !key) throw new Error('SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing');
+if (!url) {
+  console.error('::error::SUPABASE_URL env is missing.');
+  process.exit(1);
+}
+if (!key) {
+  console.error(
+    '::error::SUPABASE_SERVICE_ROLE_KEY secret is missing or empty — add it under repo Settings → Secrets → Actions, then start a FRESH "Run workflow" (re-runs of old runs may not see new secrets).',
+  );
+  process.exit(1);
+}
+key = key.trim();
 
 const admin = createClient(url, key);
 const TABLES = [
@@ -27,17 +37,29 @@ const TABLES = [
 const PAGE = 1000;
 
 mkdirSync('backup', { recursive: true });
+const failures = [];
 for (const table of TABLES) {
   const rows = [];
+  let failed = false;
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await admin.from(table).select('*').range(from, from + PAGE - 1);
     if (error) {
       console.error(`${table}: ${error.message}`);
+      failed = true;
       break;
     }
     rows.push(...(data ?? []));
     if (!data || data.length < PAGE) break;
   }
+  if (failed) {
+    failures.push(table);
+    continue;
+  }
   writeFileSync(`backup/${table}.json`, JSON.stringify(rows));
   console.log(`${table}: ${rows.length} rows`);
 }
+if (failures.length > 0) {
+  console.error(`::error::Backup incomplete — failed tables: ${failures.join(', ')}`);
+  process.exit(1); // a partial backup must never look green
+}
+console.log(`Backup complete: ${TABLES.length} tables exported.`);
