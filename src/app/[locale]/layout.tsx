@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
+import { SwRegister } from '@/components/shared/sw-register';
 import '../globals.css';
 
 export const metadata: Metadata = {
@@ -42,6 +43,7 @@ export default async function LocaleLayout({
     <html lang={locale}>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
+        <SwRegister />
       </body>
     </html>
   );

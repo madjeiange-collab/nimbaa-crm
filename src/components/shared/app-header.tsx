@@ -6,6 +6,7 @@ import { LogoutButton } from './logout-button';
 import { BrandLogo } from './brand-logo';
 import { Avatar } from './avatar';
 import { BackButton, HomeButton } from './back-button';
+import { OfflineIndicator } from './offline-indicator';
 
 /** Sticky top bar for authenticated screens. */
 export async function AppHeader({ title, subtitle }: { title: string; subtitle?: string }) {
@@ -46,6 +47,7 @@ export async function AppHeader({ title, subtitle }: { title: string; subtitle?:
           <LogoutButton />
         </div>
       </div>
+      <OfflineIndicator />
     </header>
   );
 }

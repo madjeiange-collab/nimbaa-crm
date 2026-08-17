@@ -96,6 +96,13 @@
     "removePhoto": "Retirer",
     "photoError": "Échec de l'envoi — réessayez."
   },
+  "offline": {
+    "offline": "Hors ligne — vous pouvez continuer à enregistrer des visites.",
+    "offlineWithPending": "Hors ligne — {count, plural, one {# visite en attente} other {# visites en attente}} de synchronisation.",
+    "pending": "{count, plural, one {# visite à synchroniser} other {# visites à synchroniser}}",
+    "syncNow": "Synchroniser",
+    "syncing": "Synchronisation…"
+  },
   "dealFunnel": {
     "title": "Affaires par étape",
     "empty": "Aucune affaire pour le moment.",
@@ -520,6 +527,7 @@
     "save": "Enregistrer",
     "saving": "Enregistrement…",
     "savedKnock": "Visite enregistrée",
+    "savedOffline": "Hors ligne — visite enregistrée sur le téléphone, elle sera synchronisée automatiquement.",
     "savedLead": "Prospect créé et enregistré",
     "savedCustomer": "Client créé et enregistré",
     "saveError": "Enregistrement impossible. Réessayez.",

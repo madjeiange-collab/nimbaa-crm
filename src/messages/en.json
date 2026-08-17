@@ -96,6 +96,13 @@
     "removePhoto": "Remove",
     "photoError": "Upload failed — try again."
   },
+  "offline": {
+    "offline": "Offline — you can keep logging visits.",
+    "offlineWithPending": "Offline — {count, plural, one {# visit waiting} other {# visits waiting}} to sync.",
+    "pending": "{count, plural, one {# visit to sync} other {# visits to sync}}",
+    "syncNow": "Sync now",
+    "syncing": "Syncing…"
+  },
   "dealFunnel": {
     "title": "Deals by stage",
     "empty": "No deals yet.",
@@ -520,6 +527,7 @@
     "save": "Save",
     "saving": "Saving…",
     "savedKnock": "Visit saved",
+    "savedOffline": "Offline — visit saved on the phone, it will sync automatically.",
     "savedLead": "Lead created and saved",
     "savedCustomer": "Customer created and saved",
     "saveError": "Could not save. Please retry.",

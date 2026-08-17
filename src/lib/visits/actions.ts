@@ -40,6 +40,17 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
+  // Idempotence: an offline-queue retry whose first attempt actually landed
+  // (response lost) must not duplicate — client_uuid is unique.
+  const { data: existing } = await supabase
+    .from('visits')
+    .select('id, contact_id')
+    .eq('client_uuid', input.clientUuid)
+    .maybeSingle();
+  if (existing) {
+    return { ok: true, visitId: existing.id, contactId: existing.contact_id, outOfTurf: false };
+  }
+
   const hasCoords = input.lat != null && input.lng != null;
 
   // 1. Do-not-knock block (authoritative — client also checks for speed).

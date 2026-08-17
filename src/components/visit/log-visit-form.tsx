@@ -24,6 +24,7 @@ import {
   type KnockDisposition,
 } from '@/lib/visits/dispositions';
 import { saveVisit } from '@/lib/visits/actions';
+import { enqueueVisit } from '@/lib/offline/queue';
 import { processCheckInPhoto } from '@/lib/image/capture';
 import { uploadVisitPhoto } from '@/lib/visits/upload';
 import { Button } from '@/components/ui/button';
@@ -229,22 +230,8 @@ export function LogVisitForm({
     setResult(null);
     startTransition(async () => {
       const clientUuid = genUuid();
-      let photoPaths: string[] = [];
-      try {
-        setUploading(true);
-        photoPaths = await Promise.all(
-          photos.map((p, i) => uploadVisitPhoto(repId, clientUuid, i, p.blob)),
-        );
-      } catch {
-        setUploading(false);
-        setResult({ kind: 'error', text: t('saveError') });
-        return;
-      }
-      setUploading(false);
-
-      const res = await saveVisit({
-        clientUuid,
-        visitType: linked ? 'b2b_visit' : 'd2d_knock',
+      const payload = {
+        visitType: (linked ? 'b2b_visit' : 'd2d_knock') as 'b2b_visit' | 'd2d_knock',
         lat: hasFix ? geo.lat : null,
         lng: hasFix ? geo.lng : null,
         disposition,
@@ -254,8 +241,58 @@ export function LogVisitForm({
         address: hasFix ? address : null,
         contactId: linked?.id ?? null,
         dealId: linked ? dealId : null,
-        photoPaths,
-      });
+        visitedAt: new Date().toISOString(),
+      };
+
+      // No network: keep the visit (photos included) in the offline queue.
+      const queueOffline = async () => {
+        try {
+          await enqueueVisit({
+            clientUuid,
+            repId,
+            payload,
+            photos: photos.map((p) => p.blob),
+            queuedAt: new Date().toISOString(),
+          });
+          setResult({ kind: 'ok', text: t('savedOffline') });
+          reset();
+          geo.locate();
+          return true;
+        } catch {
+          return false;
+        }
+      };
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (await queueOffline()) return;
+        setResult({ kind: 'error', text: t('saveError') });
+        return;
+      }
+
+      let photoPaths: string[] = [];
+      try {
+        setUploading(true);
+        photoPaths = await Promise.all(
+          photos.map((p, i) => uploadVisitPhoto(repId, clientUuid, i, p.blob)),
+        );
+      } catch {
+        setUploading(false);
+        // Upload failing usually means the connection just dropped — queue it.
+        if (await queueOffline()) return;
+        setResult({ kind: 'error', text: t('saveError') });
+        return;
+      }
+      setUploading(false);
+
+      let res: Awaited<ReturnType<typeof saveVisit>>;
+      try {
+        res = await saveVisit({ clientUuid, ...payload, photoPaths });
+      } catch {
+        // Server action unreachable mid-save — queue it (idempotent retry).
+        if (await queueOffline()) return;
+        setResult({ kind: 'error', text: t('saveError') });
+        return;
+      }
 
       if (res.ok) {
         const savedMsg =
