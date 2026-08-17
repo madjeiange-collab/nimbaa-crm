@@ -276,11 +276,14 @@ function focusBox(center: L.LatLng): L.LatLngBounds {
 }
 
 /**
- * Opening view: frames the DATA (turfs, knocks, installations) at a
- * ~FOCUS_RADIUS_KM minimum view — never the device position, so the map always
- * opens on the work, not on wherever the viewer happens to be. Outlier-robust
- * (a stray GPS fix can't drag the view out to world zoom); widens beyond the
- * focus radius when the data itself is wider. The "Ma position" button
+ * Opening view: frames the ACTIVITY (knocks + installations) at a
+ * ~FOCUS_RADIUS_KM minimum view — territory outlines are ignored here so a
+ * city-wide secteur can't drag the opening view out; they stay drawn and
+ * reachable by panning. Never the device position: the map always opens on
+ * the work, not on wherever the viewer happens to be. Outlier-robust (a stray
+ * GPS fix can't drag the view out to world zoom); widens beyond the focus
+ * radius when the activity itself is wider. Falls back to the turf outlines
+ * (then Abidjan) when there is no activity yet. The "Ma position" button
  * recentres on live GPS on demand. Runs once.
  */
 function InitialView({
@@ -299,19 +302,28 @@ function InitialView({
     if (done.current) return;
     done.current = true;
 
-    const pts: [number, number][] = [];
-    polygons.forEach((poly) => toLatLngRing(poly).forEach((p) => pts.push(p)));
+    const activity: [number, number][] = [];
     knocks.forEach((k) => {
-      if (k.lat != null && k.lng != null) pts.push([k.lat, k.lng]);
+      if (k.lat != null && k.lng != null) activity.push([k.lat, k.lng]);
     });
     installs.forEach((p) => {
-      if (p.lat != null && p.lng != null) pts.push([p.lat, p.lng]);
+      if (p.lat != null && p.lng != null) activity.push([p.lat, p.lng]);
     });
 
-    const bounds = focusBounds(pts);
+    const bounds = focusBounds(activity);
     if (bounds) {
-      // At least the focus box around the data's centre; wider if data is wider.
+      // At least the focus box around the activity's centre; wider only if the
+      // activity itself is wider.
       map.fitBounds(focusBox(bounds.getCenter()).extend(bounds.pad(0.1)));
+      return;
+    }
+
+    // No activity yet: fall back to the turf outlines, then Abidjan.
+    const turfPts: [number, number][] = [];
+    polygons.forEach((poly) => toLatLngRing(poly).forEach((p) => turfPts.push(p)));
+    const turfBounds = focusBounds(turfPts);
+    if (turfBounds) {
+      map.fitBounds(focusBox(turfBounds.getCenter()).extend(turfBounds.pad(0.1)));
     } else {
       map.fitBounds(focusBox(L.latLng(ABIDJAN[0], ABIDJAN[1])));
     }
