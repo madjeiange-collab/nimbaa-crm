@@ -173,7 +173,7 @@ export async function GET(request: Request) {
 
   // Extra lookups for the personal briefs.
   const [{ data: roleRows }, { data: schedTomorrow }] = await Promise.all([
-    admin.from('users').select('id, role'),
+    admin.from('users').select('id, role, full_name, username'),
     admin
       .from('installations')
       .select('installer_id, contacts(name)')
@@ -183,9 +183,11 @@ export async function GET(request: Request) {
   const roleOf = new Map((roleRows ?? []).map((u) => [u.id, u.role as string]));
 
   const nameById = new Map(
-    [...today.reps, ...today.techs, ...week.reps, ...week.techs].map((r) => [r.id, r.name]),
+    ((roleRows ?? []) as { id: string; full_name: string | null; username: string | null }[]).map(
+      (u) => [u.id, u.full_name || u.username || '—'],
+    ),
   );
-  const repName = (id: string | null) => (id ? (nameById.get(id) ?? '—') : '—');
+  const repName = (id: string | null) => (id ? (nameById.get(id) ?? '—') : 'non attribué');
   const dailyGoal =
     Number((goalSetting?.value as { goal?: number } | null)?.goal) > 0
       ? Number((goalSetting!.value as { goal: number }).goal)
