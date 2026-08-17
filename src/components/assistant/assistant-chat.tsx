@@ -19,6 +19,7 @@ export function AssistantChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [pending, setPending] = useState(false);
+  const [streaming, setStreaming] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -41,7 +42,11 @@ export function AssistantChat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, pending, speaking]);
 
-  /** Core ask: sends a question, updates the thread, returns the reply. */
+  /**
+   * Core ask: sends a question and streams the reply (NDJSON deltas) into a
+   * growing assistant bubble, so text appears as it is generated. Returns the
+   * full reply once the stream ends (used by voice mode for TTS).
+   */
   async function ask(question: string): Promise<string | null> {
     const q = question.trim();
     if (!q || pending) return null;
@@ -50,6 +55,35 @@ export function AssistantChat() {
     messagesRef.current = next;
     setMessages(next);
     setPending(true);
+    setStreaming(false);
+    let acc = '';
+    let failed = false;
+
+    const applyDelta = (delta: string) => {
+      const wasEmpty = acc === '';
+      acc += delta;
+      if (wasEmpty) {
+        messagesRef.current = [...messagesRef.current, { role: 'assistant', content: acc }];
+        setStreaming(true);
+      } else {
+        messagesRef.current = [
+          ...messagesRef.current.slice(0, -1),
+          { role: 'assistant', content: acc },
+        ];
+      }
+      setMessages(messagesRef.current);
+    };
+    const handleLine = (line: string) => {
+      let evt: { d?: string; tool?: string; done?: boolean; error?: string };
+      try {
+        evt = JSON.parse(line);
+      } catch {
+        return;
+      }
+      if (typeof evt.d === 'string') applyDelta(evt.d);
+      else if (evt.error) failed = true;
+    };
+
     try {
       const res = await fetch('/api/assistant', {
         method: 'POST',
@@ -65,15 +99,42 @@ export function AssistantChat() {
         return null;
       }
       if (!res.ok) throw new Error(String(res.status));
-      const data = (await res.json()) as { text: string };
-      messagesRef.current = [...messagesRef.current, { role: 'assistant', content: data.text }];
-      setMessages(messagesRef.current);
-      return data.text;
+
+      if (res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          let nl = buf.indexOf('\n');
+          while (nl >= 0) {
+            const line = buf.slice(0, nl).trim();
+            buf = buf.slice(nl + 1);
+            if (line) handleLine(line);
+            nl = buf.indexOf('\n');
+          }
+        }
+        if (buf.trim()) handleLine(buf.trim());
+      } else {
+        // Very old browsers without stream reading: take the body at once.
+        (await res.text()).split('\n').forEach((l) => l.trim() && handleLine(l.trim()));
+      }
+
+      if (failed && !acc) throw new Error('ai_error');
+      if (!acc) {
+        applyDelta(t('emptyReply'));
+        return null;
+      }
+      if (failed) setNotice(t('error'));
+      return acc;
     } catch {
       setNotice(t('error'));
       return null;
     } finally {
       setPending(false);
+      setStreaming(false);
     }
   }
 
@@ -167,7 +228,7 @@ export function AssistantChat() {
           </div>
         ))}
 
-        {pending && (
+        {pending && !streaming && (
           <div className="mr-auto flex items-center gap-2 rounded-2xl border bg-card px-4 py-2.5 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t('thinking')}

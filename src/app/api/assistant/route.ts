@@ -24,6 +24,14 @@ Règles :
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
+/**
+ * Streams the reply as NDJSON lines so text appears as it is generated
+ * (much snappier on slow connections):
+ *   {"d":"…"}        text delta
+ *   {"tool":"name"}  a data-tool round is running
+ *   {"done":true,"remaining":n}
+ *   {"error":"ai_error"}
+ */
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -59,54 +67,78 @@ export async function POST(request: Request) {
     .from('ai_usage')
     .upsert({ user_id: user.id, day, questions: used + 1 }, { onConflict: 'user_id,day' });
 
-  // --- OpenAI Responses API loop with tools --------------------------------
+  // --- OpenAI Responses API loop with tools, streamed ----------------------
   const openai = new OpenAI();
   const model = AI_MODELS[user.role];
+  const encoder = new TextEncoder();
 
-  try {
-    let response = await openai.responses.create({
-      model,
-      instructions: SYSTEM_PROMPT,
-      input: history,
-      tools: TOOL_DEFINITIONS,
-    });
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (obj: unknown) =>
+        controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
+      try {
+        let previousId: string | undefined;
+        let input: string | OpenAI.Responses.ResponseInput = history;
 
-    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const calls = response.output.filter((item) => item.type === 'function_call');
-      if (calls.length === 0) break;
+        for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
+          const events: AsyncIterable<OpenAI.Responses.ResponseStreamEvent> = await openai.responses.create({
+            model,
+            ...(previousId
+              ? { previous_response_id: previousId }
+              : { instructions: SYSTEM_PROMPT }),
+            input,
+            tools: TOOL_DEFINITIONS,
+            stream: true,
+          });
 
-      const outputs = await Promise.all(
-        calls.map(async (call) => {
-          let args: Record<string, unknown> = {};
-          try {
-            args = JSON.parse(call.arguments || '{}');
-          } catch {
-            // leave args empty; the tool will report the problem
+          let completed: OpenAI.Responses.Response | null = null;
+          for await (const event of events) {
+            if (event.type === 'response.output_text.delta') {
+              send({ d: event.delta });
+            } else if (event.type === 'response.completed') {
+              completed = event.response;
+            }
           }
-          const result = await executeTool(call.name, args, supabase, user);
-          return {
-            type: 'function_call_output' as const,
-            call_id: call.call_id,
-            output: JSON.stringify(result),
-          };
-        }),
-      );
+          if (!completed) throw new Error('stream ended without completion');
+          previousId = completed.id;
 
-      response = await openai.responses.create({
-        model,
-        previous_response_id: response.id,
-        input: outputs,
-        tools: TOOL_DEFINITIONS,
-      });
-    }
+          const calls = completed.output.filter((item) => item.type === 'function_call');
+          if (calls.length === 0 || round === MAX_TOOL_ROUNDS) {
+            send({ done: true, remaining: DAILY_QUESTION_CAP - used - 1 });
+            break;
+          }
 
-    const text = response.output_text?.trim();
-    return NextResponse.json({
-      text: text || 'Désolé, je n’ai pas pu formuler de réponse. Réessayez.',
-      remaining: DAILY_QUESTION_CAP - used - 1,
-    });
-  } catch (e) {
-    console.error('[assistant]', e);
-    return NextResponse.json({ error: 'ai_error' }, { status: 502 });
-  }
+          send({ tool: calls.map((c) => c.name).join(', ') });
+          input = await Promise.all(
+            calls.map(async (call) => {
+              let args: Record<string, unknown> = {};
+              try {
+                args = JSON.parse(call.arguments || '{}');
+              } catch {
+                // leave args empty; the tool will report the problem
+              }
+              const result = await executeTool(call.name, args, supabase, user);
+              return {
+                type: 'function_call_output' as const,
+                call_id: call.call_id,
+                output: JSON.stringify(result),
+              };
+            }),
+          );
+        }
+      } catch (e) {
+        console.error('[assistant]', e);
+        send({ error: 'ai_error' });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+    },
+  });
 }

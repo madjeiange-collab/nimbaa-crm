@@ -238,6 +238,7 @@
     "placeholder": "Votre question…",
     "listening": "Parlez, j'écoute…",
     "thinking": "Je consulte les données…",
+    "emptyReply": "Désolé, je n'ai pas pu formuler de réponse. Réessayez.",
     "speaking": "Je réponds…",
     "voiceMode": "Mode vocal",
     "voiceModeOn": "Mode vocal actif — à vous",
