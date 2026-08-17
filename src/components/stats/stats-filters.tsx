@@ -9,15 +9,20 @@ import { useRouter } from '@/i18n/navigation';
  * URL — changing one re-renders the stats with the selection applied.
  */
 export function StatsFilters({
+  reps = [],
+  selfId,
   territories,
   types,
   tags,
   current,
 }: {
+  /** RLS-scoped — field reps only receive themselves, so the picker hides. */
+  reps?: { id: string; name: string }[];
+  selfId: string;
   territories: { id: string; name: string }[];
   types: string[];
   tags: string[];
-  current: { terr: string; type: string; tag: string };
+  current: { rep: string; terr: string; type: string; tag: string };
 }) {
   const router = useRouter();
   const tD = useTranslations('dashboard');
@@ -26,6 +31,7 @@ export function StatsFilters({
   function apply(patch: Partial<typeof current>) {
     const next = { ...current, ...patch };
     const p = new URLSearchParams();
+    if (next.rep && next.rep !== selfId) p.set('rep', next.rep);
     if (next.terr) p.set('terr', next.terr);
     if (next.type) p.set('type', next.type);
     if (next.tag) p.set('tag', next.tag);
@@ -33,13 +39,28 @@ export function StatsFilters({
     router.replace(qs ? `/stats?${qs}` : '/stats');
   }
 
-  if (territories.length === 0 && types.length === 0 && tags.length === 0) return null;
+  if (reps.length <= 1 && territories.length === 0 && types.length === 0 && tags.length === 0)
+    return null;
 
   const cls =
     'flex min-h-touch w-full rounded-md border border-input bg-background px-2 text-sm';
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row">
+      {reps.length > 1 && (
+        <select
+          value={current.rep}
+          onChange={(e) => apply({ rep: e.target.value })}
+          aria-label={tD('allReps')}
+          className={cls}
+        >
+          {reps.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+      )}
       {territories.length > 0 && (
         <select
           value={current.terr}

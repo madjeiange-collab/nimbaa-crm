@@ -25,7 +25,7 @@ export default async function StatsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ terr?: string; type?: string; tag?: string }>;
+  searchParams: Promise<{ terr?: string; type?: string; tag?: string; rep?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -57,6 +57,25 @@ export default async function StatsPage({
   const d14 = new Date(now.getTime() - 14 * 864e5);
   const d30 = new Date(now.getTime() - 30 * 864e5);
 
+  // Rep picker: RLS scopes this list — field reps only see themselves (the
+  // filter hides), managers/admins can inspect any commercial's stats.
+  const spEarly = await searchParams;
+  const { data: repRows } = await supabase
+    .from('users')
+    .select('id, full_name, username, role, is_active, daily_goal')
+    .order('full_name');
+  const repOptions = ((repRows ?? []) as {
+    id: string;
+    full_name: string | null;
+    username: string | null;
+    role: string;
+    is_active: boolean;
+    daily_goal: number | null;
+  }[]).filter((u) => u.is_active && u.role !== 'technician');
+  const target = repOptions.find((u) => u.id === spEarly.rep) ?? null;
+  const targetId = target?.id ?? user.id;
+  const targetGoalOverride = target ? target.daily_goal : user.daily_goal;
+
   const [
     { data: visits },
     { data: contacts },
@@ -69,19 +88,19 @@ export default async function StatsPage({
       supabase
         .from('visits')
         .select('id, visited_at, disposition, lat, lng, contact_id, contacts(name, lifecycle)')
-        .eq('rep_id', user.id)
+        .eq('rep_id', targetId)
         .gte('visited_at', d30.toISOString()),
-      supabase.from('contacts').select('id, lifecycle, territory_id').eq('assigned_rep_id', user.id),
+      supabase.from('contacts').select('id, lifecycle, territory_id').eq('assigned_rep_id', targetId),
       supabase
         .from('visits')
         .select('appointment_date, contact_id, contacts(name, lifecycle, lat, lng, address)')
-        .eq('rep_id', user.id)
+        .eq('rep_id', targetId)
         .not('appointment_date', 'is', null)
         .order('appointment_date', { ascending: true }),
       supabase
         .from('contacts')
         .select('id, name, updated_at, lat, lng, address')
-        .eq('assigned_rep_id', user.id)
+        .eq('assigned_rep_id', targetId)
         .eq('lifecycle', 'lead')
         .lt('updated_at', d7.toISOString())
         .order('updated_at', { ascending: true })
@@ -90,7 +109,7 @@ export default async function StatsPage({
       supabase
         .from('deals')
         .select('contact_id, pipeline_stage_id, status, value_xof, business_type, tags')
-        .eq('assigned_rep_id', user.id)
+        .eq('assigned_rep_id', targetId)
         .limit(2000),
       supabase
         .from('pipeline_stages')
@@ -106,8 +125,8 @@ export default async function StatsPage({
     .maybeSingle();
   const globalGoal = Number((goalSetting?.value as { goal?: number } | null)?.goal);
   const dailyGoal =
-    (user.daily_goal ?? 0) > 0
-      ? (user.daily_goal as number)
+    (targetGoalOverride ?? 0) > 0
+      ? (targetGoalOverride as number)
       : globalGoal > 0
         ? globalGoal
         : DEFAULT_DAILY_GOAL;
@@ -244,7 +263,7 @@ export default async function StatsPage({
   const { data: insRows } = await supabase
     .from('installations')
     .select('id, status, title, contact_id, contacts!inner(name, lat, lng, assigned_rep_id)')
-    .eq('contacts.assigned_rep_id', user.id)
+    .eq('contacts.assigned_rep_id', targetId)
     .limit(500);
   const tInstallStatus = await getTranslations('installation.status');
   const coverageInstalls: InstallPoint[] = ((insRows ?? []) as unknown as {
@@ -306,10 +325,12 @@ export default async function StatsPage({
 
         {/* Manager-style filters: secteur, type d'activité, tag */}
         <StatsFilters
+          reps={repOptions.map((u) => ({ id: u.id, name: u.full_name ?? u.username ?? '—' }))}
+          selfId={user.id}
           territories={terrOptions}
           types={typeOptions}
           tags={tagOptions}
-          current={{ terr: terrSel?.id ?? '', type: typeSel, tag: tagSel }}
+          current={{ rep: targetId, terr: terrSel?.id ?? '', type: typeSel, tag: tagSel }}
         />
 
         {/* Goal ring */}
