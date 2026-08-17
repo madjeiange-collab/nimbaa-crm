@@ -11,6 +11,7 @@ import {
   deleteDeal,
 } from '@/lib/deals/actions';
 import { addContactPerson, assignDealPerson } from '@/lib/contacts/people-actions';
+import { PhoneInput } from '@/components/shared/phone-input';
 import { assignInstaller } from '@/lib/installations/actions';
 import { INSTALL_STATUS_BADGE, INSTALL_STATUS_BY_KEY } from '@/lib/installations/protocol';
 import type { DealStatus, InstallStatus } from '@/types/database';
@@ -108,10 +109,8 @@ function QuickAddPerson({
         placeholder={tP('namePlaceholder')}
         autoFocus
       />
-      <div className="grid grid-cols-2 gap-2">
-        <Input value={role} onChange={(e) => setRole(e.target.value)} placeholder={tP('rolePlaceholder')} />
-        <Input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder={tP('phonePlaceholder')} />
-      </div>
+      <Input value={role} onChange={(e) => setRole(e.target.value)} placeholder={tP('rolePlaceholder')} />
+      <PhoneInput value={phone} onChange={setPhone} placeholder={tP('phonePlaceholder')} />
       {error && <p className="text-xs text-destructive">{tP('error')}</p>}
       <div className="flex gap-2">
         <Button

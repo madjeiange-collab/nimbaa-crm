@@ -6,6 +6,7 @@ import { Briefcase, Phone, Mail, MessageCircle, Plus, Trash2, UserRound } from '
 import { useRouter } from '@/i18n/navigation';
 import { addContactPerson, deleteContactPerson } from '@/lib/contacts/people-actions';
 import { whatsappUrl } from '@/lib/phone';
+import { PhoneInput } from '@/components/shared/phone-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -152,19 +153,12 @@ export function PeopleSection({
               placeholder={t('namePlaceholder')}
               autoFocus
             />
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                placeholder={t('rolePlaceholder')}
-              />
-              <Input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                inputMode="tel"
-                placeholder={t('phonePlaceholder')}
-              />
-            </div>
+            <Input
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              placeholder={t('rolePlaceholder')}
+            />
+            <PhoneInput value={phone} onChange={setPhone} placeholder={t('phonePlaceholder')} />
             <Input
               value={email}
               onChange={(e) => setEmail(e.target.value)}

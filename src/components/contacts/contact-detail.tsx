@@ -17,6 +17,7 @@ import {
 } from '@/components/contacts/deals-section';
 import { PeopleSection, type PersonCard } from '@/components/contacts/people-section';
 import { WhatsappDraft } from '@/components/contacts/whatsapp-draft';
+import { PhoneInput } from '@/components/shared/phone-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -165,7 +166,7 @@ export function ContactDetail({
               </div>
               <div className="space-y-1">
                 <Label htmlFor="c-phone">{t('phone')}</Label>
-                <Input id="c-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <PhoneInput id="c-phone" value={phone} onChange={setPhone} />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="c-prio">{t('priority')}</Label>
