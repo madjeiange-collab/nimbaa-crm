@@ -55,9 +55,12 @@ interface OverviewTerritory {
 export interface OverviewDeal {
   assigned_rep_id: string | null;
   territory_id: string | null;
+  contact_id: string | null;
   stage_id: string | null;
   status: 'open' | 'won' | 'lost';
   value_xof: number | null;
+  business_type: string | null;
+  tags: string[];
 }
 
 export interface DashboardOverviewProps {
@@ -88,9 +91,36 @@ export function DashboardOverview({
   const t = useTranslations('dashboard');
   const tS = useTranslations('stats');
   const tStatus = useTranslations('installation.status');
+  const tDeals = useTranslations('deals');
   const [repIds, setRepIds] = useState<string[]>([]);
   const [terrIds, setTerrIds] = useState<string[]>([]);
+  const [typeFilter, setTypeFilter] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
   const inSel = (id: string | null) => repIds.length === 0 || (!!id && repIds.includes(id));
+
+  // Branch/tag filters work through the deal linkage: with a filter active,
+  // the whole tab narrows to contacts owning at least one matching deal.
+  const typeOptions = useMemo(
+    () => [...new Set(deals.map((d) => d.business_type).filter((t): t is string => !!t))].sort(),
+    [deals],
+  );
+  const tagOptions = useMemo(() => [...new Set(deals.flatMap((d) => d.tags))].sort(), [deals]);
+  const branchActive = typeFilter !== '' || tagFilter !== '';
+  const matchDeal = (d: OverviewDeal) =>
+    (typeFilter === '' || d.business_type === typeFilter) &&
+    (tagFilter === '' || d.tags.includes(tagFilter));
+  const branchContacts = useMemo(
+    () =>
+      new Set(
+        deals
+          .filter((d) => matchDeal(d) && d.contact_id)
+          .map((d) => d.contact_id as string),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [deals, typeFilter, tagFilter],
+  );
+  const inBranch = (contactId: string | null | undefined) =>
+    !branchActive || (!!contactId && branchContacts.has(contactId));
 
   const nameOf = useMemo(() => new Map(reps.map((r) => [r.id, r.name])), [reps]);
 
@@ -113,14 +143,17 @@ export function DashboardOverview({
   const d30 = new Date(now.getTime() - 30 * 864e5);
 
   const vs = useMemo(
-    () => visits.filter((v) => inSel(v.rep_id) && inTerr(v.lat, v.lng)),
+    () => visits.filter((v) => inSel(v.rep_id) && inTerr(v.lat, v.lng) && inBranch(v.contact_id)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [visits, repIds, terrIds, selectedPolys],
+    [visits, repIds, terrIds, selectedPolys, branchActive, branchContacts],
   );
   const cs = useMemo(
-    () => contacts.filter((c) => inSel(c.assigned_rep_id) && inTerrContact(c.territory_id)),
+    () =>
+      contacts.filter(
+        (c) => inSel(c.assigned_rep_id) && inTerrContact(c.territory_id) && inBranch(c.id),
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [contacts, repIds, terrIds],
+    [contacts, repIds, terrIds, branchActive, branchContacts],
   );
   const fl = useMemo(
     () => flagged.filter((f) => inSel(f.rep_id) && inTerr(f.lat, f.lng)),
@@ -128,14 +161,21 @@ export function DashboardOverview({
     [flagged, repIds, terrIds, selectedPolys],
   );
   const filteredDeals = useMemo(
-    () => deals.filter((d) => inSel(d.assigned_rep_id) && inTerrContact(d.territory_id)),
+    () => deals.filter((d) => inSel(d.assigned_rep_id) && inTerrContact(d.territory_id) && matchDeal(d)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [deals, repIds, terrIds],
+    [deals, repIds, terrIds, typeFilter, tagFilter],
   );
   const covKnocks: TurfKnock[] = useMemo(
     () =>
       coverage
-        .filter((k) => inSel(k.rep_id) && k.lat != null && k.lng != null && inTerr(k.lat, k.lng))
+        .filter(
+          (k) =>
+            inSel(k.rep_id) &&
+            k.lat != null &&
+            k.lng != null &&
+            inTerr(k.lat, k.lng) &&
+            inBranch(k.contact_id),
+        )
         .map((k) => ({
           id: k.id,
           lat: k.lat as number,
@@ -146,14 +186,16 @@ export function DashboardOverview({
           lifecycle: k.contacts?.lifecycle ?? null,
         })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [coverage, repIds, terrIds, selectedPolys],
+    [coverage, repIds, terrIds, selectedPolys, branchActive, branchContacts],
   );
 
   // Installation jobs on the same map (status-coloured 🔧), territory-filtered.
   const covInstalls: InstallPoint[] = useMemo(
     () =>
       installations
-        .filter((i) => i.lat != null && i.lng != null && inTerr(i.lat, i.lng))
+        .filter(
+          (i) => i.lat != null && i.lng != null && inTerr(i.lat, i.lng) && inBranch(i.contactId),
+        )
         .map((i) => ({
           id: i.id,
           lat: i.lat as number,
@@ -165,7 +207,7 @@ export function DashboardOverview({
           name: i.contactName,
         })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [installations, terrIds, selectedPolys],
+    [installations, terrIds, selectedPolys, branchActive, branchContacts],
   );
 
   const inWin = (from: Date) => vs.filter((v) => new Date(v.visited_at) >= from);
@@ -220,6 +262,43 @@ export function DashboardOverview({
         <RepMultiFilter reps={reps} selected={repIds} onChange={setRepIds} />
         <TerritoryFilter territories={territories} selected={terrIds} onChange={setTerrIds} />
       </div>
+
+      {/* Branch (type d'activité) + tag filters — narrow every stat to
+          contacts owning at least one matching affaire. */}
+      {(typeOptions.length > 0 || tagOptions.length > 0) && (
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {typeOptions.length > 0 && (
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              aria-label={tDeals('businessType')}
+              className="flex min-h-touch w-full rounded-md border border-input bg-background px-2 text-sm sm:w-56"
+            >
+              <option value="">{tDeals('allTypes')}</option>
+              {typeOptions.map((ty) => (
+                <option key={ty} value={ty}>
+                  {ty}
+                </option>
+              ))}
+            </select>
+          )}
+          {tagOptions.length > 0 && (
+            <select
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              aria-label={tDeals('tags')}
+              className="flex min-h-touch w-full rounded-md border border-input bg-background px-2 text-sm sm:w-56"
+            >
+              <option value="">{tDeals('allTags')}</option>
+              {tagOptions.map((tg) => (
+                <option key={tg} value={tg}>
+                  {tg}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
 
       {/* Nav */}
       <div className="grid grid-cols-2 gap-2">

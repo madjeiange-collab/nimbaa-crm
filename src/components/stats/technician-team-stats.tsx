@@ -43,9 +43,12 @@ export function TechnicianTeamStats({
   const tStatus = useTranslations('installation.status');
   const tS = useTranslations('stats');
   const tD = useTranslations('dashboard');
+  const tDeals = useTranslations('deals');
 
   const [techIds, setTechIds] = useState<string[]>([]);
   const [terrIds, setTerrIds] = useState<string[]>([]);
+  const [typeFilter, setTypeFilter] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
 
   const selectedTerrs = useMemo(
     () => territories.filter((tr) => terrIds.length === 0 || terrIds.includes(tr.id)),
@@ -54,14 +57,27 @@ export function TechnicianTeamStats({
   const selectedPolys = useMemo(() => selectedTerrs.map((tr) => tr.coordinates), [selectedTerrs]);
   const selectedTerrNames = useMemo(() => selectedTerrs.map((tr) => tr.name), [selectedTerrs]);
 
+  // Branch (type d'activité) + tag filters via the installation's linked deal.
+  const typeOptions = useMemo(
+    () =>
+      [...new Set(installations.map((r) => r.businessType).filter((v): v is string => !!v))].sort(),
+    [installations],
+  );
+  const tagOptions = useMemo(
+    () => [...new Set(installations.flatMap((r) => r.tags))].sort(),
+    [installations],
+  );
+
   const rows = useMemo(
     () =>
       installations.filter(
         (r) =>
           (techIds.length === 0 || (!!r.installerId && techIds.includes(r.installerId))) &&
-          (terrIds.length === 0 || (r.lat != null && r.lng != null && pointInAnyPolygon(r.lat, r.lng, selectedPolys))),
+          (terrIds.length === 0 || (r.lat != null && r.lng != null && pointInAnyPolygon(r.lat, r.lng, selectedPolys))) &&
+          (typeFilter === '' || r.businessType === typeFilter) &&
+          (tagFilter === '' || r.tags.includes(tagFilter)),
       ),
-    [installations, techIds, terrIds, selectedPolys],
+    [installations, techIds, terrIds, selectedPolys, typeFilter, tagFilter],
   );
 
   const now = useMemo(() => new Date(nowIso), [nowIso]);
@@ -154,6 +170,42 @@ export function TechnicianTeamStats({
         <TechMultiFilter technicians={technicians} selected={techIds} onChange={setTechIds} />
         <TerritoryFilter territories={territories} selected={terrIds} onChange={setTerrIds} />
       </div>
+
+      {/* Branch (type d'activité) + tag filters via the linked deals */}
+      {(typeOptions.length > 0 || tagOptions.length > 0) && (
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {typeOptions.length > 0 && (
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              aria-label={tDeals('businessType')}
+              className="flex min-h-touch w-full rounded-md border border-input bg-background px-2 text-sm sm:w-56"
+            >
+              <option value="">{tDeals('allTypes')}</option>
+              {typeOptions.map((ty) => (
+                <option key={ty} value={ty}>
+                  {ty}
+                </option>
+              ))}
+            </select>
+          )}
+          {tagOptions.length > 0 && (
+            <select
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              aria-label={tDeals('tags')}
+              className="flex min-h-touch w-full rounded-md border border-input bg-background px-2 text-sm sm:w-56"
+            >
+              <option value="">{tDeals('allTags')}</option>
+              {tagOptions.map((tg) => (
+                <option key={tg} value={tg}>
+                  {tg}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
 
       {/* Nav to sub-pages */}
       {showNav && (

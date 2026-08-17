@@ -54,7 +54,7 @@ export default async function DashboardPage({
         .limit(2000),
       supabase
         .from('deals')
-        .select('assigned_rep_id, pipeline_stage_id, status, value_xof, contacts(territory_id)')
+        .select('assigned_rep_id, contact_id, pipeline_stage_id, status, value_xof, business_type, tags, contacts(territory_id)')
         .limit(5000),
       supabase
         .from('pipeline_stages')
@@ -73,16 +73,22 @@ export default async function DashboardPage({
 
   const deals: DashboardOverviewProps['deals'] = ((dealRows ?? []) as unknown as {
     assigned_rep_id: string | null;
+    contact_id: string | null;
     pipeline_stage_id: string | null;
     status: 'open' | 'won' | 'lost';
     value_xof: number | null;
+    business_type: string | null;
+    tags: string[] | null;
     contacts: { territory_id: string | null } | null;
   }[]).map((d) => ({
     assigned_rep_id: d.assigned_rep_id,
     territory_id: d.contacts?.territory_id ?? null,
+    contact_id: d.contact_id,
     stage_id: d.pipeline_stage_id,
     status: d.status,
     value_xof: d.value_xof,
+    business_type: d.business_type,
+    tags: d.tags ?? [],
   }));
   const stages: DashboardOverviewProps['stages'] = ((stageRows ?? []) as {
     id: string;

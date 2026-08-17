@@ -17,6 +17,9 @@ export interface ManagerInstallRow {
   contactName: string | null;
   lat: number | null;
   lng: number | null;
+  /** Business type + tags of the linked deal (branch filters). */
+  businessType: string | null;
+  tags: string[];
 }
 
 export interface ManagerTerritory {
@@ -40,7 +43,7 @@ export async function loadInstallManagerData(supabase: ServerClient): Promise<In
   const [{ data: rawInstalls }, { data: users }, { data: turfs }] = await Promise.all([
     supabase
       .from('installations')
-      .select('id, status, installer_id, completed_at, scheduled_date, next_visit_date, title, contact_id, contacts(name, lat, lng)')
+      .select('id, status, installer_id, completed_at, scheduled_date, next_visit_date, title, contact_id, contacts(name, lat, lng), deals(business_type, tags)')
       .limit(5000),
     supabase.from('users').select('id, full_name, username, role'),
     supabase.rpc('territories_geojson'),
@@ -56,6 +59,7 @@ export async function loadInstallManagerData(supabase: ServerClient): Promise<In
     title: string | null;
     contact_id: string | null;
     contacts: { name: string | null; lat: number | null; lng: number | null } | null;
+    deals: { business_type: string | null; tags: string[] | null } | null;
   };
   const installations: ManagerInstallRow[] = ((rawInstalls ?? []) as unknown as Raw[]).map((r) => ({
     id: r.id,
@@ -69,6 +73,8 @@ export async function loadInstallManagerData(supabase: ServerClient): Promise<In
     contactName: r.contacts?.name ?? null,
     lat: r.contacts?.lat ?? null,
     lng: r.contacts?.lng ?? null,
+    businessType: r.deals?.business_type ?? null,
+    tags: r.deals?.tags ?? [],
   }));
 
   const technicians = ((users ?? []) as { id: string; full_name: string | null; username: string | null; role?: string }[])
