@@ -481,28 +481,52 @@ export async function GET(request: Request) {
     const schedRows = (schedTomorrow ?? []) as unknown as Sched[];
     const revisitRows = (revisitsTomorrow ?? []) as unknown as Sched[];
 
-    const activeReps = week.reps.filter(
-      (r) =>
-        roleOf.get(r.id) === 'rep' &&
-        (today.reps.find((t) => t.id === r.id)?.visits ?? 0) +
-          (today.reps.find((t) => t.id === r.id)?.sales ?? 0) >
-          0,
-    );
-    for (const r of week.reps) {
-      if (
-        roleOf.get(r.id) === 'rep' &&
-        !activeReps.some((a) => a.id === r.id) &&
-        rdvRows.some((x) => x.rep_id === r.id)
+    // Candidates come from the USER ROSTER (not the weekly board, which is
+    // empty right after the Monday reset). Board rows are looked up with a
+    // zeroed fallback so a quiet week still yields a brief.
+    const zeroRep = (id: string): (typeof week.reps)[number] => ({
+      id,
+      name: nameById.get(id) ?? '—',
+      avatarUrl: null,
+      points: 0,
+      visits: 0,
+      refused: 0,
+      interested: 0,
+      rdv: 0,
+      sales: 0,
+      leads: 0,
+      engagementPct: 0,
+      conversionPct: 0,
+      fcfa: 0,
+    });
+    const zeroTech = (id: string): (typeof week.techs)[number] => ({
+      id,
+      name: nameById.get(id) ?? '—',
+      avatarUrl: null,
+      points: 0,
+      done: 0,
+      revisits: 0,
+      open: 0,
+      completionPct: 0,
+    });
+
+    const fieldRows = (roleRows ?? []) as { id: string; role: string }[];
+    const activeReps = fieldRows
+      .filter((u) => u.role === 'rep')
+      .filter((u) => {
+        const t = today.reps.find((x) => x.id === u.id);
+        return (t?.visits ?? 0) + (t?.sales ?? 0) > 0 || rdvRows.some((x) => x.rep_id === u.id);
+      })
+      .map((u) => week.reps.find((r) => r.id === u.id) ?? zeroRep(u.id));
+    const activeTechs = fieldRows
+      .filter((u) => u.role === 'technician')
+      .filter(
+        (u) =>
+          (today.techs.find((x) => x.id === u.id)?.done ?? 0) > 0 ||
+          schedRows.some((s) => s.installer_id === u.id) ||
+          revisitRows.some((s) => s.installer_id === u.id),
       )
-        activeReps.push(r);
-    }
-    const activeTechs = week.techs.filter(
-      (t) =>
-        roleOf.get(t.id) === 'technician' &&
-        ((today.techs.find((x) => x.id === t.id)?.done ?? 0) > 0 ||
-          schedRows.some((s) => s.installer_id === t.id) ||
-          revisitRows.some((s) => s.installer_id === t.id)),
-    );
+      .map((u) => week.techs.find((t) => t.id === u.id) ?? zeroTech(u.id));
 
     // Own open deals to push (per active rep).
     const activeRepIds = activeReps.map((r) => r.id);
@@ -594,11 +618,14 @@ export async function GET(request: Request) {
         demain_rdv: rdvRows
           .filter((x) => x.rep_id === r.id)
           .map((x) => ({ heure: hhmm(x.appointment_date), client: x.contacts?.name ?? '—' })),
-        classement: {
-          rang: rank + 1,
-          points: r.points,
-          devant_moi: ahead ? { nom: ahead.name, points: ahead.points } : null,
-        },
+        classement:
+          rank >= 0
+            ? {
+                rang: rank + 1,
+                points: r.points,
+                devant_moi: ahead ? { nom: ahead.name, points: ahead.points } : null,
+              }
+            : null,
       };
     };
 
@@ -630,11 +657,14 @@ export async function GET(request: Request) {
             .filter((x) => x.installer_id === t.id)
             .map((x) => ({ type: 'revisite', client: x.contacts?.name ?? '—' })),
         ],
-        classement_techniciens: {
-          rang: rank + 1,
-          points: t.points,
-          devant_moi: ahead ? { nom: ahead.name, points: ahead.points } : null,
-        },
+        classement_techniciens:
+          rank >= 0
+            ? {
+                rang: rank + 1,
+                points: t.points,
+                devant_moi: ahead ? { nom: ahead.name, points: ahead.points } : null,
+              }
+            : null,
       };
     };
 
