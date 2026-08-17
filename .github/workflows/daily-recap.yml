@@ -13,7 +13,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Call recap endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          curl -fsS "https://nimbaa-crm.vercel.app/api/recap?auto=1" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -m 120
+          # Trim stray whitespace/newlines a paste may have added to the secret.
+          SECRET=$(printf '%s' "$CRON_SECRET" | tr -d '[:space:]')
+          call() {
+            curl -sS -o body.txt -w "%{http_code}" -m 120 \
+              -H "Authorization: Bearer ${SECRET}" \
+              "https://nimbaa-crm.vercel.app/api/recap?auto=1"
+          }
+          STATUS=$(call || echo 000)
+          echo "HTTP $STATUS — $(cat body.txt 2>/dev/null)"
+          # One retry for transient failures (deploy in flight, cold start).
+          if [ "$STATUS" -ge 500 ] || [ "$STATUS" = 000 ]; then
+            echo "retrying in 30s…"; sleep 30
+            STATUS=$(call || echo 000)
+            echo "HTTP $STATUS — $(cat body.txt 2>/dev/null)"
+          fi
+          if [ "$STATUS" = 401 ]; then
+            echo "::error::401 unauthorized — the GitHub CRON_SECRET does not match Vercel's. Re-paste it under Settings → Secrets → Actions."
+            exit 1
+          fi
+          [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]
