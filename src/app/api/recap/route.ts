@@ -33,6 +33,35 @@ export async function GET(request: Request) {
   }
 
   const admin = createAdminClient();
+
+  // Automatic triggers fire hourly; only generate at the admin-configured
+  // hour (app_settings 'recap_schedule', default 18h → sent ~18h30 Abidjan).
+  // Catch-up rule: a late trigger still generates if today's recap is missing.
+  const isAuto = new URL(request.url).searchParams.get('auto') === '1';
+  if (isAuto) {
+    const { data: sched } = await admin
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'recap_schedule')
+      .maybeSingle();
+    const configuredHour = Number((sched?.value as { hour?: number } | null)?.hour);
+    const sendHour = Number.isInteger(configuredHour) && configuredHour >= 0 && configuredHour <= 23
+      ? configuredHour
+      : 18;
+    const nowHour = new Date().getUTCHours(); // Abidjan = UTC
+    if (nowHour !== sendHour) {
+      if (nowHour < sendHour) return NextResponse.json({ skipped: true, reason: 'before_send_hour' });
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const { data: existing } = await admin
+        .from('daily_recaps')
+        .select('day')
+        .eq('day', todayKey)
+        .maybeSingle();
+      if (existing) return NextResponse.json({ skipped: true, reason: 'already_sent' });
+      // else: past the hour with no recap today → catch up and generate.
+    }
+  }
+
   const pts = await getPointConfig(admin);
 
   // Today's raw numbers + this week's standings + prior week AT THE SAME

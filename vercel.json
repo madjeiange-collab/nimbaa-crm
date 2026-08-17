@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/recap",
+      "path": "/api/recap?auto=1",
       "schedule": "30 18 * * *"
     }
   ]

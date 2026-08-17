@@ -96,6 +96,15 @@
     "removePhoto": "Remove",
     "photoError": "Upload failed — try again."
   },
+  "adminRecap": {
+    "title": "Daily brief",
+    "sendHour": "Automatic send time",
+    "sendHourHint": "The brief is generated daily around this time (Abidjan time). A missed send is caught up within the following hour.",
+    "dailyGoal": "Daily visit goal (sales reps)",
+    "dailyGoalHint": "Used for the goal % in briefs and statistics.",
+    "saved": "Settings saved",
+    "error": "Could not save — try again."
+  },
   "adminStages": {
     "title": "Pipeline stages",
     "hint": "Rename, reorder, add or hide stages. Locked stages are used by automations (Interested/Appointment/Sold visits, lost deals) — renamable but not deletable or hideable.",
@@ -393,6 +402,7 @@
     "users": "Users",
     "points": "Leaderboard points",
     "dispositions": "Visit outcomes",
+    "recap": "Daily brief",
     "territories": "Territories",
     "products": "Products",
     "protocol": "Installation protocol",

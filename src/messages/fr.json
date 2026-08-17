@@ -96,6 +96,15 @@
     "removePhoto": "Retirer",
     "photoError": "Échec de l'envoi — réessayez."
   },
+  "adminRecap": {
+    "title": "Brief quotidien",
+    "sendHour": "Heure d'envoi automatique",
+    "sendHourHint": "Le brief est généré chaque jour vers cette heure (heure d'Abidjan). Un envoi manqué est rattrapé automatiquement dans l'heure suivante.",
+    "dailyGoal": "Objectif de visites par jour (commerciaux)",
+    "dailyGoalHint": "Utilisé pour le % d'objectif dans les briefs et les statistiques.",
+    "saved": "Réglages enregistrés",
+    "error": "Enregistrement impossible — réessayez."
+  },
   "adminStages": {
     "title": "Étapes du pipeline",
     "hint": "Renommez, réordonnez, ajoutez ou masquez les étapes. Les étapes verrouillées sont utilisées par les automatismes (visite Intéressé/RDV/Vendu, affaire perdue) — renommables mais ni supprimables ni masquables.",
@@ -393,6 +402,7 @@
     "users": "Utilisateurs",
     "points": "Points du classement",
     "dispositions": "Résultats de visite",
+    "recap": "Brief quotidien",
     "territories": "Secteurs",
     "products": "Produits",
     "protocol": "Protocole d'installation",
