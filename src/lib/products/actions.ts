@@ -19,7 +19,12 @@ export async function addProduct(
   name: string,
   priceXof: number,
   commissionPct: number,
-  extra?: { billingInterval?: string; commissionMode?: string; commissionMonths?: number },
+  extra?: {
+    billingInterval?: string;
+    commissionMode?: string;
+    commissionMonths?: number;
+    techCommissionPct?: number;
+  },
 ): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: 'forbidden' };
   if (!name.trim()) return { ok: false, error: 'empty' };
@@ -37,6 +42,7 @@ export async function addProduct(
     billing_interval: extra?.billingInterval ?? 'one_time',
     commission_mode: extra?.commissionMode ?? 'once',
     commission_months: Math.max(1, Math.round(extra?.commissionMonths ?? 3)),
+    tech_commission_pct: Math.max(0, extra?.techCommissionPct ?? 0),
     sort_order: (last?.sort_order ?? 0) + 1,
   });
   if (error) return { ok: false, error: 'save_failed' };
@@ -54,6 +60,7 @@ export async function updateProduct(
     billingInterval?: string;
     commissionMode?: string;
     commissionMonths?: number;
+    techCommissionPct?: number;
   },
 ): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: 'forbidden' };
@@ -69,6 +76,9 @@ export async function updateProduct(
   if (fields.commissionMode !== undefined) patch.commission_mode = fields.commissionMode;
   if (fields.commissionMonths !== undefined) {
     patch.commission_months = Math.max(1, Math.round(fields.commissionMonths) || 3);
+  }
+  if (fields.techCommissionPct !== undefined) {
+    patch.tech_commission_pct = Math.max(0, fields.techCommissionPct || 0);
   }
 
   const supabase = await createClient();

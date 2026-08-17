@@ -104,6 +104,58 @@ export async function ensureCommissionForWonDeal(
 }
 
 /**
+ * Technician commission: earned once when the technician completes an
+ * installation belonging to a won deal whose product carries a technician
+ * rate. Idempotent per installation; never breaks the completion itself.
+ */
+export async function ensureTechCommissionForInstall(
+  db: SupabaseClient,
+  installationId: string,
+  installerId: string,
+): Promise<void> {
+  try {
+    const { data: inst } = await db
+      .from('installations')
+      .select('id, status, deal_id, deals(id, value_xof, status, products(price_xof, tech_commission_pct))')
+      .eq('id', installationId)
+      .maybeSingle();
+    const deal = (inst as { deals?: {
+      id: string;
+      value_xof: number | null;
+      status: string;
+      products: { price_xof: number | null; tech_commission_pct: number | null } | null;
+    } | null } | null)?.deals;
+    if (!inst || inst.status !== 'done' || !deal || deal.status !== 'won') return;
+    const pct = Number(deal.products?.tech_commission_pct ?? 0);
+    const price = Number(deal.value_xof ?? deal.products?.price_xof ?? 0);
+    if (pct <= 0 || price <= 0 || !installerId) return;
+
+    const { data: existing } = await db
+      .from('commission_entries')
+      .select('id')
+      .eq('installation_id', installationId)
+      .eq('kind', 'install')
+      .limit(1)
+      .maybeSingle();
+    if (existing) return;
+
+    await db.from('commission_entries').insert({
+      deal_id: deal.id,
+      installation_id: installationId,
+      rep_id: installerId,
+      kind: 'install',
+      period_index: 1,
+      period_month: new Date().toISOString().slice(0, 10),
+      amount_xof: Math.round((price * pct) / 100),
+      status: 'earned',
+      earned_at: new Date().toISOString(),
+    });
+  } catch {
+    // pre-0022 DB or lookup failure — never break the installation save
+  }
+}
+
+/**
  * Daily accrual: earn pending slices whose anniversary has arrived while the
  * subscription is still active. Runs with the service-role client from the
  * 6h recap job.

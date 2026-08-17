@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { ensureTechCommissionForInstall } from '@/lib/commissions/core';
 import { createClient } from '@/lib/supabase/server';
 import type {
   ChecklistItem,
@@ -149,6 +150,11 @@ export async function saveInstallation(
     .update(patch)
     .eq('id', input.installationId);
   if (iErr) return { ok: false, error: 'save_failed' };
+
+  // A completed installation earns the technician their per-product rate.
+  if (input.status === 'done') {
+    await ensureTechCommissionForInstall(supabase, input.installationId, user.id);
+  }
 
   revalidateContact(input.contactId);
   return { ok: true, visitId: visit.id };

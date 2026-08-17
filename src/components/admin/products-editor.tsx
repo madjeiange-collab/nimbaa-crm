@@ -19,6 +19,7 @@ export interface Product {
   billing_interval?: string;
   commission_mode?: string;
   commission_months?: number;
+  tech_commission_pct?: number;
 }
 
 const INTERVALS = ['one_time', 'daily', 'weekly', 'monthly'] as const;
@@ -30,6 +31,7 @@ function ProductFields({
   name, setName,
   price, setPrice,
   pct, setPct,
+  techPct, setTechPct,
   interval, setInterval,
   mode, setMode,
   months, setMonths,
@@ -39,6 +41,7 @@ function ProductFields({
   name: string; setName: (v: string) => void;
   price: string; setPrice: (v: string) => void;
   pct: string; setPct: (v: string) => void;
+  techPct: string; setTechPct: (v: string) => void;
   interval: string; setInterval: (v: string) => void;
   mode: string; setMode: (v: string) => void;
   months: string; setMonths: (v: string) => void;
@@ -60,6 +63,11 @@ function ProductFields({
           <Label htmlFor={`${idPrefix}-pct`}>{t('commissionPct')}</Label>
           <Input id={`${idPrefix}-pct`} value={pct} inputMode="decimal" onChange={(e) => setPct(e.target.value)} placeholder="10" />
         </div>
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor={`${idPrefix}-techpct`}>{t('techCommissionPct')}</Label>
+        <Input id={`${idPrefix}-techpct`} value={techPct} inputMode="decimal" onChange={(e) => setTechPct(e.target.value)} placeholder="0" />
+        <p className="text-xs text-muted-foreground">{t('techPctHint')}</p>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
@@ -101,6 +109,7 @@ export function ProductsEditor({ products }: { products: Product[] }) {
   const [nInterval, setNInterval] = useState('one_time');
   const [nMode, setNMode] = useState('once');
   const [nMonths, setNMonths] = useState('3');
+  const [nTechPct, setNTechPct] = useState('');
 
   const [editId, setEditId] = useState<string | null>(null);
   const [eName, setEName] = useState('');
@@ -109,6 +118,7 @@ export function ProductsEditor({ products }: { products: Product[] }) {
   const [eInterval, setEInterval] = useState('one_time');
   const [eMode, setEMode] = useState('once');
   const [eMonths, setEMonths] = useState('3');
+  const [eTechPct, setETechPct] = useState('');
 
   function run(fn: () => Promise<unknown>) {
     setMsg(null);
@@ -143,6 +153,7 @@ export function ProductsEditor({ products }: { products: Product[] }) {
                       pct={ePct} setPct={setEPct}
                       interval={eInterval} setInterval={setEInterval}
                       mode={eMode} setMode={setEMode}
+                      techPct={eTechPct} setTechPct={setETechPct}
                       months={eMonths} setMonths={setEMonths}
                     />
                     <div className="flex gap-2">
@@ -161,6 +172,7 @@ export function ProductsEditor({ products }: { products: Product[] }) {
                               billingInterval: eInterval,
                               commissionMode: eMode,
                               commissionMonths: num(eMonths) || 3,
+                              techCommissionPct: num(eTechPct),
                             });
                             setEditId(null);
                           })
@@ -178,6 +190,7 @@ export function ProductsEditor({ products }: { products: Product[] }) {
                         {p.price_xof.toLocaleString('fr-FR')} XOF · {t(`billing_${p.billing_interval ?? 'one_time'}` as never)} ·{' '}
                         {t('commissionPct')} {p.commission_pct}%
                         {p.commission_mode === 'recurring' && ` ×${p.commission_months ?? 3} ${t('monthsShort')}`}
+                        {(p.tech_commission_pct ?? 0) > 0 && ` · Tech ${p.tech_commission_pct}%`}
                       </p>
                     </div>
                     <button
@@ -191,6 +204,7 @@ export function ProductsEditor({ products }: { products: Product[] }) {
                         setEInterval(p.billing_interval ?? 'one_time');
                         setEMode(p.commission_mode ?? 'once');
                         setEMonths(String(p.commission_months ?? 3));
+                        setETechPct(p.tech_commission_pct ? String(p.tech_commission_pct) : '');
                       }}
                       className="text-muted-foreground hover:text-foreground"
                     >
@@ -234,6 +248,7 @@ export function ProductsEditor({ products }: { products: Product[] }) {
             pct={nPct} setPct={setNPct}
             interval={nInterval} setInterval={setNInterval}
             mode={nMode} setMode={setNMode}
+            techPct={nTechPct} setTechPct={setNTechPct}
             months={nMonths} setMonths={setNMonths}
           />
           <Button
@@ -244,7 +259,9 @@ export function ProductsEditor({ products }: { products: Product[] }) {
                   billingInterval: nInterval,
                   commissionMode: nMode,
                   commissionMonths: num(nMonths) || 3,
+                  techCommissionPct: num(nTechPct),
                 });
+                setNTechPct('');
                 setNName('');
                 setNPrice('');
                 setNPct('');
