@@ -126,7 +126,21 @@
     "myPending": "Pending",
     "myPaid": "Already paid",
     "myUpcoming": "Next slice: {date} ({amount})",
-    "myExpired": "Expired: {amount}"
+    "myExpired": "Expired: {amount}",
+    "myMore": "+ {count} more lines",
+    "detailTitle": "Detailed report",
+    "detailSummary": "{count, plural, one {# line} other {# lines}} · total {total}",
+    "detailEmpty": "No lines for these filters.",
+    "detailTruncated": "+ {count} lines not shown — use the CSV export to see everything.",
+    "filterPerson": "All people",
+    "filterKind": "Sales + installations",
+    "filterStatus": "All statuses",
+    "filterMonth": "All months",
+    "sliceN": "Slice {n}",
+    "status_earned": "Earned",
+    "status_pending": "Pending",
+    "status_paid": "Paid",
+    "status_expired": "Expired"
   },
   "dealFunnel": {
     "title": "Deals by stage",

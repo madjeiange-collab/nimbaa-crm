@@ -18,7 +18,17 @@ export interface CommissionRow {
   amount: number;
   status: string;
   periodMonth: string;
+  periodIndex: number;
+  client: string;
+  product: string;
 }
+
+const STATUS_BADGE: Record<string, string> = {
+  earned: 'bg-knock-green/15 text-knock-green',
+  pending: 'bg-brand-amber/15 text-brand-brown',
+  paid: 'bg-muted text-muted-foreground',
+  expired: 'bg-destructive/10 text-destructive',
+};
 
 const fcfa = (n: number) => `${n.toLocaleString('fr-FR')} FCFA`;
 
@@ -35,6 +45,10 @@ export function CommissionsPanel({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
+  const [fPerson, setFPerson] = useState('');
+  const [fStatus, setFStatus] = useState('');
+  const [fKind, setFKind] = useState('');
+  const [fMonth, setFMonth] = useState('');
 
   const earned = rows.filter((r) => r.status === 'earned');
   const pending = rows.filter((r) => r.status === 'pending');
@@ -114,6 +128,134 @@ export function CommissionsPanel({
           <p className="text-xs text-muted-foreground">{t('payHint')}</p>
         </CardContent>
       </Card>
+
+      <DetailedReport
+        rows={rows}
+        fPerson={fPerson} setFPerson={setFPerson}
+        fStatus={fStatus} setFStatus={setFStatus}
+        fKind={fKind} setFKind={setFKind}
+        fMonth={fMonth} setFMonth={setFMonth}
+      />
     </div>
+  );
+}
+
+/** Full ledger, entry by entry, with filters and a detailed CSV export. */
+function DetailedReport({
+  rows,
+  fPerson, setFPerson,
+  fStatus, setFStatus,
+  fKind, setFKind,
+  fMonth, setFMonth,
+}: {
+  rows: CommissionRow[];
+  fPerson: string; setFPerson: (v: string) => void;
+  fStatus: string; setFStatus: (v: string) => void;
+  fKind: string; setFKind: (v: string) => void;
+  fMonth: string; setFMonth: (v: string) => void;
+}) {
+  const t = useTranslations('commissions');
+
+  const people = useMemo(
+    () => [...new Map(rows.map((r) => [r.repId, r.name])).entries()].sort((a, b) => a[1].localeCompare(b[1])),
+    [rows],
+  );
+  const months = useMemo(
+    () => [...new Set(rows.map((r) => r.periodMonth.slice(0, 7)))].sort().reverse(),
+    [rows],
+  );
+  const filtered = rows.filter(
+    (r) =>
+      (fPerson === '' || r.repId === fPerson) &&
+      (fStatus === '' || r.status === fStatus) &&
+      (fKind === '' || r.kind === fKind) &&
+      (fMonth === '' || r.periodMonth.startsWith(fMonth)),
+  );
+  const total = filtered.reduce((s, r) => s + r.amount, 0);
+
+  function exportDetail() {
+    downloadCsv('commissions-detail.csv', [
+      ['Personne', 'Rôle', 'Type', 'Client', 'Produit', 'Mensualité', 'Mois', 'Montant FCFA', 'Statut'],
+      ...filtered.map((r) => [
+        r.name, r.role, r.kind === 'install' ? 'installation' : 'vente',
+        r.client, r.product, r.periodIndex, r.periodMonth, r.amount, r.status,
+      ]),
+    ]);
+  }
+
+  const selectCls =
+    'flex min-h-touch w-full rounded-md border border-input bg-background px-2 text-sm';
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 pt-4">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold">{t('detailTitle')}</p>
+          <Button variant="outline" size="sm" onClick={exportDetail} disabled={filtered.length === 0}>
+            <Download className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <select value={fPerson} onChange={(e) => setFPerson(e.target.value)} className={selectCls} aria-label={t('filterPerson')}>
+            <option value="">{t('filterPerson')}</option>
+            {people.map(([id, name]) => (
+              <option key={id} value={id}>{name}</option>
+            ))}
+          </select>
+          <select value={fKind} onChange={(e) => setFKind(e.target.value)} className={selectCls} aria-label={t('filterKind')}>
+            <option value="">{t('filterKind')}</option>
+            <option value="sale">{t('kindSale')}</option>
+            <option value="install">{t('kindInstall')}</option>
+          </select>
+          <select value={fStatus} onChange={(e) => setFStatus(e.target.value)} className={selectCls} aria-label={t('filterStatus')}>
+            <option value="">{t('filterStatus')}</option>
+            {(['earned', 'pending', 'paid', 'expired'] as const).map((s) => (
+              <option key={s} value={s}>{t(`status_${s}` as never)}</option>
+            ))}
+          </select>
+          <select value={fMonth} onChange={(e) => setFMonth(e.target.value)} className={selectCls} aria-label={t('filterMonth')}>
+            <option value="">{t('filterMonth')}</option>
+            {months.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          {t('detailSummary', { count: filtered.length, total: fcfa(total) })}
+        </p>
+
+        {filtered.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t('detailEmpty')}</p>
+        ) : (
+          <div className="space-y-1.5">
+            {filtered.slice(0, 100).map((r, i) => (
+              <div key={i} className="flex items-center gap-2 rounded-lg border p-2 text-sm">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">
+                    {r.name}
+                    <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                      {r.kind === 'install' ? t('kindInstall') : t('kindSale')} · {r.client} · {r.product}
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t('sliceN', { n: r.periodIndex })} ·{' '}
+                    {new Date(r.periodMonth + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[r.status] ?? 'bg-muted'}`}>
+                  {t(`status_${r.status}` as never)}
+                </span>
+                <span className="w-24 shrink-0 text-right font-semibold">{fcfa(r.amount)}</span>
+              </div>
+            ))}
+            {filtered.length > 100 && (
+              <p className="text-xs text-muted-foreground">{t('detailTruncated', { count: filtered.length - 100 })}</p>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

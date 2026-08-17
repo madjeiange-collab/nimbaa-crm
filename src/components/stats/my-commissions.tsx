@@ -15,17 +15,23 @@ export async function MyCommissions({ userId }: { userId: string }) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('commission_entries')
-    .select('kind, amount_xof, status, period_month')
+    .select('kind, amount_xof, status, period_month, period_index, deals(title, contacts(name), products(name))')
     .eq('rep_id', userId)
     .order('period_month', { ascending: false })
     .limit(500);
   // Pre-0021 database or nothing earned yet with no history → stay invisible.
   if (error) return null;
-  const rows = (data ?? []) as {
+  const rows = (data ?? []) as unknown as {
     kind: string | null;
     amount_xof: number;
     status: string;
     period_month: string;
+    period_index: number;
+    deals: {
+      title: string | null;
+      contacts: { name: string | null } | null;
+      products: { name: string } | null;
+    } | null;
   }[];
   if (rows.length === 0) return null;
 
@@ -71,6 +77,34 @@ export async function MyCommissions({ userId }: { userId: string }) {
           {upcoming && expired > 0 && ' · '}
           {expired > 0 && t('myExpired', { amount: fcfa(expired) })}
         </p>
+
+        {/* Detailed lines: which client, which product, which slice */}
+        <div className="space-y-1 border-t pt-2">
+          {rows.slice(0, 8).map((r, i) => (
+            <div key={i} className="flex items-center justify-between gap-2 text-xs">
+              <span className="min-w-0 truncate">
+                {r.kind === 'install' ? '🔧' : '💼'} {r.deals?.contacts?.name ?? '—'} ·{' '}
+                {r.deals?.products?.name ?? r.deals?.title ?? '—'} · {t('sliceN', { n: r.period_index })}
+              </span>
+              <span
+                className={`shrink-0 font-medium ${
+                  r.status === 'earned'
+                    ? 'text-knock-green'
+                    : r.status === 'expired'
+                      ? 'text-destructive'
+                      : r.status === 'paid'
+                        ? 'text-muted-foreground'
+                        : 'text-brand-brown'
+                }`}
+              >
+                {fcfa(r.amount_xof)} · {t(`status_${r.status}` as never)}
+              </span>
+            </div>
+          ))}
+          {rows.length > 8 && (
+            <p className="text-xs text-muted-foreground">{t('myMore', { count: rows.length - 8 })}</p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

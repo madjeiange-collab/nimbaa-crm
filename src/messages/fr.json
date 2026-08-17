@@ -126,7 +126,21 @@
     "myPending": "En attente",
     "myPaid": "Déjà payées",
     "myUpcoming": "Prochaine mensualité : {date} ({amount})",
-    "myExpired": "Expirées : {amount}"
+    "myExpired": "Expirées : {amount}",
+    "myMore": "+ {count} autres lignes",
+    "detailTitle": "Rapport détaillé",
+    "detailSummary": "{count, plural, one {# ligne} other {# lignes}} · total {total}",
+    "detailEmpty": "Aucune ligne pour ces filtres.",
+    "detailTruncated": "+ {count} lignes non affichées — utilisez l'export CSV pour tout voir.",
+    "filterPerson": "Toutes les personnes",
+    "filterKind": "Ventes + installations",
+    "filterStatus": "Tous les statuts",
+    "filterMonth": "Tous les mois",
+    "sliceN": "Mensualité {n}",
+    "status_earned": "Acquise",
+    "status_pending": "En attente",
+    "status_paid": "Payée",
+    "status_expired": "Expirée"
   },
   "dealFunnel": {
     "title": "Affaires par étape",
