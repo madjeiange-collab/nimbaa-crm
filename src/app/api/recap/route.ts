@@ -75,6 +75,9 @@ export async function GET(request: Request) {
   const planStart = recapEnd;
   const planEnd = new Date(planStart.getTime() + 86400_000);
   const planDate = planStart.toISOString().slice(0, 10);
+  // Sunday recap = the week just ended → this run doubles as the WEEKLY brief
+  // (the week boards below cover that full finished week).
+  const weeklyEdition = recapStart.getDay() === 0;
   const periode = {
     journee_recapitulee: {
       date: recapStart.toISOString().slice(0, 10),
@@ -84,6 +87,7 @@ export async function GET(request: Request) {
       date: planDate,
       libelle: morningRun ? "aujourd'hui" : 'demain',
     },
+    edition_hebdo: weeklyEdition,
   };
 
   // Recapped day's raw numbers + the standings of the week CONTAINING that
@@ -102,6 +106,13 @@ export async function GET(request: Request) {
 
   const facts = {
     periode,
+    totaux_semaine: weeklyEdition
+      ? {
+          visites: week.reps.reduce((s, r) => s + r.visits, 0),
+          ventes: week.reps.reduce((s, r) => s + r.sales, 0),
+          installations_terminees: week.techs.reduce((s, r) => s + r.done, 0),
+        }
+      : undefined,
     aujourd_hui: {
       commerciaux: today.reps.map((r) => ({
         nom: r.name,
@@ -463,7 +474,10 @@ export async function GET(request: Request) {
           'Rédige un message court en français (5 à 9 lignes), énergique et bienveillant, avec quelques emojis : ' +
           "1) le bilan chiffré de la journée récapitulée, 2) félicite nommément le ou les meilleurs (commercial ET technicien s'il y en a), " +
           '3) un encouragement pour la journée à venir. Si la journée est vide, reste positif et motive. ' +
-          'Pas de titre, pas de markdown — du texte simple.',
+          'Pas de titre, pas de markdown — du texte simple.' +
+          (weeklyEdition
+            ? " ÉDITION HEBDO : la semaine vient de se terminer — commence par « 📅 Bilan de la semaine : » (2-3 lignes) avec les totaux de la semaine (totaux_semaine) et le/la meilleur(e) de la semaine (classement_semaine), puis enchaîne sur le bilan du jour."
+            : ''),
         input: JSON.stringify(facts),
       }),
       openai.responses.create({
@@ -481,7 +495,10 @@ export async function GET(request: Request) {
           '5) « À pousser : » les 3 à 5 affaires chaudes les plus intéressantes (client, valeur, étape, jours sans activité, commercial). ' +
           '6) « Aujourd\'hui : » ou « Demain : » (selon periode.journee_a_venir) les RDV (heure, client, commercial) et les revisites d\'installation prévues. ' +
           "7) « Cap fin de mois : » projection ventes/CA au rythme actuel vs le mois dernier, et la meilleure journée du mois ; termine par « À surveiller : » visites suspectes, affaires dormantes, secteurs sans activité et personnes non connectées, avec une recommandation concrète chacun. " +
-          "Omets toute section vide. Ton direct de chef d'équipe, sans flatterie. Tirets simples, pas de markdown lourd.",
+          "Omets toute section vide. Ton direct de chef d'équipe, sans flatterie. Tirets simples, pas de markdown lourd." +
+          (weeklyEdition
+            ? " ÉDITION HEBDO : la semaine vient de se terminer — ouvre le brief par une section « 📅 Bilan de la semaine : » (4-8 lignes) : totaux équipe, meilleur commercial et meilleur technicien de la semaine, les vraies tendances vs la semaine précédente (les données semaine_vs_semaine_derniere_a_date couvrent la semaine COMPLÈTE), puis 1-2 leçons et les priorités pour la semaine qui commence."
+            : ''),
         input: JSON.stringify(managerFacts),
       }),
     ]);
@@ -592,7 +609,10 @@ export async function GET(request: Request) {
       '« À pousser : » tes 2-3 affaires ouvertes les plus intéressantes ; ' +
       '« Aujourd\'hui : » ou « Demain : » tes RDV / chantiers prévus ; ' +
       '« Classement : » ton rang, tes points, et l\'écart avec la personne devant toi (motive sans écraser). ' +
-      'Pas de markdown lourd, tirets simples, 1-2 emojis max.';
+      'Pas de markdown lourd, tirets simples, 1-2 emojis max.' +
+      (weeklyEdition
+        ? " ÉDITION HEBDO : ta semaine vient de se terminer — commence par « 📅 Ma semaine en bref : » (2 lignes) : ton bilan de la semaine écoulée (ma_semaine_vs_precedente_a_date couvre la semaine complète) et UN objectif concret pour la semaine qui commence."
+        : '');
 
     const buildRepFacts = (r: (typeof week.reps)[number]) => {
       const t = today.reps.find((x) => x.id === r.id);
