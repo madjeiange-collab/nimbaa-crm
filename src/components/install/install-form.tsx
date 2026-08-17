@@ -5,12 +5,16 @@ import { useTranslations } from 'next-intl';
 import {
   Camera,
   CheckCircle2,
+  Loader2,
   MapPin,
+  Mic,
   Plus,
+  Square,
   Trash2,
   X,
   AlertTriangle,
 } from 'lucide-react';
+import { useDictation } from '@/hooks/use-dictation';
 import { useGeolocation } from '@/hooks/use-geolocation';
 import { reverseGeocode } from '@/lib/geo/reverse';
 import { processCheckInPhoto } from '@/lib/image/capture';
@@ -62,6 +66,7 @@ export function InstallForm({
   initialStatus: InstallStatus | null;
 }) {
   const t = useTranslations('installation');
+  const tVisit = useTranslations('visit'); // shared dictation labels
   const geo = useGeolocation(true);
   const [isPending, startTransition] = useTransition();
 
@@ -78,6 +83,9 @@ export function InstallForm({
   );
   const [nextVisitDate, setNextVisitDate] = useState('');
   const [notes, setNotes] = useState('');
+  const dictation = useDictation((text) =>
+    setNotes((prev) => (prev ? prev + ' ' + text : text)),
+  );
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [address, setAddress] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -443,9 +451,38 @@ export function InstallForm({
         </div>
       )}
 
-      {/* Notes */}
+      {/* Notes — optional, with voice dictation */}
       <div className="space-y-2">
-        <Label htmlFor="notes">{t('notes')}</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="notes">{t('notes')}</Label>
+          {dictation.status !== 'unsupported' && (
+            <button
+              type="button"
+              onClick={dictation.toggle}
+              disabled={dictation.status === 'processing'}
+              className={`flex min-h-touch items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium ${
+                dictation.status === 'recording'
+                  ? 'border-destructive bg-destructive/10 text-destructive'
+                  : 'border-input bg-background text-foreground'
+              }`}
+              aria-label={tVisit('dictate')}
+            >
+              {dictation.status === 'recording' ? (
+                <>
+                  <Square className="h-4 w-4" /> {tVisit('dictateStop')}
+                </>
+              ) : dictation.status === 'processing' ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> …
+                </>
+              ) : (
+                <>
+                  <Mic className="h-4 w-4" /> {tVisit('dictate')}
+                </>
+              )}
+            </button>
+          )}
+        </div>
         <textarea
           id="notes"
           value={notes}

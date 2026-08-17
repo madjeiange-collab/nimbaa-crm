@@ -15,6 +15,7 @@ import {
   type ProductOption,
 } from '@/components/contacts/deals-section';
 import { PeopleSection, type PersonCard } from '@/components/contacts/people-section';
+import { WhatsappDraft } from '@/components/contacts/whatsapp-draft';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -193,7 +194,7 @@ export function ContactDetail({
           ) : (
             <div className="space-y-1 text-sm">
               {contact.phone && (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <a href={`tel:${contact.phone}`} className="inline-flex items-center gap-1.5 text-primary">
                     <Phone className="h-4 w-4" /> {contact.phone}
                   </a>
@@ -202,6 +203,7 @@ export function ContactDetail({
                       <MessageCircle className="h-4 w-4" /> WhatsApp
                     </a>
                   )}
+                  <WhatsappDraft contactId={contact.id} phone={contact.phone} />
                 </div>
               )}
               {contact.address && (
