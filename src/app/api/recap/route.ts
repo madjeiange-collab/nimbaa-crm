@@ -197,7 +197,7 @@ export async function GET(request: Request) {
       .limit(50),
     admin
       .from('deals')
-      .select('value_xof, assigned_rep_id, won_at, title, products(name), contacts(name)')
+      .select('value_xof, assigned_rep_id, won_at, title, business_type, tags, products(name), contacts(name)')
       .eq('status', 'won')
       .gte('won_at', recapStart.toISOString())
       .lt('won_at', recapEnd.toISOString())
@@ -210,7 +210,7 @@ export async function GET(request: Request) {
       .limit(50),
     admin
       .from('deals')
-      .select('title, value_xof, updated_at, assigned_rep_id, pipeline_stages(name), contacts(name)')
+      .select('title, value_xof, updated_at, assigned_rep_id, business_type, pipeline_stages(name), contacts(name)')
       .eq('status', 'open')
       .order('value_xof', { ascending: false, nullsFirst: false })
       .limit(6),
@@ -227,7 +227,7 @@ export async function GET(request: Request) {
       .eq('is_active', true),
     admin
       .from('deals')
-      .select('assigned_rep_id, won_at, value_xof')
+      .select('assigned_rep_id, won_at, value_xof, business_type')
       .eq('status', 'won')
       .gte('won_at', prevMonthStart.toISOString())
       .limit(5000),
@@ -299,8 +299,37 @@ export async function GET(request: Request) {
   }
 
   // Month-end projection (run rate) vs last month.
-  type MonthDeal = { assigned_rep_id: string | null; won_at: string | null; value_xof: number | null };
+  type MonthDeal = {
+    assigned_rep_id: string | null;
+    won_at: string | null;
+    value_xof: number | null;
+    business_type: string | null;
+  };
   const mDeals = (monthDeals ?? []) as MonthDeal[];
+
+  // Wins grouped by business type (maquis, restaurant…) — non-typed deals
+  // reported as a count so the model knows the coverage.
+  const typeAgg = (rows: MonthDeal[]) => {
+    const byType = new Map<string, { ventes: number; ca: number }>();
+    let nonClassees = 0;
+    for (const d of rows) {
+      const t = d.business_type?.trim();
+      if (!t) {
+        nonClassees++;
+        continue;
+      }
+      const cur = byType.get(t) ?? { ventes: 0, ca: 0 };
+      cur.ventes++;
+      cur.ca += d.value_xof ?? 0;
+      byType.set(t, cur);
+    }
+    return {
+      par_type: [...byType.entries()]
+        .map(([type, v]) => ({ type, ventes: v.ventes, ca_fcfa: v.ca }))
+        .sort((a, b) => b.ventes - a.ventes),
+      ventes_non_classees: nonClassees,
+    };
+  };
   const curMonth = mDeals.filter((d) => d.won_at && d.won_at >= monthStart.toISOString());
   const prevMonth = mDeals.filter((d) => d.won_at && d.won_at < monthStart.toISOString());
   const dayOfMonth = nowRun.getDate();
@@ -376,24 +405,39 @@ export async function GET(request: Request) {
       value_xof: number | null;
       assigned_rep_id: string | null;
       title: string | null;
+      business_type: string | null;
+      tags: string[] | null;
       products: { name: string } | null;
       contacts: { name: string | null } | null;
     }[]).map((d) => ({
       client: d.contacts?.name ?? '—',
       produit: d.products?.name || d.title || '—',
+      type_activite: d.business_type,
+      tags: d.tags?.length ? d.tags : undefined,
       ca_fcfa: d.value_xof ?? 0,
       vendeur: repName(d.assigned_rep_id),
     })),
+    // Which business types the wins come from (semaine + mois).
+    ventes_par_type_activite: {
+      cette_semaine: typeAgg(
+        mDeals.filter(
+          (d) => d.won_at && d.won_at >= weekStartIso && d.won_at < recapEnd.toISOString(),
+        ),
+      ),
+      mois_en_cours: typeAgg(curMonth),
+    },
     affaires_chaudes_a_pousser: ((hotDeals ?? []) as unknown as {
       title: string | null;
       value_xof: number | null;
       updated_at: string;
       assigned_rep_id: string | null;
+      business_type: string | null;
       pipeline_stages: { name: string } | null;
       contacts: { name: string | null } | null;
     }[]).map((d) => ({
       client: d.contacts?.name ?? '—',
       affaire: d.title || '—',
+      type_activite: d.business_type,
       valeur_fcfa: d.value_xof ?? 0,
       etape: d.pipeline_stages?.name ?? '—',
       commercial: repName(d.assigned_rep_id),
@@ -461,6 +505,15 @@ export async function GET(request: Request) {
     },
   };
 
+  // Public recap flavour: which business types sold on the recapped day
+  // (types only — the public recap carries no money).
+  const publicFacts = {
+    ...facts,
+    types_vendus: managerFacts.ventes_du_jour
+      .map((v) => v.type_activite)
+      .filter((t): t is string => !!t),
+  };
+
   const openai = new OpenAI();
   try {
     const [publicRes, managerRes] = await Promise.all([
@@ -474,11 +527,12 @@ export async function GET(request: Request) {
           'Rédige un message court en français (5 à 9 lignes), énergique et bienveillant, avec quelques emojis : ' +
           "1) le bilan chiffré de la journée récapitulée, 2) félicite nommément le ou les meilleurs (commercial ET technicien s'il y en a), " +
           '3) un encouragement pour la journée à venir. Si la journée est vide, reste positif et motive. ' +
+          'Si types_vendus est non vide, glisse naturellement le ou les types d\'activité conclus (ex. « bravo pour le maquis signé ! »). ' +
           'Pas de titre, pas de markdown — du texte simple.' +
           (weeklyEdition
             ? " ÉDITION HEBDO : la semaine vient de se terminer — commence par « 📅 Bilan de la semaine : » (2-3 lignes) avec les totaux de la semaine (totaux_semaine) et le/la meilleur(e) de la semaine (classement_semaine), puis enchaîne sur le bilan du jour."
             : ''),
-        input: JSON.stringify(facts),
+        input: JSON.stringify(publicFacts),
       }),
       openai.responses.create({
         model: AI_MODELS.manager,
@@ -491,7 +545,8 @@ export async function GET(request: Request) {
           "1) « Commerciaux : » une ligne par commercial actif — visites (+ % objectif et amplitude de journée si dispo), engagés, ventes, CA FCFA ; mentionne un taux d'engagement faible (<20%) ou fort (>40%), tout commercial à zéro visite, et une série sans vente ≥5 jours. " +
           '2) « Techniciens : » une ligne par technicien — terminées, en cours, revisites — plus les installations EN RETARD (client + technicien) s\'il y en a. ' +
           "3) « Semaine vs semaine dernière (à date comparable) : » évolution par personne (visites, ventes, CA / terminées) avec ↗/↘/= — souligne les vraies progressions et les baisses inquiétantes. " +
-          '4) « Conclu hier : » ou « Conclu aujourd\'hui : » (selon periode) chaque vente de la journée récapitulée (client, produit, CA, vendeur) — et les pertes de la semaine avec leur raison si présentes. ' +
+          '4) « Conclu hier : » ou « Conclu aujourd\'hui : » (selon periode) chaque vente de la journée récapitulée (client, produit, CA, vendeur — type d\'activité entre parenthèses s\'il est renseigné) — et les pertes de la semaine avec leur raison si présentes. ' +
+          "4b) si ventes_par_type_activite contient des types, ajoute « Par type d'activité : » — ventes et CA par type (semaine, puis mois si différent) et signale le créneau le plus porteur (ex. « les maquis tirent la semaine ») ; omets si tout est non classé. " +
           '5) « À pousser : » les 3 à 5 affaires chaudes les plus intéressantes (client, valeur, étape, jours sans activité, commercial). ' +
           '6) « Aujourd\'hui : » ou « Demain : » (selon periode.journee_a_venir) les RDV (heure, client, commercial) et les revisites d\'installation prévues. ' +
           "7) « Cap fin de mois : » projection ventes/CA au rythme actuel vs le mois dernier, et la meilleure journée du mois ; termine par « À surveiller : » visites suspectes, affaires dormantes, secteurs sans activité et personnes non connectées, avec une recommandation concrète chacun. " +
@@ -582,13 +637,15 @@ export async function GET(request: Request) {
       title: string | null;
       value_xof: number | null;
       updated_at: string;
+      business_type: string | null;
+      tags: string[] | null;
       pipeline_stages: { name: string } | null;
       contacts: { name: string | null } | null;
     }[] = [];
     if (activeRepIds.length > 0) {
       const { data } = await admin
         .from('deals')
-        .select('assigned_rep_id, title, value_xof, updated_at, pipeline_stages(name), contacts(name)')
+        .select('assigned_rep_id, title, value_xof, updated_at, business_type, tags, pipeline_stages(name), contacts(name)')
         .eq('status', 'open')
         .in('assigned_rep_id', activeRepIds)
         .order('value_xof', { ascending: false, nullsFirst: false })
@@ -606,7 +663,7 @@ export async function GET(request: Request) {
       '« Hier : » ou « Aujourd\'hui : » tes chiffres de la journée récapitulée ; ' +
       '« Ma semaine : » évolution vs la semaine dernière à date (↗/↘/=) avec UNE observation utile (ex. engagement en baisse → soigner l\'argumentaire) ; ' +
       '« Conclu : » tes ventes/installations de la journée récapitulée ; ' +
-      '« À pousser : » tes 2-3 affaires ouvertes les plus intéressantes ; ' +
+      '« À pousser : » tes 2-3 affaires ouvertes les plus intéressantes (mentionne le type d\'activité et les tags s\'ils sont renseignés) ; ' +
       '« Aujourd\'hui : » ou « Demain : » tes RDV / chantiers prévus ; ' +
       '« Classement : » ton rang, tes points, et l\'écart avec la personne devant toi (motive sans écraser). ' +
       'Pas de markdown lourd, tirets simples, 1-2 emojis max.' +
@@ -649,6 +706,7 @@ export async function GET(request: Request) {
           assigned_rep_id: string | null;
           value_xof: number | null;
           title: string | null;
+          business_type: string | null;
           products: { name: string } | null;
           contacts: { name: string | null } | null;
         }[])
@@ -656,6 +714,7 @@ export async function GET(request: Request) {
           .map((d) => ({
             client: d.contacts?.name ?? '—',
             produit: d.products?.name || d.title || '—',
+            type_activite: d.business_type,
             ca_fcfa: d.value_xof ?? 0,
           })),
         a_pousser: ownDeals
@@ -665,6 +724,8 @@ export async function GET(request: Request) {
             client: d.contacts?.name ?? '—',
             valeur_fcfa: d.value_xof ?? 0,
             etape: d.pipeline_stages?.name ?? '—',
+            type_activite: d.business_type,
+            tags: d.tags?.length ? d.tags : undefined,
             jours_sans_activite: Math.floor(
               (Date.now() - new Date(d.updated_at).getTime()) / 86400_000,
             ),
