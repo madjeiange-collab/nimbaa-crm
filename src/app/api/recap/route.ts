@@ -35,11 +35,17 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
   const pts = await getPointConfig(admin);
 
-  // Today's raw numbers + this week's standings.
+  // Today's raw numbers + this week's standings + prior week AT THE SAME
+  // POINT (Monday → same weekday/time last week) for a fair comparison.
   const todayIso = startOfTodayIso();
-  const [today, week] = await Promise.all([
+  const weekStartIso = startOfWeekIso();
+  const weekStart = new Date(weekStartIso);
+  const prevWeekStart = new Date(weekStart.getTime() - 7 * 86400_000);
+  const prevWeekCutoff = new Date(Date.now() - 7 * 86400_000);
+  const [today, week, prevWeekToDate] = await Promise.all([
     computeBoards(admin, todayIso, pts),
-    computeBoards(admin, startOfWeekIso(), pts),
+    computeBoards(admin, weekStartIso, pts),
+    computeBoards(admin, prevWeekStart.toISOString(), pts, prevWeekCutoff.toISOString()),
   ]);
 
   const facts = {
@@ -114,6 +120,25 @@ export async function GET(request: Request) {
       taux_completion_pct: r.completionPct,
     })),
     classement_semaine: facts.classement_semaine,
+    // Week-to-date vs prior week at the same point (fair comparison).
+    semaine_vs_semaine_derniere_a_date: {
+      commerciaux: week.reps.map((r) => {
+        const prev = prevWeekToDate.reps.find((p) => p.id === r.id);
+        return {
+          nom: r.name,
+          visites: { cette_semaine: r.visits, semaine_derniere: prev?.visits ?? 0 },
+          ventes: { cette_semaine: r.sales, semaine_derniere: prev?.sales ?? 0 },
+          ca_fcfa: { cette_semaine: r.fcfa, semaine_derniere: prev?.fcfa ?? 0 },
+        };
+      }),
+      techniciens: week.techs.map((r) => {
+        const prev = prevWeekToDate.techs.find((p) => p.id === r.id);
+        return {
+          nom: r.name,
+          terminees: { cette_semaine: r.done, semaine_derniere: prev?.done ?? 0 },
+        };
+      }),
+    },
     points_attention: {
       visites_suspectes_aujourd_hui: (flaggedToday ?? []).length,
       affaires_ouvertes_sans_activite_7j: staleCount ?? 0,
@@ -138,10 +163,11 @@ export async function GET(request: Request) {
         model: AI_MODELS.manager,
         instructions:
           'Tu écris le BRIEF MANAGER quotidien de Nimbaa (CRM de vente terrain, Abidjan) — réservé aux managers. ' +
-          'À partir des données JSON, rédige en français un brief factuel et actionnable (10 à 18 lignes), structuré ainsi : ' +
+          'À partir des données JSON, rédige en français un brief factuel et actionnable (12 à 24 lignes), structuré ainsi : ' +
           '1) « Commerciaux : » une ligne par commercial actif — nom, visites, engagés, ventes, CA FCFA, avec une mention si le taux d\'engagement est faible (<20%) ou fort (>40%) ; signale aussi tout commercial à zéro visite. ' +
           '2) « Techniciens : » une ligne par technicien — terminées, en cours, revisites. ' +
-          '3) « À surveiller : » les points d\'attention (visites suspectes, affaires sans activité depuis 7j) avec une recommandation concrète chacun. ' +
+          "3) « Semaine vs semaine dernière (à date comparable) : » pour chaque commercial et technicien, l'évolution (visites, ventes, CA / terminées) avec le sens (↗/↘/=) — souligne les progressions nettes et les baisses inquiétantes. " +
+          '4) « À surveiller : » les points d\'attention (visites suspectes, affaires sans activité depuis 7j) avec une recommandation concrète chacun. ' +
           'Ton direct de chef d\'équipe, sans flatterie inutile. Tirets simples, pas de markdown lourd.',
         input: JSON.stringify(managerFacts),
       }),

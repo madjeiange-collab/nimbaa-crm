@@ -67,7 +67,8 @@ export type TechBoardRow = {
 };
 
 /**
- * Computes both boards for the period starting at `sinceIso`.
+ * Computes both boards for the period starting at `sinceIso` (optionally
+ * bounded by `untilIso` — used for "prior week to date" comparisons).
  * Expects a privileged client (reps can't read colleagues under RLS);
  * only names + counts leave this function.
  */
@@ -75,30 +76,38 @@ export async function computeBoards(
   db: SupabaseClient,
   sinceIso: string,
   pts: PointConfig,
+  untilIso?: string,
 ): Promise<{ reps: RepBoardRow[]; techs: TechBoardRow[] }> {
+  let visitsQ = db
+    .from('visits')
+    .select('rep_id, disposition, visit_type')
+    .gte('visited_at', sinceIso)
+    .limit(10000);
+  if (untilIso) visitsQ = visitsQ.lt('visited_at', untilIso);
+  let dealsQ = db
+    .from('deals')
+    .select('assigned_rep_id, value_xof')
+    .eq('status', 'won')
+    .gte('won_at', sinceIso)
+    .limit(5000);
+  if (untilIso) dealsQ = dealsQ.lt('won_at', untilIso);
+  let contactsQ = db
+    .from('contacts')
+    .select('created_by, lifecycle')
+    .gte('created_at', sinceIso)
+    .limit(10000);
+  if (untilIso) contactsQ = contactsQ.lt('created_at', untilIso);
+
   const [{ data: users }, { data: visits }, { data: deals }, { data: installs }, { data: contacts }] =
     await Promise.all([
       db.from('users').select('id, full_name, username, avatar_path, role, is_active'),
-      db
-        .from('visits')
-        .select('rep_id, disposition, visit_type')
-        .gte('visited_at', sinceIso)
-        .limit(10000),
-      db
-        .from('deals')
-        .select('assigned_rep_id, value_xof')
-        .eq('status', 'won')
-        .gte('won_at', sinceIso)
-        .limit(5000),
+      visitsQ,
+      dealsQ,
       db
         .from('installations')
         .select('installer_id, status, completed_at, next_visit_date')
         .limit(5000),
-      db
-        .from('contacts')
-        .select('created_by, lifecycle')
-        .gte('created_at', sinceIso)
-        .limit(10000),
+      contactsQ,
     ]);
 
   const active = (users ?? []).filter((u) => u.is_active);
@@ -150,7 +159,11 @@ export async function computeBoards(
     .map((u) => {
       const mine = (installs ?? []).filter((i) => i.installer_id === u.id);
       const done = mine.filter(
-        (i) => i.status === 'done' && i.completed_at && i.completed_at >= sinceIso,
+        (i) =>
+          i.status === 'done' &&
+          i.completed_at &&
+          i.completed_at >= sinceIso &&
+          (!untilIso || i.completed_at < untilIso),
       ).length;
       const revisits = mine.filter(
         (i) => i.status === 'needs_revisit' || (i.status === 'done' && i.next_visit_date),
