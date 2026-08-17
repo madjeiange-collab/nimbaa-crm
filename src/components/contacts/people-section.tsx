@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { Phone, Mail, MessageCircle, Plus, Trash2, UserRound } from 'lucide-react';
+import { Briefcase, Phone, Mail, MessageCircle, Plus, Trash2, UserRound } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { addContactPerson, deleteContactPerson } from '@/lib/contacts/people-actions';
 import { Button } from '@/components/ui/button';
@@ -20,9 +20,12 @@ export interface PersonCard {
 export function PeopleSection({
   contactId,
   people,
+  dealsByPerson = {},
 }: {
   contactId: string;
   people: PersonCard[];
+  /** Labels of the deals each person handles (personId → deal names). */
+  dealsByPerson?: Record<string, string[]>;
 }) {
   const t = useTranslations('people');
   const router = useRouter();
@@ -100,6 +103,12 @@ export function PeopleSection({
                     >
                       <Mail className="h-3 w-3" /> {p.email}
                     </a>
+                  )}
+                  {(dealsByPerson[p.id] ?? []).length > 0 && (
+                    <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Briefcase className="h-3 w-3 shrink-0" />
+                      {t('handlesDeals')}: {dealsByPerson[p.id].join(' · ')}
+                    </p>
                   )}
                 </div>
                 <button

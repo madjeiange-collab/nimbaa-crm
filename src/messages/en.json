@@ -77,6 +77,7 @@
   "people": {
     "title": "Contact persons",
     "add": "Add",
+    "handlesDeals": "Deals",
     "empty": "No contact persons yet — add the manager, project lead…",
     "namePlaceholder": "Full name *",
     "rolePlaceholder": "Role (e.g. Manager)",
@@ -294,6 +295,7 @@
     "noProduct": "— No product —",
     "person": "Contact person",
     "noPerson": "— None —",
+    "addPerson": "New contact person",
     "callPerson": "Call contact person",
     "stage": "Stage",
     "needsInstallation": "Needs installation",
@@ -584,6 +586,7 @@
     "search": "Search a name…",
     "empty": "No contacts.",
     "noName": "(no name)",
+    "rowDealFallback": "Deal",
     "draftButton": "AI draft",
     "draftTitle": "WhatsApp draft",
     "draftOpen": "Open WhatsApp",

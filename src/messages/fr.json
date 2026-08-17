@@ -77,6 +77,7 @@
   "people": {
     "title": "Interlocuteurs",
     "add": "Ajouter",
+    "handlesDeals": "Affaires",
     "empty": "Aucun interlocuteur — ajoutez le gérant, le chef de projet…",
     "namePlaceholder": "Nom complet *",
     "rolePlaceholder": "Rôle (ex. Gérant)",
@@ -294,6 +295,7 @@
     "noProduct": "— Aucun produit —",
     "person": "Interlocuteur",
     "noPerson": "— Aucun —",
+    "addPerson": "Nouvel interlocuteur",
     "callPerson": "Appeler l'interlocuteur",
     "stage": "Étape",
     "needsInstallation": "Installation requise",
@@ -584,6 +586,7 @@
     "search": "Rechercher un nom…",
     "empty": "Aucun contact.",
     "noName": "(sans nom)",
+    "rowDealFallback": "Affaire",
     "draftButton": "Brouillon IA",
     "draftTitle": "Brouillon WhatsApp",
     "draftOpen": "Ouvrir WhatsApp",

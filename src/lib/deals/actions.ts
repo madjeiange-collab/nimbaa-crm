@@ -18,7 +18,12 @@ function revalidate(contactId: string) {
 /** Create a new business (affaire) for a customer, at the first pipeline stage. */
 export async function createDeal(
   contactId: string,
-  fields: { title?: string | null; value?: number | null; needsInstallation?: boolean },
+  fields: {
+    title?: string | null;
+    value?: number | null;
+    needsInstallation?: boolean;
+    contactPersonId?: string | null;
+  },
 ): Promise<ActionResult> {
   const supabase = await createClient();
   const {
@@ -46,6 +51,7 @@ export async function createDeal(
     pipeline_stage_id: firstStage?.id ?? null,
     status: 'open',
     needs_installation: fields.needsInstallation ?? false,
+    contact_person_id: fields.contactPersonId ?? null,
     assigned_rep_id: contact?.assigned_rep_id ?? user.id,
     created_by: user.id,
   });

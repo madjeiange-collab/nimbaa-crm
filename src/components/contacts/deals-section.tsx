@@ -10,7 +10,7 @@ import {
   updateDeal,
   deleteDeal,
 } from '@/lib/deals/actions';
-import { assignDealPerson } from '@/lib/contacts/people-actions';
+import { addContactPerson, assignDealPerson } from '@/lib/contacts/people-actions';
 import { assignInstaller } from '@/lib/installations/actions';
 import { INSTALL_STATUS_BADGE, INSTALL_STATUS_BY_KEY } from '@/lib/installations/protocol';
 import type { DealStatus, InstallStatus } from '@/types/database';
@@ -67,6 +67,82 @@ const STATUS_BADGE: Record<DealStatus, string> = {
   won: 'bg-brand-green/15 text-brand-green',
   lost: 'bg-destructive/10 text-destructive',
 };
+
+/**
+ * Inline "new interlocutor" mini-form: creates the person on the business and
+ * hands the new id back so the caller can link it to a deal right away.
+ */
+function QuickAddPerson({
+  contactId,
+  onCreated,
+}: {
+  contactId: string;
+  onCreated: (personId: string) => void | Promise<void>;
+}) {
+  const t = useTranslations('deals');
+  const tP = useTranslations('people');
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [role, setRole] = useState('');
+  const [phone, setPhone] = useState('');
+  const [error, setError] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1 text-xs font-medium text-primary"
+      >
+        <Plus className="h-3.5 w-3.5" /> {t('addPerson')}
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-2 rounded-md border p-2.5">
+      <Input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder={tP('namePlaceholder')}
+        autoFocus
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <Input value={role} onChange={(e) => setRole(e.target.value)} placeholder={tP('rolePlaceholder')} />
+        <Input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder={tP('phonePlaceholder')} />
+      </div>
+      {error && <p className="text-xs text-destructive">{tP('error')}</p>}
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          size="sm"
+          disabled={isPending || !name.trim()}
+          onClick={() => {
+            setError(false);
+            startTransition(async () => {
+              const res = await addContactPerson(contactId, { name, role, phone });
+              if (!res.ok) {
+                setError(true);
+                return;
+              }
+              setName('');
+              setRole('');
+              setPhone('');
+              setOpen(false);
+              await onCreated(res.personId);
+            });
+          }}
+        >
+          {tP('save')}
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={isPending}>
+          {tP('cancel')}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function InstallRow({
   contactId,
@@ -239,10 +315,11 @@ function DealRow({
         </div>
       </div>
 
-      {/* Interlocutor this deal is negotiated with */}
-      {people.length > 0 && (
-        <div className="space-y-1">
-          <Label className="text-xs">{t('person')}</Label>
+      {/* Interlocutor this deal is negotiated with — always visible, with a
+          one-tap way to create the person right here. */}
+      <div className="space-y-1.5">
+        <Label className="text-xs">{t('person')}</Label>
+        {people.length > 0 && (
           <div className="flex items-center gap-2">
             <select
               value={deal.contactPersonId ?? ''}
@@ -273,8 +350,15 @@ function DealRow({
               ) : null;
             })()}
           </div>
-        </div>
-      )}
+        )}
+        <QuickAddPerson
+          contactId={contactId}
+          onCreated={async (personId) => {
+            await assignDealPerson(deal.id, contactId, personId);
+            router.refresh();
+          }}
+        />
+      </div>
 
       <label className="flex items-center gap-2 text-sm">
         <input
@@ -333,15 +417,18 @@ export function DealsSection({
   const [isPending, startTransition] = useTransition();
   const [newTitle, setNewTitle] = useState('');
   const [newNeedsInstall, setNewNeedsInstall] = useState(false);
+  const [newPersonId, setNewPersonId] = useState('');
 
   function addDeal() {
     startTransition(async () => {
       await createDeal(contactId, {
         title: newTitle.trim() || null,
         needsInstallation: newNeedsInstall,
+        contactPersonId: newPersonId || null,
       });
       setNewTitle('');
       setNewNeedsInstall(false);
+      setNewPersonId('');
       router.refresh();
     });
   }
@@ -377,6 +464,32 @@ export function DealsSection({
         <div className="space-y-2 rounded-lg border border-dashed p-3">
           <p className="text-xs font-medium text-muted-foreground">{t('newAffaire')}</p>
           <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={t('productPlaceholder')} />
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t('person')}</Label>
+            {people.length > 0 && (
+              <select
+                value={newPersonId}
+                onChange={(e) => setNewPersonId(e.target.value)}
+                className="flex min-h-touch w-full rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="">{t('noPerson')}</option>
+                {people.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                    {p.role ? ` — ${p.role}` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+            <QuickAddPerson
+              contactId={contactId}
+              onCreated={(personId) => {
+                // The refreshed people list will include them; preselect now.
+                setNewPersonId(personId);
+                router.refresh();
+              }}
+            />
+          </div>
           <div className="flex items-center justify-between gap-2">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={newNeedsInstall} onChange={(e) => setNewNeedsInstall(e.target.checked)} />

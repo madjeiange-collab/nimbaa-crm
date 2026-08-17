@@ -123,6 +123,15 @@ export function ContactDetail({
     });
   }
 
+  // Which deals each interlocutor handles (shown on their card).
+  const dealsByPerson: Record<string, string[]> = {};
+  for (const d of deals) {
+    if (!d.contactPersonId) continue;
+    const label =
+      d.title || products.find((p) => p.id === d.productId)?.name || t('rowDealFallback');
+    (dealsByPerson[d.contactPersonId] ??= []).push(label);
+  }
+
   const whatsappHref = contact.phone
     ? `https://wa.me/${contact.phone.replace(/[^0-9]/g, '')}`
     : null;
@@ -262,7 +271,7 @@ export function ContactDetail({
       </Card>
 
       {/* Interlocuteurs (gérant, chef de projet…) of this business */}
-      <PeopleSection contactId={contact.id} people={people} />
+      <PeopleSection contactId={contact.id} people={people} dealsByPerson={dealsByPerson} />
 
       {/* Affaires (deals): several businesses, each sellable and/or installable */}
       <DealsSection
