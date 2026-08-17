@@ -7,6 +7,15 @@ import { ensurePendingInstallation } from '@/lib/installations/seed';
 import { ensureCommissionForWonDeal } from '@/lib/commissions/core';
 import { recomputeContactRollup } from '@/lib/deals/rollup';
 
+export interface VisitPhotoMeta {
+  kind: 'arrival' | 'completion' | 'extra';
+  lat: number | null;
+  lng: number | null;
+  accuracy: number | null;
+  capturedAt: string; // ISO
+  phash: string | null;
+}
+
 export interface SaveVisitInput {
   clientUuid: string;
   visitType: 'd2d_knock' | 'b2b_visit';
@@ -20,7 +29,9 @@ export interface SaveVisitInput {
   address?: string | null; // reverse-geocoded label (best-effort)
   dealId?: string | null; // link the visit to a chosen affaire (existing contact)
   visitedAt?: string; // ISO — defaults to now
+  startedAt?: string | null; // ISO — arrival-photo moment (time spent = visited - started)
   photoPaths?: string[]; // storage paths of geo-stamped check-in photos
+  photoMeta?: VisitPhotoMeta[]; // forensic metadata, aligned with photoPaths
 }
 
 export type SaveVisitResult =
@@ -83,23 +94,32 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
     }
   }
 
-  // 3. Insert the visit.
-  const { data: visit, error: vErr } = await supabase
+  // 3. Insert the visit. started_at is 0024 — retry without it if the
+  //    migration isn't applied yet (never break the core flow).
+  const visitRow = {
+    client_uuid: input.clientUuid,
+    contact_id: input.contactId ?? null,
+    rep_id: user.id,
+    visit_type: input.visitType,
+    visited_at: input.visitedAt ?? new Date().toISOString(),
+    lat: input.lat,
+    lng: input.lng,
+    notes: input.notes ?? null,
+    disposition: input.disposition,
+    appointment_date: input.appointmentDate ?? null,
+  };
+  let { data: visit, error: vErr } = await supabase
     .from('visits')
-    .insert({
-      client_uuid: input.clientUuid,
-      contact_id: input.contactId ?? null,
-      rep_id: user.id,
-      visit_type: input.visitType,
-      visited_at: input.visitedAt ?? new Date().toISOString(),
-      lat: input.lat,
-      lng: input.lng,
-      notes: input.notes ?? null,
-      disposition: input.disposition,
-      appointment_date: input.appointmentDate ?? null,
-    })
+    .insert({ ...visitRow, started_at: input.startedAt ?? null })
     .select('id')
     .single();
+  if (vErr && /started_at/.test(vErr.message)) {
+    ({ data: visit, error: vErr } = await supabase
+      .from('visits')
+      .insert(visitRow)
+      .select('id')
+      .single());
+  }
 
   if (vErr || !visit) return { ok: false, error: 'save_failed' };
 
@@ -113,15 +133,33 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
       .is('lat', null);
   }
 
-  // 3b. Link the uploaded geo-stamped photos to the visit.
+  // 3b. Link the uploaded geo-stamped photos to the visit, with per-photo
+  //     forensics (kind / GPS / capture time / perceptual hash). Falls back to
+  //     the legacy shape if migration 0024 isn't applied yet.
   if (input.photoPaths && input.photoPaths.length > 0) {
-    await supabase.from('visit_photos').insert(
-      input.photoPaths.map((p) => ({
-        visit_id: visit.id,
-        storage_path: p,
-        taken_at: input.visitedAt ?? new Date().toISOString(),
-      })),
-    );
+    const legacyRows = input.photoPaths.map((p) => ({
+      visit_id: visit.id,
+      storage_path: p,
+      taken_at: input.visitedAt ?? new Date().toISOString(),
+    }));
+    const rows = legacyRows.map((r, i) => {
+      const m = input.photoMeta?.[i];
+      return m
+        ? {
+            ...r,
+            kind: m.kind,
+            lat: m.lat,
+            lng: m.lng,
+            accuracy: m.accuracy,
+            captured_at: m.capturedAt,
+            phash: m.phash,
+          }
+        : r;
+    });
+    const { error: pErr } = await supabase.from('visit_photos').insert(rows);
+    if (pErr && /kind|captured_at|phash/.test(pErr.message)) {
+      await supabase.from('visit_photos').insert(legacyRows);
+    }
   }
 
   // 4. Contact + Affaire (deal) handling.

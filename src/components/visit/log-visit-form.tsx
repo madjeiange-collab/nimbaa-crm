@@ -27,6 +27,7 @@ import { saveVisit } from '@/lib/visits/actions';
 import { proposeDnkEntry } from '@/lib/dnk/actions';
 import { enqueueVisit } from '@/lib/offline/queue';
 import { processCheckInPhoto } from '@/lib/image/capture';
+import { dHash, type PhotoMeta } from '@/lib/image/phash';
 import { uploadVisitPhoto } from '@/lib/visits/upload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,7 @@ const MAX_PHOTOS = 5;
 interface Photo {
   blob: Blob;
   url: string;
+  meta: PhotoMeta;
 }
 
 function genUuid(): string {
@@ -166,11 +168,17 @@ export function LogVisitForm({
   const needsAppointment = meta?.needsAppointment ?? false;
   const isEngaged = meta?.createsContact ?? false;
 
+  // Anti-fraud photo pair: engaged visits (Intéressé / RDV / Vendu) need a
+  // completion photo on top of the arrival one — proves presence over time.
+  const hasCompletion = photos.some((p) => p.meta.kind === 'completion');
+  const needsCompletion = isEngaged && !hasCompletion;
+
   const canSave =
     gpsResolved &&
     !dnkBlocked &&
     disposition != null &&
     photos.length >= 1 &&
+    !needsCompletion &&
     !processing &&
     (!needsAppointment || !!appointmentDate);
 
@@ -187,9 +195,14 @@ export function LogVisitForm({
     setPhotos([]);
   }
 
+  // Which kind the next captured photo gets ('completion' when the rep taps
+  // the end-of-visit button; otherwise arrival-if-first, extra after).
+  const nextKindRef = useRef<PhotoMeta['kind'] | null>(null);
+
   /** One action: refresh GPS *and* open the camera. */
-  function startCheckIn() {
+  function startCheckIn(kind?: PhotoMeta['kind']) {
     if (dnkBlocked) return;
+    nextKindRef.current = kind ?? null;
     geo.locate();
     fileInputRef.current?.click();
   }
@@ -201,17 +214,40 @@ export function LogVisitForm({
     setResult(null);
     setProcessing(true);
     try {
+      const capturedAt = new Date();
       const blob = await processCheckInPhoto(file, {
         lat: hasFix ? geo.lat : null,
         lng: hasFix ? geo.lng : null,
         accuracy: geo.accuracy,
-        at: new Date(),
+        at: capturedAt,
         address,
         by: repName,
       });
-      setPhotos((prev) =>
-        [...prev, { blob, url: URL.createObjectURL(blob) }].slice(0, MAX_PHOTOS),
-      );
+      const phash = await dHash(blob);
+      setPhotos((prev) => {
+        const kind =
+          nextKindRef.current ??
+          (prev.some((p) => p.meta.kind === 'arrival') ? 'extra' : 'arrival');
+        const meta: PhotoMeta = {
+          kind,
+          lat: hasFix ? geo.lat : null,
+          lng: hasFix ? geo.lng : null,
+          accuracy: geo.accuracy,
+          capturedAt: capturedAt.toISOString(),
+          phash,
+        };
+        // At the cap, evict the newest 'extra' rather than dropping an
+        // arrival/completion photo the save depends on.
+        let base = prev;
+        if (prev.length >= MAX_PHOTOS) {
+          const idx = prev.map((p) => p.meta.kind).lastIndexOf('extra');
+          if (idx < 0) return prev;
+          URL.revokeObjectURL(prev[idx].url);
+          base = prev.filter((_, i) => i !== idx);
+        }
+        return [...base, { blob, url: URL.createObjectURL(blob), meta }];
+      });
+      nextKindRef.current = null;
     } catch {
       setResult({ kind: 'error', text: t('photoError') });
     } finally {
@@ -232,6 +268,7 @@ export function LogVisitForm({
     setResult(null);
     startTransition(async () => {
       const clientUuid = genUuid();
+      const arrivalAt = photos.find((p) => p.meta.kind === 'arrival')?.meta.capturedAt;
       const payload = {
         visitType: (linked ? 'b2b_visit' : 'd2d_knock') as 'b2b_visit' | 'd2d_knock',
         lat: hasFix ? geo.lat : null,
@@ -244,6 +281,8 @@ export function LogVisitForm({
         contactId: linked?.id ?? null,
         dealId: linked ? dealId : null,
         visitedAt: new Date().toISOString(),
+        startedAt: arrivalAt ?? photos[0]?.meta.capturedAt ?? null,
+        photoMeta: photos.map((p) => p.meta),
       };
 
       // No network: keep the visit (photos included) in the offline queue.
@@ -475,7 +514,7 @@ export function LogVisitForm({
           // Primary one-tap action: camera + GPS together
           <button
             type="button"
-            onClick={startCheckIn}
+            onClick={() => startCheckIn()}
             disabled={processing || dnkBlocked}
             className="flex min-h-[120px] w-full flex-col items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground shadow-sm disabled:opacity-50"
           >
@@ -490,6 +529,15 @@ export function LogVisitForm({
               <div key={i} className="relative aspect-square overflow-hidden rounded-lg border">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={p.url} alt="" className="h-full w-full object-cover" />
+                {p.meta.kind !== 'extra' && (
+                  <span
+                    className={`absolute bottom-1 left-1 rounded px-1.5 py-0.5 text-[10px] font-semibold text-white ${
+                      p.meta.kind === 'arrival' ? 'bg-primary/90' : 'bg-brand-amber/95 text-black'
+                    }`}
+                  >
+                    {p.meta.kind === 'arrival' ? t('photoArrival') : t('photoCompletion')}
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => removePhoto(i)}
@@ -503,7 +551,7 @@ export function LogVisitForm({
             {photos.length < MAX_PHOTOS && (
               <button
                 type="button"
-                onClick={startCheckIn}
+                onClick={() => startCheckIn()}
                 disabled={processing}
                 className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-input text-muted-foreground disabled:opacity-50"
               >
@@ -514,6 +562,22 @@ export function LogVisitForm({
               </button>
             )}
           </div>
+        )}
+
+        {/* Engaged visit → a completion photo closes the loop (time on site) */}
+        {photos.length > 0 && needsCompletion && (
+          <button
+            type="button"
+            onClick={() => startCheckIn('completion')}
+            disabled={processing}
+            className="flex min-h-touch w-full items-center justify-center gap-2 rounded-lg bg-brand-amber font-semibold text-black shadow-sm disabled:opacity-50"
+          >
+            <Camera className="h-5 w-5" />
+            {processing ? t('processingPhoto') : t('captureCompletion')}
+          </button>
+        )}
+        {photos.length > 0 && isEngaged && hasCompletion && (
+          <p className="text-xs font-medium text-knock-green">✓ {t('completionDone')}</p>
         )}
 
         {/* GPS status line + resolved address */}

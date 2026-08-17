@@ -59,6 +59,8 @@ export type TimelineItem =
       content: string | null;
       repName: string | null;
       photos: string[];
+      /** Minutes between the arrival photo and the save — time at the customer. */
+      durationMin: number | null;
     }
   | {
       kind: 'activity';
@@ -352,7 +354,9 @@ export function ContactDetail({
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">
                     {it.kind === 'visit'
-                      ? `${t('visitLabel')}${it.disposition ? ' · ' + tDisp(it.disposition as never) : ''}`
+                      ? `${t('visitLabel')}${it.disposition ? ' · ' + tDisp(it.disposition as never) : ''}${
+                          it.durationMin != null ? ` · ⏱ ${it.durationMin} min` : ''
+                        }`
                       : it.activityType === 'call'
                         ? t('typeCall')
                         : it.activityType === 'whatsapp'

@@ -946,3 +946,27 @@ update commission_entries ce
 set base_xof = s.monthly_price_xof, rate_pct = s.commission_pct
 from subscriptions s
 where ce.subscription_id = s.id and ce.base_xof is null;
+
+-- 0024: anti-fraud photo forensics + time spent at the customer.
+-- Photos store their own GPS/capture-time/perceptual-hash and a kind
+-- (arrival / completion / extra); visits.started_at = arrival moment.
+alter table visits
+  add column if not exists started_at timestamptz;
+
+alter table visit_photos
+  add column if not exists kind text not null default 'extra',
+  add column if not exists lat double precision,
+  add column if not exists lng double precision,
+  add column if not exists accuracy double precision,
+  add column if not exists captured_at timestamptz,
+  add column if not exists phash text;
+
+alter table visit_photos drop constraint if exists visit_photos_kind_check;
+alter table visit_photos
+  add constraint visit_photos_kind_check
+  check (kind in ('arrival', 'completion', 'extra'));
+
+create index if not exists visit_photos_phash_ix
+  on visit_photos (phash) where phash is not null;
+create index if not exists visit_photos_captured_ix
+  on visit_photos (captured_at desc) where captured_at is not null;

@@ -49,6 +49,15 @@ export async function assignInstaller(
   return { ok: true };
 }
 
+export interface InstallPhotoMeta {
+  kind: 'arrival' | 'completion' | 'extra';
+  lat: number | null;
+  lng: number | null;
+  accuracy: number | null;
+  capturedAt: string; // ISO
+  phash: string | null;
+}
+
 export interface SaveInstallationInput {
   installationId: string;
   clientUuid: string;
@@ -61,6 +70,8 @@ export interface SaveInstallationInput {
   notes?: string | null;
   nextVisitDate?: string | null; // ISO date, only for needs_revisit
   photoPaths?: string[]; // storage paths of geo-stamped check-in photos
+  photoMeta?: InstallPhotoMeta[]; // forensic metadata, aligned with photoPaths
+  startedAt?: string | null; // ISO — arrival-photo moment of THIS trip
   visitedAt?: string; // ISO — defaults to now
 }
 
@@ -96,33 +107,59 @@ export async function saveInstallation(
   const now = input.visitedAt ?? new Date().toISOString();
 
   // 1. Insert the installation visit (reuses the field-visit infrastructure).
-  const { data: visit, error: vErr } = await supabase
+  //    started_at is 0024 — retry without it if the migration isn't applied.
+  const visitRow = {
+    client_uuid: input.clientUuid,
+    contact_id: input.contactId,
+    rep_id: user.id,
+    visit_type: 'installation' as const,
+    visited_at: now,
+    lat: input.lat,
+    lng: input.lng,
+    notes: input.notes ?? null,
+    next_visit_date:
+      input.status === 'needs_revisit' ? input.nextVisitDate ?? null : null,
+  };
+  let { data: visit, error: vErr } = await supabase
     .from('visits')
-    .insert({
-      client_uuid: input.clientUuid,
-      contact_id: input.contactId,
-      rep_id: user.id,
-      visit_type: 'installation',
-      visited_at: now,
-      lat: input.lat,
-      lng: input.lng,
-      notes: input.notes ?? null,
-      next_visit_date:
-        input.status === 'needs_revisit' ? input.nextVisitDate ?? null : null,
-    })
+    .insert({ ...visitRow, started_at: input.startedAt ?? null })
     .select('id')
     .single();
+  if (vErr && /started_at/.test(vErr.message)) {
+    ({ data: visit, error: vErr } = await supabase
+      .from('visits')
+      .insert(visitRow)
+      .select('id')
+      .single());
+  }
   if (vErr || !visit) return { ok: false, error: 'save_failed' };
 
-  // 2. Link uploaded photos.
+  // 2. Link uploaded photos with per-photo forensics (falls back to the
+  //    legacy shape pre-0024).
   if (input.photoPaths && input.photoPaths.length > 0) {
-    await supabase.from('visit_photos').insert(
-      input.photoPaths.map((p) => ({
-        visit_id: visit.id,
-        storage_path: p,
-        taken_at: now,
-      })),
-    );
+    const legacyRows = input.photoPaths.map((p) => ({
+      visit_id: visit.id,
+      storage_path: p,
+      taken_at: now,
+    }));
+    const rows = legacyRows.map((r, i) => {
+      const m = input.photoMeta?.[i];
+      return m
+        ? {
+            ...r,
+            kind: m.kind,
+            lat: m.lat,
+            lng: m.lng,
+            accuracy: m.accuracy,
+            captured_at: m.capturedAt,
+            phash: m.phash,
+          }
+        : r;
+    });
+    const { error: pErr } = await supabase.from('visit_photos').insert(rows);
+    if (pErr && /kind|captured_at|phash/.test(pErr.message)) {
+      await supabase.from('visit_photos').insert(legacyRows);
+    }
   }
 
   // 3. Update the installation job.
@@ -142,8 +179,11 @@ export async function saveInstallation(
       input.status === 'needs_revisit' ? input.nextVisitDate ?? null : null,
     updated_at: now,
   };
-  if (!prev?.started_at) patch.started_at = now;
-  if (input.status === 'done') patch.completed_at = now;
+  // The clock starts at the arrival PHOTO of the first trip (more honest than
+  // the save moment) and stops at the completion photo when marking done.
+  const completionAt = input.photoMeta?.find((m) => m.kind === 'completion')?.capturedAt;
+  if (!prev?.started_at) patch.started_at = input.startedAt ?? now;
+  if (input.status === 'done') patch.completed_at = completionAt ?? now;
 
   const { error: iErr } = await supabase
     .from('installations')

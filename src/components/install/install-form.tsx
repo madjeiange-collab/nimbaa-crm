@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Camera,
@@ -18,6 +18,7 @@ import { useDictation } from '@/hooks/use-dictation';
 import { useGeolocation } from '@/hooks/use-geolocation';
 import { reverseGeocode } from '@/lib/geo/reverse';
 import { processCheckInPhoto } from '@/lib/image/capture';
+import { dHash, type PhotoMeta } from '@/lib/image/phash';
 import { uploadVisitPhoto } from '@/lib/visits/upload';
 import { saveInstallation } from '@/lib/installations/actions';
 import { enqueueInstall } from '@/lib/offline/queue';
@@ -33,6 +34,7 @@ const MAX_PHOTOS = 8;
 interface Photo {
   blob: Blob;
   url: string;
+  meta: PhotoMeta;
 }
 
 function genUuid(): string {
@@ -113,9 +115,15 @@ export function InstallForm({
 
   const doneCount = checklist.filter((c) => c.done).length;
 
+  // Marking the job DONE needs a completion photo on top of the arrival one —
+  // it stamps completed_at and proves the technician stayed for the work.
+  const hasCompletion = photos.some((p) => p.meta.kind === 'completion');
+  const needsCompletion = status === 'done' && !hasCompletion;
+
   const canSave =
     gpsResolved &&
     photos.length >= 1 &&
+    !needsCompletion &&
     !processing &&
     (status !== 'needs_revisit' || !!nextVisitDate);
 
@@ -137,7 +145,10 @@ export function InstallForm({
     setEquipment((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  function startCheckIn() {
+  const nextKindRef = useRef<PhotoMeta['kind'] | null>(null);
+
+  function startCheckIn(kind?: PhotoMeta['kind']) {
+    nextKindRef.current = kind ?? null;
     geo.locate();
     document.getElementById('install-photo-input')?.click();
   }
@@ -149,17 +160,38 @@ export function InstallForm({
     setResult(null);
     setProcessing(true);
     try {
+      const capturedAt = new Date();
       const blob = await processCheckInPhoto(file, {
         lat: hasFix ? geo.lat : null,
         lng: hasFix ? geo.lng : null,
         accuracy: geo.accuracy,
-        at: new Date(),
+        at: capturedAt,
         address,
         by: technicianName,
       });
-      setPhotos((prev) =>
-        [...prev, { blob, url: URL.createObjectURL(blob) }].slice(0, MAX_PHOTOS),
-      );
+      const phash = await dHash(blob);
+      setPhotos((prev) => {
+        const kind =
+          nextKindRef.current ??
+          (prev.some((p) => p.meta.kind === 'arrival') ? 'extra' : 'arrival');
+        const meta: PhotoMeta = {
+          kind,
+          lat: hasFix ? geo.lat : null,
+          lng: hasFix ? geo.lng : null,
+          accuracy: geo.accuracy,
+          capturedAt: capturedAt.toISOString(),
+          phash,
+        };
+        let base = prev;
+        if (prev.length >= MAX_PHOTOS) {
+          const idx = prev.map((p) => p.meta.kind).lastIndexOf('extra');
+          if (idx < 0) return prev;
+          URL.revokeObjectURL(prev[idx].url);
+          base = prev.filter((_, i) => i !== idx);
+        }
+        return [...base, { blob, url: URL.createObjectURL(blob), meta }];
+      });
+      nextKindRef.current = null;
     } catch {
       setResult({ kind: 'error', text: t('photoError') });
     } finally {
@@ -184,6 +216,7 @@ export function InstallForm({
       const cleanEquipment = equipment
         .map((e) => ({ label: e.label.trim(), serial: e.serial.trim() }))
         .filter((e) => e.label || e.serial);
+      const arrivalAt = photos.find((p) => p.meta.kind === 'arrival')?.meta.capturedAt;
       const payload = {
         installationId,
         contactId,
@@ -195,6 +228,8 @@ export function InstallForm({
         notes: notes.trim() || null,
         nextVisitDate: status === 'needs_revisit' && nextVisitDate ? nextVisitDate : null,
         visitedAt: new Date().toISOString(),
+        startedAt: arrivalAt ?? photos[0]?.meta.capturedAt ?? null,
+        photoMeta: photos.map((p) => p.meta),
       };
 
       // No network (or it drops mid-save): keep the trip in the offline queue.
@@ -309,7 +344,7 @@ export function InstallForm({
         {photos.length === 0 ? (
           <button
             type="button"
-            onClick={startCheckIn}
+            onClick={() => startCheckIn()}
             disabled={processing}
             className="flex min-h-[120px] w-full flex-col items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground shadow-sm disabled:opacity-50"
           >
@@ -324,6 +359,15 @@ export function InstallForm({
               <div key={i} className="relative aspect-square overflow-hidden rounded-lg border">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={p.url} alt="" className="h-full w-full object-cover" />
+                {p.meta.kind !== 'extra' && (
+                  <span
+                    className={`absolute bottom-1 left-1 rounded px-1.5 py-0.5 text-[10px] font-semibold text-white ${
+                      p.meta.kind === 'arrival' ? 'bg-primary/90' : 'bg-brand-amber/95 text-black'
+                    }`}
+                  >
+                    {p.meta.kind === 'arrival' ? tVisit('photoArrival') : tVisit('photoCompletion')}
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => removePhoto(i)}
@@ -337,7 +381,7 @@ export function InstallForm({
             {photos.length < MAX_PHOTOS && (
               <button
                 type="button"
-                onClick={startCheckIn}
+                onClick={() => startCheckIn()}
                 disabled={processing}
                 className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-input text-muted-foreground disabled:opacity-50"
               >
@@ -348,6 +392,22 @@ export function InstallForm({
               </button>
             )}
           </div>
+        )}
+
+        {/* Done needs the end-of-work photo — stamps completed_at */}
+        {photos.length > 0 && needsCompletion && (
+          <button
+            type="button"
+            onClick={() => startCheckIn('completion')}
+            disabled={processing}
+            className="flex min-h-touch w-full items-center justify-center gap-2 rounded-lg bg-brand-amber font-semibold text-black shadow-sm disabled:opacity-50"
+          >
+            <Camera className="h-5 w-5" />
+            {processing ? t('processingPhoto') : tVisit('captureCompletion')}
+          </button>
+        )}
+        {photos.length > 0 && status === 'done' && hasCompletion && (
+          <p className="text-xs font-medium text-knock-green">✓ {tVisit('completionDone')}</p>
         )}
 
         <div className="space-y-0.5">

@@ -42,7 +42,7 @@ export default async function ContactDetailPage({
     await Promise.all([
       supabase.from('pipeline_stages').select('id, name, sort_order, is_won, is_lost').eq('is_active', true).order('sort_order'),
       supabase.from('activities').select('id, type, content, created_at, rep_id').eq('contact_id', id).order('created_at', { ascending: false }),
-      supabase.from('visits').select('id, disposition, notes, visited_at, rep_id, visit_photos(storage_path)').eq('contact_id', id).order('visited_at', { ascending: false }),
+      supabase.from('visits').select('id, disposition, notes, visited_at, started_at, rep_id, visit_photos(storage_path)').eq('contact_id', id).order('visited_at', { ascending: false }),
       supabase.from('users').select('id, full_name, username, role'),
       supabase
         .from('deals')
@@ -144,6 +144,7 @@ export default async function ContactDetailPage({
         disposition: string | null;
         notes: string | null;
         visited_at: string;
+        started_at: string | null;
         rep_id: string | null;
         visit_photos?: { storage_path: string }[];
       }) => ({
@@ -153,6 +154,14 @@ export default async function ContactDetailPage({
         disposition: v.disposition,
         content: v.notes,
         repName: v.rep_id ? (nameOf.get(v.rep_id) ?? null) : null,
+        durationMin: v.started_at
+          ? Math.max(
+              0,
+              Math.round(
+                (new Date(v.visited_at).getTime() - new Date(v.started_at).getTime()) / 60_000,
+              ),
+            )
+          : null,
         photos: (v.visit_photos ?? [])
           .map((p) => signed.get(p.storage_path))
           .filter((u): u is string => !!u),

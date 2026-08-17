@@ -354,6 +354,7 @@ export interface Database {
           disposition: DispositionType | null;
           appointment_date: string | null;
           next_visit_date: string | null;
+          started_at: string | null;
           synced_at: string | null;
           created_at: string;
         };
@@ -371,6 +372,7 @@ export interface Database {
           disposition?: DispositionType | null;
           appointment_date?: string | null;
           next_visit_date?: string | null;
+          started_at?: string | null;
           synced_at?: string | null;
           created_at?: string;
         };
@@ -384,6 +386,12 @@ export interface Database {
           storage_path: string;
           caption: string | null;
           taken_at: string;
+          kind: 'arrival' | 'completion' | 'extra';
+          lat: number | null;
+          lng: number | null;
+          accuracy: number | null;
+          captured_at: string | null;
+          phash: string | null;
         };
         Insert: {
           id?: string;
@@ -391,6 +399,12 @@ export interface Database {
           storage_path: string;
           caption?: string | null;
           taken_at?: string;
+          kind?: 'arrival' | 'completion' | 'extra';
+          lat?: number | null;
+          lng?: number | null;
+          accuracy?: number | null;
+          captured_at?: string | null;
+          phash?: string | null;
         };
         Update: Partial<Database['public']['Tables']['visit_photos']['Insert']>;
         Relationships: [];
