@@ -99,7 +99,7 @@
   "adminRecap": {
     "title": "Daily brief",
     "sendHour": "Automatic send time",
-    "sendHourHint": "The brief is generated daily around this time (Abidjan time). A missed send is caught up within the following hour.",
+    "sendHourHint": "The brief is generated daily at this time (Abidjan time). Before noon it recaps yesterday and previews the day; from noon on it recaps the day and previews tomorrow. A missed send is caught up within the following hour.",
     "dailyGoal": "Daily visit goal (sales reps)",
     "dailyGoalHint": "Used for the goal % in briefs and statistics.",
     "saved": "Settings saved",

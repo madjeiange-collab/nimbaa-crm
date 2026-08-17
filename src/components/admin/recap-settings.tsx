@@ -46,7 +46,7 @@ export function RecapSettings({
           >
             {Array.from({ length: 24 }, (_, h) => (
               <option key={h} value={h}>
-                {String(h).padStart(2, '0')}h30
+                {String(h).padStart(2, '0')}h00
               </option>
             ))}
           </select>

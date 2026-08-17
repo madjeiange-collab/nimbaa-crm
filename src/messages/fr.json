@@ -99,7 +99,7 @@
   "adminRecap": {
     "title": "Brief quotidien",
     "sendHour": "Heure d'envoi automatique",
-    "sendHourHint": "Le brief est généré chaque jour vers cette heure (heure d'Abidjan). Un envoi manqué est rattrapé automatiquement dans l'heure suivante.",
+    "sendHourHint": "Le brief est généré chaque jour à cette heure (heure d'Abidjan). Avant midi, il récapitule la veille et annonce la journée ; à partir de midi, il récapitule la journée et annonce le lendemain. Un envoi manqué est rattrapé automatiquement dans l'heure suivante.",
     "dailyGoal": "Objectif de visites par jour (commerciaux)",
     "dailyGoalHint": "Utilisé pour le % d'objectif dans les briefs et les statistiques.",
     "saved": "Réglages enregistrés",

@@ -3,19 +3,17 @@ import OpenAI from 'openai';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { AI_MODELS } from '@/lib/ai/config';
-import {
-  computeBoards,
-  getPointConfig,
-  startOfTodayIso,
-  startOfWeekIso,
-} from '@/lib/leaderboard/score';
+import { computeBoards, getPointConfig } from '@/lib/leaderboard/score';
 
 export const maxDuration = 60;
 
 /**
  * Writes the daily recap shown on the leaderboard.
- * Called by the Vercel cron (Authorization: Bearer CRON_SECRET) every evening,
- * or manually by a manager/admin from the leaderboard page.
+ * Called hourly by the automation (Authorization: Bearer CRON_SECRET) — the
+ * route generates at the admin-configured hour — or manually by a
+ * manager/admin from the leaderboard page.
+ * A run before noon recaps YESTERDAY and plans TODAY (morning brief); a run
+ * from noon onward recaps TODAY and plans TOMORROW.
  */
 export async function GET(request: Request) {
   // --- auth: cron secret OR a signed-in manager/admin ----------------------
@@ -35,8 +33,9 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
 
   // Automatic triggers fire hourly; only generate at the admin-configured
-  // hour (app_settings 'recap_schedule', default 18h → sent ~18h30 Abidjan).
-  // Catch-up rule: a late trigger still generates if today's recap is missing.
+  // hour (app_settings 'recap_schedule', default 6h → sent ~06h00 Abidjan).
+  // Catch-up rule: a late trigger still generates if today's recap is missing;
+  // once today's recap exists, later auto triggers skip (no duplicate cost).
   const isAuto = new URL(request.url).searchParams.get('auto') === '1';
   if (isAuto) {
     const { data: sched } = await admin
@@ -47,37 +46,62 @@ export async function GET(request: Request) {
     const configuredHour = Number((sched?.value as { hour?: number } | null)?.hour);
     const sendHour = Number.isInteger(configuredHour) && configuredHour >= 0 && configuredHour <= 23
       ? configuredHour
-      : 18;
+      : 6;
     const nowHour = new Date().getUTCHours(); // Abidjan = UTC
-    if (nowHour !== sendHour) {
-      if (nowHour < sendHour) return NextResponse.json({ skipped: true, reason: 'before_send_hour' });
-      const todayKey = new Date().toISOString().slice(0, 10);
-      const { data: existing } = await admin
-        .from('daily_recaps')
-        .select('day')
-        .eq('day', todayKey)
-        .maybeSingle();
-      if (existing) return NextResponse.json({ skipped: true, reason: 'already_sent' });
-      // else: past the hour with no recap today → catch up and generate.
+    if (nowHour < sendHour) {
+      return NextResponse.json({ skipped: true, reason: 'before_send_hour' });
     }
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const { data: existing } = await admin
+      .from('daily_recaps')
+      .select('day')
+      .eq('day', todayKey)
+      .maybeSingle();
+    if (existing) return NextResponse.json({ skipped: true, reason: 'already_sent' });
+    // else: at/past the hour with no recap today → generate (catch-up included).
   }
 
   const pts = await getPointConfig(admin);
 
-  // Today's raw numbers + this week's standings + prior week AT THE SAME
-  // POINT (Monday → same weekday/time last week) for a fair comparison.
-  const todayIso = startOfTodayIso();
-  const weekStartIso = startOfWeekIso();
-  const weekStart = new Date(weekStartIso);
+  // Day frame: a run before noon (e.g. the 6h morning brief) recaps
+  // YESTERDAY and plans TODAY; a run from noon onward recaps TODAY and
+  // plans TOMORROW. Abidjan = UTC.
+  const nowRun = new Date();
+  const morningRun = nowRun.getUTCHours() < 12;
+  const recapStart = new Date(nowRun);
+  recapStart.setHours(0, 0, 0, 0);
+  if (morningRun) recapStart.setTime(recapStart.getTime() - 86400_000);
+  const recapEnd = new Date(recapStart.getTime() + 86400_000);
+  const planStart = recapEnd;
+  const planEnd = new Date(planStart.getTime() + 86400_000);
+  const planDate = planStart.toISOString().slice(0, 10);
+  const periode = {
+    journee_recapitulee: {
+      date: recapStart.toISOString().slice(0, 10),
+      libelle: morningRun ? 'hier' : "aujourd'hui",
+    },
+    journee_a_venir: {
+      date: planDate,
+      libelle: morningRun ? "aujourd'hui" : 'demain',
+    },
+  };
+
+  // Recapped day's raw numbers + the standings of the week CONTAINING that
+  // day + prior week AT THE SAME POINT (same weekday cutoff) for a fair
+  // comparison.
+  const weekStart = new Date(recapStart);
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  const weekStartIso = weekStart.toISOString();
   const prevWeekStart = new Date(weekStart.getTime() - 7 * 86400_000);
-  const prevWeekCutoff = new Date(Date.now() - 7 * 86400_000);
+  const prevWeekCutoff = new Date(recapEnd.getTime() - 7 * 86400_000);
   const [today, week, prevWeekToDate] = await Promise.all([
-    computeBoards(admin, todayIso, pts),
-    computeBoards(admin, weekStartIso, pts),
+    computeBoards(admin, recapStart.toISOString(), pts, recapEnd.toISOString()),
+    computeBoards(admin, weekStartIso, pts, recapEnd.toISOString()),
     computeBoards(admin, prevWeekStart.toISOString(), pts, prevWeekCutoff.toISOString()),
   ]);
 
   const facts = {
+    periode,
     aujourd_hui: {
       commerciaux: today.reps.map((r) => ({
         nom: r.name,
@@ -113,14 +137,10 @@ export async function GET(request: Request) {
   };
 
   // --- Manager brief facts: full per-person detail + attention points ------
-  const startToday = new Date();
-  startToday.setHours(0, 0, 0, 0);
-  const startTomorrow = new Date(startToday.getTime() + 86400_000);
-  const startAfterTomorrow = new Date(startToday.getTime() + 2 * 86400_000);
-  const tomorrowDate = startTomorrow.toISOString().slice(0, 10);
-  const monthStart = new Date(startToday.getFullYear(), startToday.getMonth(), 1);
-  const prevMonthStart = new Date(startToday.getFullYear(), startToday.getMonth() - 1, 1);
+  const monthStart = new Date(nowRun.getFullYear(), nowRun.getMonth(), 1);
+  const prevMonthStart = new Date(nowRun.getFullYear(), nowRun.getMonth() - 1, 1);
   const staleCutoff = new Date(Date.now() - 7 * 86400_000).toISOString();
+  const nowDate = nowRun.toISOString().slice(0, 10);
 
   const [
     { data: flaggedToday },
@@ -139,7 +159,8 @@ export async function GET(request: Request) {
     admin
       .from('flagged_visits')
       .select('rep_id, out_of_turf, implausible_rate, rapid_fire')
-      .gte('visited_at', startToday.toISOString())
+      .gte('visited_at', recapStart.toISOString())
+      .lt('visited_at', recapEnd.toISOString())
       .limit(500),
     admin
       .from('deals')
@@ -149,25 +170,26 @@ export async function GET(request: Request) {
     admin
       .from('visits')
       .select('rep_id, appointment_date, contacts(name)')
-      .gte('appointment_date', startTomorrow.toISOString())
-      .lt('appointment_date', startAfterTomorrow.toISOString())
+      .gte('appointment_date', planStart.toISOString())
+      .lt('appointment_date', planEnd.toISOString())
       .limit(100),
     admin
       .from('installations')
       .select('scheduled_date, installer_id, contacts(name)')
       .in('status', ['pending', 'scheduled', 'in_progress'])
-      .lt('scheduled_date', startToday.toISOString().slice(0, 10))
+      .lt('scheduled_date', nowDate)
       .limit(50),
     admin
       .from('installations')
       .select('installer_id, contacts(name)')
-      .eq('next_visit_date', tomorrowDate)
+      .eq('next_visit_date', planDate)
       .limit(50),
     admin
       .from('deals')
       .select('value_xof, assigned_rep_id, won_at, title, products(name), contacts(name)')
       .eq('status', 'won')
-      .gte('won_at', startToday.toISOString())
+      .gte('won_at', recapStart.toISOString())
+      .lt('won_at', recapEnd.toISOString())
       .limit(50),
     admin
       .from('deals')
@@ -185,7 +207,8 @@ export async function GET(request: Request) {
       .from('visits')
       .select('rep_id, visited_at')
       .neq('visit_type', 'installation')
-      .gte('visited_at', startToday.toISOString())
+      .gte('visited_at', recapStart.toISOString())
+      .lt('visited_at', recapEnd.toISOString())
       .limit(2000),
     admin
       .from('territories')
@@ -206,7 +229,7 @@ export async function GET(request: Request) {
     admin
       .from('installations')
       .select('installer_id, contacts(name)')
-      .eq('scheduled_date', tomorrowDate)
+      .eq('scheduled_date', planDate)
       .limit(50),
   ]);
   const roleOf = new Map((roleRows ?? []).map((u) => [u.id, u.role as string]));
@@ -247,7 +270,8 @@ export async function GET(request: Request) {
     )
     .map((t) => t.name);
 
-  // Auth activity: who has not signed in today (data-entry risk).
+  // Auth activity: who has not signed in since the recapped day started
+  // (data-entry risk).
   let nonConnectes: string[] = [];
   try {
     const { data: authUsers } = await admin.auth.admin.listUsers({ perPage: 200 });
@@ -256,7 +280,7 @@ export async function GET(request: Request) {
       .filter(
         (u) =>
           fieldIds.has(u.id) &&
-          (!u.last_sign_in_at || new Date(u.last_sign_in_at) < startToday),
+          (!u.last_sign_in_at || new Date(u.last_sign_in_at) < recapStart),
       )
       .map((u) => repName(u.id));
   } catch {
@@ -268,8 +292,8 @@ export async function GET(request: Request) {
   const mDeals = (monthDeals ?? []) as MonthDeal[];
   const curMonth = mDeals.filter((d) => d.won_at && d.won_at >= monthStart.toISOString());
   const prevMonth = mDeals.filter((d) => d.won_at && d.won_at < monthStart.toISOString());
-  const dayOfMonth = startToday.getDate();
-  const daysInMonth = new Date(startToday.getFullYear(), startToday.getMonth() + 1, 0).getDate();
+  const dayOfMonth = nowRun.getDate();
+  const daysInMonth = new Date(nowRun.getFullYear(), nowRun.getMonth() + 1, 0).getDate();
   const project = (n: number) => Math.round((n / Math.max(1, dayOfMonth)) * daysInMonth);
 
   // Streaks & records: days since each rep's last sale + best team day this month.
@@ -288,6 +312,7 @@ export async function GET(request: Request) {
   const bestDay = [...salesByDay.entries()].sort((a, b) => b[1] - a[1])[0] ?? null;
 
   const managerFacts = {
+    periode,
     objectif_visites_par_jour: dailyGoal,
     aujourd_hui_par_commercial: today.reps.map((r) => ({
       nom: r.name,
@@ -432,10 +457,12 @@ export async function GET(request: Request) {
         model: AI_MODELS.manager,
         instructions:
           "Tu écris le récap quotidien de l'équipe terrain de Nimbaa (CRM de vente, Abidjan). " +
-          'À partir des données JSON fournies, rédige un message court en français (5 à 9 lignes), ' +
-          'énergique et bienveillant, avec quelques emojis : ' +
-          "1) le bilan chiffré du jour, 2) félicite nommément le ou les meilleurs (commercial ET technicien s'il y en a), " +
-          "3) un encouragement pour demain. Si la journée est vide, reste positif et motive pour demain. " +
+          'IMPORTANT : le champ periode indique la journée récapitulée (« hier » pour un brief du matin, ' +
+          "« aujourd'hui » pour un brief du soir) et la journée à venir — les champs « aujourd_hui » du JSON " +
+          'décrivent la journée récapitulée : emploie les bons mots (hier / aujourd\'hui / demain) dans le texte. ' +
+          'Rédige un message court en français (5 à 9 lignes), énergique et bienveillant, avec quelques emojis : ' +
+          "1) le bilan chiffré de la journée récapitulée, 2) félicite nommément le ou les meilleurs (commercial ET technicien s'il y en a), " +
+          '3) un encouragement pour la journée à venir. Si la journée est vide, reste positif et motive. ' +
           'Pas de titre, pas de markdown — du texte simple.',
         input: JSON.stringify(facts),
       }),
@@ -443,14 +470,17 @@ export async function GET(request: Request) {
         model: AI_MODELS.manager,
         instructions:
           'Tu écris le BRIEF MANAGER quotidien de Nimbaa (CRM de vente terrain, Abidjan) — réservé aux managers. ' +
+          'IMPORTANT : le champ periode indique la journée récapitulée (« hier » pour un brief du matin, « aujourd\'hui » pour un brief du soir) ' +
+          'et la journée à venir (« aujourd\'hui » ou « demain ») — les champs « aujourd_hui »/« du_jour » du JSON décrivent la journée récapitulée ' +
+          'et les champs « demain » la journée à venir : adapte les intitulés et le vocabulaire en conséquence. ' +
           'À partir des données JSON, rédige en français un brief factuel et actionnable (20 à 40 lignes), structuré en sections courtes : ' +
           "1) « Commerciaux : » une ligne par commercial actif — visites (+ % objectif et amplitude de journée si dispo), engagés, ventes, CA FCFA ; mentionne un taux d'engagement faible (<20%) ou fort (>40%), tout commercial à zéro visite, et une série sans vente ≥5 jours. " +
           '2) « Techniciens : » une ligne par technicien — terminées, en cours, revisites — plus les installations EN RETARD (client + technicien) s\'il y en a. ' +
           "3) « Semaine vs semaine dernière (à date comparable) : » évolution par personne (visites, ventes, CA / terminées) avec ↗/↘/= — souligne les vraies progressions et les baisses inquiétantes. " +
-          "4) « Conclu aujourd'hui : » chaque vente du jour (client, produit, CA, vendeur) — et les pertes de la semaine avec leur raison si présentes. " +
+          '4) « Conclu hier : » ou « Conclu aujourd\'hui : » (selon periode) chaque vente de la journée récapitulée (client, produit, CA, vendeur) — et les pertes de la semaine avec leur raison si présentes. ' +
           '5) « À pousser : » les 3 à 5 affaires chaudes les plus intéressantes (client, valeur, étape, jours sans activité, commercial). ' +
-          '6) « Demain : » les RDV (heure, client, commercial) et les revisites d\'installation prévues. ' +
-          "7) « Cap fin de mois : » projection ventes/CA au rythme actuel vs le mois dernier, et la meilleure journée du mois ; termine par « À surveiller : » visites suspectes, affaires dormantes, secteurs sans activité et personnes non connectées aujourd'hui, avec une recommandation concrète chacun. " +
+          '6) « Aujourd\'hui : » ou « Demain : » (selon periode.journee_a_venir) les RDV (heure, client, commercial) et les revisites d\'installation prévues. ' +
+          "7) « Cap fin de mois : » projection ventes/CA au rythme actuel vs le mois dernier, et la meilleure journée du mois ; termine par « À surveiller : » visites suspectes, affaires dormantes, secteurs sans activité et personnes non connectées, avec une recommandation concrète chacun. " +
           "Omets toute section vide. Ton direct de chef d'équipe, sans flatterie. Tirets simples, pas de markdown lourd.",
         input: JSON.stringify(managerFacts),
       }),
@@ -552,12 +582,15 @@ export async function GET(request: Request) {
     const personalInstructions =
       'Tu écris « Mon brief » — le récap personnel quotidien d\'UN employé terrain de Nimbaa (Abidjan). ' +
       'Tutoie la personne. Ton de coach : encourageant mais honnête sur les signaux faibles. ' +
+      'IMPORTANT : le champ periode indique la journée récapitulée (« hier » pour un brief du matin, « aujourd\'hui » pour un brief du soir) ' +
+      'et la journée à venir — les champs « aujourd_hui » du JSON décrivent la journée récapitulée et les champs « demain » la journée à venir : ' +
+      'adapte les intitulés (« Hier : » / « Aujourd\'hui : » / « Demain : ») en conséquence. ' +
       'À partir des données JSON, rédige 8 à 16 lignes en français, sections courtes (omets celles qui sont vides) : ' +
-      '« Aujourd\'hui : » tes chiffres du jour ; ' +
+      '« Hier : » ou « Aujourd\'hui : » tes chiffres de la journée récapitulée ; ' +
       '« Ma semaine : » évolution vs la semaine dernière à date (↗/↘/=) avec UNE observation utile (ex. engagement en baisse → soigner l\'argumentaire) ; ' +
-      '« Conclu : » tes ventes/installations du jour ; ' +
+      '« Conclu : » tes ventes/installations de la journée récapitulée ; ' +
       '« À pousser : » tes 2-3 affaires ouvertes les plus intéressantes ; ' +
-      '« Demain : » tes RDV / chantiers prévus ; ' +
+      '« Aujourd\'hui : » ou « Demain : » tes RDV / chantiers prévus ; ' +
       '« Classement : » ton rang, tes points, et l\'écart avec la personne devant toi (motive sans écraser). ' +
       'Pas de markdown lourd, tirets simples, 1-2 emojis max.';
 
@@ -567,6 +600,7 @@ export async function GET(request: Request) {
       const rank = week.reps.findIndex((x) => x.id === r.id);
       const ahead = rank > 0 ? week.reps[rank - 1] : null;
       return {
+        periode,
         prenom: r.name,
         objectif_visites_jour: dailyGoal,
         aujourd_hui: t
@@ -635,6 +669,7 @@ export async function GET(request: Request) {
       const rank = week.techs.findIndex((x) => x.id === t.id);
       const ahead = rank > 0 ? week.techs[rank - 1] : null;
       return {
+        periode,
         prenom: t.name,
         aujourd_hui: td
           ? { terminees: td.done, en_cours: td.open, revisites: td.revisits, taux_completion_pct: td.completionPct }

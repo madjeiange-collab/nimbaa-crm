@@ -37,7 +37,7 @@ export default async function AdminRecapPage({
           {tAdmin('title')}
         </Link>
         <RecapSettings
-          initialHour={Number.isInteger(hourVal) && hourVal >= 0 && hourVal <= 23 ? hourVal : 18}
+          initialHour={Number.isInteger(hourVal) && hourVal >= 0 && hourVal <= 23 ? hourVal : 6}
           initialGoal={Number.isInteger(goalVal) && goalVal > 0 ? goalVal : 30}
         />
       </main>
