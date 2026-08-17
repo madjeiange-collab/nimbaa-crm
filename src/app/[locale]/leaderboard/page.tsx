@@ -151,6 +151,7 @@ export default async function LeaderboardPage({
     { data: recentVisits },
     { data: recentInstalls },
     { data: goalRow },
+    { data: goalRows },
     prevWeek,
   ] = await Promise.all([
     computeBoards(admin, since.toISOString(), pts),
@@ -173,6 +174,7 @@ export default async function LeaderboardPage({
       .gte('completed_at', since30.toISOString())
       .limit(5000),
     admin.from('app_settings').select('value').eq('key', 'daily_visit_goal').maybeSingle(),
+    admin.from('users').select('id, daily_goal'),
     // 📈 badge compares this week vs last week at the same point (week view only).
     period === 'week'
       ? computeBoards(admin, prevPeriodStart.toISOString(), pts, prevPeriodCutoff.toISOString())
@@ -199,12 +201,19 @@ export default async function LeaderboardPage({
     Number((goalRow?.value as { goal?: number } | null)?.goal) > 0
       ? Number((goalRow!.value as { goal: number }).goal)
       : 30;
+  // Per-rep objective wins over the global goal for the 🎯 badge.
+  const goalOf = new Map(
+    ((goalRows ?? []) as { id: string; daily_goal: number | null }[]).map((u) => [
+      u.id,
+      u.daily_goal,
+    ]),
+  );
 
   const repBadges = (r: (typeof repRows)[number]): string[] => {
     const b: string[] = [];
     const streak = computeStreak(repDays.get(r.id) ?? new Set(), startToday);
     if (streak >= 2) b.push(`🔥 ${streak} j`);
-    if ((todayVisits.get(r.id) ?? 0) >= dailyGoal) b.push('🎯');
+    if ((todayVisits.get(r.id) ?? 0) >= (goalOf.get(r.id) || dailyGoal)) b.push('🎯');
     const prev = prevWeek?.reps.find((p) => p.id === r.id);
     if (prevWeek && r.points > 0 && r.points > (prev?.points ?? 0)) b.push('📈');
     return b;

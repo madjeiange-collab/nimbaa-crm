@@ -69,6 +69,7 @@ export interface Database {
           can_do_b2b: boolean;
           can_do_d2d: boolean;
           is_active: boolean;
+          daily_goal: number | null;
           created_at: string;
         };
         Insert: {
@@ -81,6 +82,7 @@ export interface Database {
           can_do_b2b?: boolean;
           can_do_d2d?: boolean;
           is_active?: boolean;
+          daily_goal?: number | null;
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;

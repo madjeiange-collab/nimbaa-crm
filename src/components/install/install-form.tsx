@@ -20,6 +20,7 @@ import { reverseGeocode } from '@/lib/geo/reverse';
 import { processCheckInPhoto } from '@/lib/image/capture';
 import { uploadVisitPhoto } from '@/lib/visits/upload';
 import { saveInstallation } from '@/lib/installations/actions';
+import { enqueueInstall } from '@/lib/offline/queue';
 import { freshChecklist } from '@/lib/installations/protocol';
 import type { ChecklistItem, EquipmentItem, InstallStatus } from '@/types/database';
 import { Button } from '@/components/ui/button';
@@ -179,27 +180,12 @@ export function InstallForm({
     setResult(null);
     startTransition(async () => {
       const clientUuid = genUuid();
-      let photoPaths: string[] = [];
-      try {
-        setUploading(true);
-        photoPaths = await Promise.all(
-          photos.map((p, i) => uploadVisitPhoto(technicianId, clientUuid, i, p.blob)),
-        );
-      } catch {
-        setUploading(false);
-        setResult({ kind: 'error', text: t('saveError') });
-        return;
-      }
-      setUploading(false);
-
       // Keep only filled equipment rows.
       const cleanEquipment = equipment
         .map((e) => ({ label: e.label.trim(), serial: e.serial.trim() }))
         .filter((e) => e.label || e.serial);
-
-      const res = await saveInstallation({
+      const payload = {
         installationId,
-        clientUuid,
         contactId,
         lat: hasFix ? geo.lat : null,
         lng: hasFix ? geo.lng : null,
@@ -208,8 +194,57 @@ export function InstallForm({
         equipment: cleanEquipment,
         notes: notes.trim() || null,
         nextVisitDate: status === 'needs_revisit' && nextVisitDate ? nextVisitDate : null,
-        photoPaths,
-      });
+        visitedAt: new Date().toISOString(),
+      };
+
+      // No network (or it drops mid-save): keep the trip in the offline queue.
+      const queueOffline = async () => {
+        try {
+          await enqueueInstall({
+            clientUuid,
+            installerId: technicianId,
+            payload,
+            photos: photos.map((p) => p.blob),
+            queuedAt: new Date().toISOString(),
+          });
+          setResult({ kind: 'ok', text: t('savedOffline') });
+          photos.forEach((p) => URL.revokeObjectURL(p.url));
+          setPhotos([]);
+          setNotes('');
+          return true;
+        } catch {
+          return false;
+        }
+      };
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (await queueOffline()) return;
+        setResult({ kind: 'error', text: t('saveError') });
+        return;
+      }
+
+      let photoPaths: string[] = [];
+      try {
+        setUploading(true);
+        photoPaths = await Promise.all(
+          photos.map((p, i) => uploadVisitPhoto(technicianId, clientUuid, i, p.blob)),
+        );
+      } catch {
+        setUploading(false);
+        if (await queueOffline()) return;
+        setResult({ kind: 'error', text: t('saveError') });
+        return;
+      }
+      setUploading(false);
+
+      let res: Awaited<ReturnType<typeof saveInstallation>>;
+      try {
+        res = await saveInstallation({ clientUuid, ...payload, photoPaths });
+      } catch {
+        if (await queueOffline()) return;
+        setResult({ kind: 'error', text: t('saveError') });
+        return;
+      }
 
       if (res.ok) {
         setResult({

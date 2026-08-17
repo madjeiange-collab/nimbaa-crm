@@ -84,6 +84,14 @@ export async function saveInstallation(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
+  // Idempotence for offline-queue retries: client_uuid is unique.
+  const { data: existing } = await supabase
+    .from('visits')
+    .select('id')
+    .eq('client_uuid', input.clientUuid)
+    .maybeSingle();
+  if (existing) return { ok: true, visitId: existing.id };
+
   const now = input.visitedAt ?? new Date().toISOString();
 
   // 1. Insert the installation visit (reuses the field-visit infrastructure).

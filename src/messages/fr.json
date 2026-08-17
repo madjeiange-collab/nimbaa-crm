@@ -18,6 +18,7 @@
     "close": "Fermer",
     "required": "Champ obligatoire",
     "logout": "Déconnexion",
+    "logoutUnsynced": "{count, plural, one {# visite n'est pas encore synchronisée} other {# visites ne sont pas encore synchronisées}} — se déconnecter maintenant les supprimera. Continuer ?",
     "goThere": "Y aller"
   },
   "auth": {
@@ -99,8 +100,8 @@
   },
   "offline": {
     "offline": "Hors ligne — vous pouvez continuer à enregistrer des visites.",
-    "offlineWithPending": "Hors ligne — {count, plural, one {# visite en attente} other {# visites en attente}} de synchronisation.",
-    "pending": "{count, plural, one {# visite à synchroniser} other {# visites à synchroniser}}",
+    "offlineWithPending": "Hors ligne — {count, plural, one {# élément en attente} other {# éléments en attente}} de synchronisation.",
+    "pending": "{count, plural, one {# élément à synchroniser} other {# éléments à synchroniser}}",
     "syncNow": "Synchroniser",
     "syncing": "Synchronisation…"
   },
@@ -157,7 +158,9 @@
     "empty": "Aucune adresse dans la liste pour le moment.",
     "delete": "Supprimer",
     "deleteConfirm": "Supprimer ce point ? Les visites y seront de nouveau autorisées.",
-    "error": "Échec de l'opération — réessayez."
+    "error": "Échec de l'opération — réessayez.",
+    "pendingTitle": "{count, plural, one {# proposition de commercial à valider} other {# propositions de commerciaux à valider}}",
+    "approve": "Approuver"
   },
   "adminRecap": {
     "title": "Brief quotidien",
@@ -361,6 +364,7 @@
     "save": "Enregistrer l'installation",
     "saveError": "Impossible d'enregistrer",
     "savedDone": "Installation terminée ✓",
+    "savedOffline": "Hors ligne — intervention enregistrée sur le téléphone, elle sera synchronisée automatiquement.",
     "savedProgress": "Progression enregistrée",
     "cardTitle": "Installation",
     "assignTech": "Technicien assigné",
@@ -432,6 +436,8 @@
     "capabilities": "Modes de vente",
     "capD2d": "Porte-à-porte",
     "capB2b": "B2B",
+    "dailyGoal": "Objectif visites / jour (vide = objectif global)",
+    "dailyGoalPlaceholder": "ex. 30",
     "create": "Créer",
     "creating": "Création…",
     "cancel": "Annuler",
@@ -537,6 +543,10 @@
     "saving": "Enregistrement…",
     "savedKnock": "Visite enregistrée",
     "savedOffline": "Hors ligne — visite enregistrée sur le téléphone, elle sera synchronisée automatiquement.",
+    "dupeWarning": "Un contact existe déjà à cet endroit : {name}. Lier plutôt que créer un doublon ?",
+    "dupeLink": "Lier",
+    "dnkPropose": "🚫 Ne plus frapper ici — demander l'ajout à la liste (validé par l'admin)",
+    "noNameContact": "(sans nom)",
     "savedLead": "Prospect créé et enregistré",
     "savedCustomer": "Client créé et enregistré",
     "saveError": "Enregistrement impossible. Réessayez.",

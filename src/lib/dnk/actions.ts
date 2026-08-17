@@ -40,6 +40,50 @@ export async function addDnkEntry(input: {
   return { ok: true };
 }
 
+/**
+ * Rep-proposed do-not-knock point (hostile door met in the field). Created
+ * UNAPPROVED — it does not block anything until an admin approves it.
+ */
+export async function proposeDnkEntry(input: {
+  lat: number;
+  lng: number;
+  address?: string | null;
+}): Promise<DnkResult> {
+  const me = await getCurrentUser();
+  if (!me) return { ok: false, error: 'unauthenticated' };
+  if (!Number.isFinite(input.lat) || !Number.isFinite(input.lng)) {
+    return { ok: false, error: 'invalidPoint' };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.from('do_not_knock_list').insert({
+    lat: input.lat,
+    lng: input.lng,
+    address: input.address?.trim() || null,
+    reason: `Proposé par ${me.full_name ?? me.username ?? 'un commercial'}`,
+    added_by: me.id,
+    proposed_by: me.id,
+    approved: false,
+  });
+  if (error) return { ok: false, error: 'saveFailed' };
+  revalidate();
+  return { ok: true };
+}
+
+/** Approve a rep-proposed point — it starts blocking visits. */
+export async function approveDnkEntry(id: string): Promise<DnkResult> {
+  const me = await getCurrentUser();
+  if (!me) return { ok: false, error: 'unauthenticated' };
+  if (me.role !== 'admin') return { ok: false, error: 'forbidden' };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('do_not_knock_list')
+    .update({ approved: true })
+    .eq('id', id);
+  if (error) return { ok: false, error: 'saveFailed' };
+  revalidate();
+  return { ok: true };
+}
+
 /** Remove a do-not-knock point. */
 export async function deleteDnkEntry(id: string): Promise<DnkResult> {
   const me = await getCurrentUser();

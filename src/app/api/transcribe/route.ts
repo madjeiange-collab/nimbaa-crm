@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getCurrentUser } from '@/lib/auth/session';
 import { TRANSCRIBE_MODEL } from '@/lib/ai/config';
+import { consumeAudioQuota } from '@/lib/ai/audio-cap';
 
 export const maxDuration = 30;
 
@@ -11,6 +12,9 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({ error: 'not_configured' }, { status: 503 });
+  }
+  if (!(await consumeAudioQuota(user.id))) {
+    return NextResponse.json({ error: 'quota' }, { status: 429 });
   }
 
   const form = await request.formData().catch(() => null);

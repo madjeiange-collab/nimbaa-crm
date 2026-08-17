@@ -21,7 +21,7 @@ export default async function AdminDnkPage({
   const [{ data: rows }, { data: users }] = await Promise.all([
     supabase
       .from('do_not_knock_list')
-      .select('id, lat, lng, address, reason, added_by, added_at')
+      .select('*')
       .order('added_at', { ascending: false })
       .limit(500),
     supabase.from('users').select('id, full_name, username'),
@@ -39,6 +39,7 @@ export default async function AdminDnkPage({
     reason: string | null;
     added_by: string | null;
     added_at: string;
+    approved?: boolean;
   }[]).map((r) => ({
     id: r.id,
     lat: r.lat,
@@ -47,6 +48,7 @@ export default async function AdminDnkPage({
     reason: r.reason,
     addedAt: r.added_at,
     addedByName: r.added_by ? (nameById.get(r.added_by) ?? null) : null,
+    approved: r.approved ?? true,
   }));
 
   return (

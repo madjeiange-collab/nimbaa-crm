@@ -1,0 +1,28 @@
+# Weekly data export (all tables → JSON) kept as a workflow artifact for
+# 90 days — insurance on top of Supabase's own backups.
+# Needs repo secret SUPABASE_SERVICE_ROLE_KEY (Settings → Secrets → Actions).
+name: Weekly backup
+on:
+  schedule:
+    - cron: '0 3 * * 1' # Mondays 03:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-save @supabase/supabase-js
+      - name: Export all tables
+        env:
+          SUPABASE_URL: https://dyakeakxwwqsigsjumrw.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/backup-export.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nimbaa-backup-${{ github.run_id }}
+          path: backup/
+          retention-days: 90

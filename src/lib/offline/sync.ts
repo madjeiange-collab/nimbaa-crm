@@ -1,8 +1,12 @@
 import { saveVisit } from '@/lib/visits/actions';
+import { saveInstallation } from '@/lib/installations/actions';
 import { uploadVisitPhoto } from '@/lib/visits/upload';
 import {
   listQueuedVisits,
   removeQueuedVisit,
+  listQueuedInstalls,
+  removeQueuedInstall,
+  countQueuedTotal,
   notifyQueueChanged,
 } from '@/lib/offline/queue';
 
@@ -23,7 +27,7 @@ let flushing = false;
  */
 export async function flushVisitQueue(): Promise<FlushResult> {
   if (flushing || typeof navigator === 'undefined' || !navigator.onLine) {
-    const remaining = (await listQueuedVisits().catch(() => [])).length;
+    const remaining = await countQueuedTotal().catch(() => 0);
     return { synced: 0, blocked: 0, remaining };
   }
   flushing = true;
@@ -52,7 +56,25 @@ export async function flushVisitQueue(): Promise<FlushResult> {
         break; // network dropped mid-flush — stop, the rest stays queued
       }
     }
-    const remaining = (await listQueuedVisits()).length;
+    // Installation trips queue the same way (idempotent via client_uuid).
+    for (const q of await listQueuedInstalls()) {
+      try {
+        const photoPaths = await Promise.all(
+          q.photos.map((blob, i) => uploadVisitPhoto(q.installerId, q.clientUuid, i, blob)),
+        );
+        const res = await saveInstallation({ ...q.payload, clientUuid: q.clientUuid, photoPaths });
+        if (res.ok) {
+          await removeQueuedInstall(q.clientUuid);
+          synced++;
+        } else if (res.error === 'unauthenticated') {
+          break;
+        }
+      } catch {
+        break;
+      }
+    }
+
+    const remaining = await countQueuedTotal();
     if (synced + blocked > 0) notifyQueueChanged();
     return { synced, blocked, remaining };
   } finally {

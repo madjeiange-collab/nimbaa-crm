@@ -17,7 +17,7 @@ import { dispositionCssColor } from '@/lib/visits/dispositions';
 import type { InstallPoint, TurfKnock } from '@/components/map/turf-map';
 import { TechnicianStats } from '@/components/stats/technician-stats';
 
-const DAILY_GOAL = 30; // admin-settable per rep in Phase 6
+const DEFAULT_DAILY_GOAL = 30; // fallback when neither user nor app setting has one
 
 export default async function StatsPage({
   params,
@@ -93,6 +93,20 @@ export default async function StatsPage({
         .select('id, name, is_won, is_lost, is_active')
         .order('sort_order'),
     ]);
+
+  // Personal goal wins over the global app setting, then the default.
+  const { data: goalSetting } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'daily_visit_goal')
+    .maybeSingle();
+  const globalGoal = Number((goalSetting?.value as { goal?: number } | null)?.goal);
+  const dailyGoal =
+    (user.daily_goal ?? 0) > 0
+      ? (user.daily_goal as number)
+      : globalGoal > 0
+        ? globalGoal
+        : DEFAULT_DAILY_GOAL;
 
   const funnelStages = ((stageRows ?? []) as {
     id: string;
@@ -246,7 +260,7 @@ export default async function StatsPage({
         <Card>
           <CardContent className="pt-4">
             <p className="mb-3 text-sm font-semibold">{t('goalTitle')}</p>
-            <ProgressRing value={knocksToday} goal={DAILY_GOAL} label={t('goalLabel')} />
+            <ProgressRing value={knocksToday} goal={dailyGoal} label={t('goalLabel')} />
           </CardContent>
         </Card>
 

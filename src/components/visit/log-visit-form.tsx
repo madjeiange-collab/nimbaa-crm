@@ -24,6 +24,7 @@ import {
   type KnockDisposition,
 } from '@/lib/visits/dispositions';
 import { saveVisit } from '@/lib/visits/actions';
+import { proposeDnkEntry } from '@/lib/dnk/actions';
 import { enqueueVisit } from '@/lib/offline/queue';
 import { processCheckInPhoto } from '@/lib/image/capture';
 import { uploadVisitPhoto } from '@/lib/visits/upload';
@@ -85,6 +86,7 @@ export function LogVisitForm({
 
   const [disposition, setDisposition] = useState<KnockDisposition | null>(null);
   const [notes, setNotes] = useState('');
+  const [dnkFlag, setDnkFlag] = useState(false);
   const [appointmentDate, setAppointmentDate] = useState('');
   const [contactName, setContactName] = useState('');
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -295,6 +297,11 @@ export function LogVisitForm({
       }
 
       if (res.ok) {
+        // Rep flagged a hostile door → file a DNK proposal for the admin.
+        if (dnkFlag && hasFix) {
+          await proposeDnkEntry({ lat: geo.lat!, lng: geo.lng!, address }).catch(() => undefined);
+          setDnkFlag(false);
+        }
         const savedMsg =
           meta?.lifecycle === 'customer'
             ? t('savedCustomer')
@@ -568,6 +575,48 @@ export function LogVisitForm({
           )}
         </div>
       </div>
+
+      {/* Duplicate guard: an engaged knock about to CREATE a contact within
+          30 m of an existing one is probably the same business. */}
+      {isEngaged &&
+        !linked &&
+        hasFix &&
+        (() => {
+          const dupe = contacts.find(
+            (c) =>
+              c.lat != null &&
+              c.lng != null &&
+              haversineMeters(geo.lat!, geo.lng!, c.lat, c.lng) <= 30,
+          );
+          return dupe ? (
+            <div className="flex items-center justify-between gap-2 rounded-md bg-brand-amber/15 px-3 py-2">
+              <span className="min-w-0 text-sm">
+                ⚠️ {t('dupeWarning', { name: dupe.name ?? t('noNameContact') })}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="shrink-0"
+                onClick={() => setLinked({ id: dupe.id, name: dupe.name })}
+              >
+                {t('dupeLink')}
+              </Button>
+            </div>
+          ) : null;
+        })()}
+
+      {/* Hostile door → propose a do-not-knock point (admin approves) */}
+      {disposition === 'refused' && hasFix && (
+        <label className="flex items-center gap-2 rounded-md bg-destructive/5 px-3 py-2 text-sm">
+          <input
+            type="checkbox"
+            checked={dnkFlag}
+            onChange={(e) => setDnkFlag(e.target.checked)}
+          />
+          {t('dnkPropose')}
+        </label>
+      )}
 
       {/* Conditional fields for engaged dispositions */}
       {isEngaged && (needsAppointment || !linked) && (

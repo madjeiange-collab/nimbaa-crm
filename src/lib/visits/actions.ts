@@ -102,6 +102,16 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
 
   if (vErr || !visit) return { ok: false, error: 'save_failed' };
 
+  // Imported contacts arrive without coordinates and are invisible on maps —
+  // the first GPS-tagged visit at their door fills them in.
+  if (input.contactId && hasCoords) {
+    await supabase
+      .from('contacts')
+      .update({ lat: input.lat, lng: input.lng })
+      .eq('id', input.contactId)
+      .is('lat', null);
+  }
+
   // 3b. Link the uploaded geo-stamped photos to the visit.
   if (input.photoPaths && input.photoPaths.length > 0) {
     await supabase.from('visit_photos').insert(

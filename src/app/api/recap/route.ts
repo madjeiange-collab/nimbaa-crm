@@ -236,7 +236,7 @@ export async function GET(request: Request) {
 
   // Extra lookups for the personal briefs.
   const [{ data: roleRows }, { data: schedTomorrow }] = await Promise.all([
-    admin.from('users').select('id, role, full_name, username'),
+    admin.from('users').select('id, role, full_name, username, daily_goal'),
     admin
       .from('installations')
       .select('installer_id, contacts(name)')
@@ -255,6 +255,14 @@ export async function GET(request: Request) {
     Number((goalSetting?.value as { goal?: number } | null)?.goal) > 0
       ? Number((goalSetting!.value as { goal: number }).goal)
       : 30;
+  // Per-rep objective (users.daily_goal) wins over the global setting.
+  const goalOfRep = new Map(
+    ((roleRows ?? []) as { id: string; daily_goal?: number | null }[]).map((u) => [
+      u.id,
+      u.daily_goal ?? null,
+    ]),
+  );
+  const repGoal = (id: string) => goalOfRep.get(id) || dailyGoal;
 
   // Amplitude of each rep's day (first → last visit).
   const times = new Map<string, { first: string; last: string }>();
@@ -357,7 +365,8 @@ export async function GET(request: Request) {
     aujourd_hui_par_commercial: today.reps.map((r) => ({
       nom: r.name,
       visites: r.visits,
-      objectif_atteint_pct: Math.round((r.visits / dailyGoal) * 100),
+      objectif_visites: repGoal(r.id),
+      objectif_atteint_pct: Math.round((r.visits / repGoal(r.id)) * 100),
       amplitude_journee: times.has(r.id)
         ? `${hhmm(times.get(r.id)!.first)}–${hhmm(times.get(r.id)!.last)}`
         : null,
@@ -679,11 +688,11 @@ export async function GET(request: Request) {
       return {
         periode,
         prenom: r.name,
-        objectif_visites_jour: dailyGoal,
+        objectif_visites_jour: repGoal(r.id),
         aujourd_hui: t
           ? {
               visites: t.visits,
-              objectif_atteint_pct: Math.round((t.visits / dailyGoal) * 100),
+              objectif_atteint_pct: Math.round((t.visits / repGoal(r.id)) * 100),
               amplitude: times.has(r.id)
                 ? `${hhmm(times.get(r.id)!.first)}–${hhmm(times.get(r.id)!.last)}`
                 : null,

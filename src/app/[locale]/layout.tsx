@@ -4,11 +4,14 @@ import { getMessages, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { SwRegister } from '@/components/shared/sw-register';
+import { ErrorReporter } from '@/components/shared/error-reporter';
 import '../globals.css';
 
 export const metadata: Metadata = {
   title: 'Nimbaa',
   description: 'Nimbaa — CRM de vente terrain B2B & porte-à-porte',
+  manifest: '/manifest.json',
+  icons: { icon: '/icons/icon-192.png', apple: '/icons/icon-192.png' },
 };
 
 // Mobile-first, high-contrast field app.
@@ -44,6 +47,7 @@ export default async function LocaleLayout({
       <body className="min-h-screen bg-background text-foreground antialiased">
         <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
         <SwRegister />
+        <ErrorReporter />
       </body>
     </html>
   );

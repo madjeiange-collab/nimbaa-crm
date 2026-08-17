@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { CloudOff, RefreshCw, Loader2 } from 'lucide-react';
-import { countQueuedVisits, QUEUE_EVENT } from '@/lib/offline/queue';
+import { countQueuedTotal, QUEUE_EVENT } from '@/lib/offline/queue';
 import { flushVisitQueue } from '@/lib/offline/sync';
 
 /**
@@ -18,7 +18,7 @@ export function OfflineIndicator() {
   const [syncing, setSyncing] = useState(false);
 
   const refresh = useCallback(() => {
-    countQueuedVisits()
+    countQueuedTotal()
       .then(setCount)
       .catch(() => undefined);
   }, []);

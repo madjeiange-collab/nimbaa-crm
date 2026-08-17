@@ -18,6 +18,7 @@
     "close": "Close",
     "required": "Required field",
     "logout": "Log out",
+    "logoutUnsynced": "{count, plural, one {# visit is not synced yet} other {# visits are not synced yet}} — logging out now will delete them. Continue?",
     "goThere": "Directions"
   },
   "auth": {
@@ -99,8 +100,8 @@
   },
   "offline": {
     "offline": "Offline — you can keep logging visits.",
-    "offlineWithPending": "Offline — {count, plural, one {# visit waiting} other {# visits waiting}} to sync.",
-    "pending": "{count, plural, one {# visit to sync} other {# visits to sync}}",
+    "offlineWithPending": "Offline — {count, plural, one {# item waiting} other {# items waiting}} to sync.",
+    "pending": "{count, plural, one {# item to sync} other {# items to sync}}",
     "syncNow": "Sync now",
     "syncing": "Syncing…"
   },
@@ -157,7 +158,9 @@
     "empty": "No addresses on the list yet.",
     "delete": "Delete",
     "deleteConfirm": "Delete this point? Visits there will be allowed again.",
-    "error": "Operation failed — try again."
+    "error": "Operation failed — try again.",
+    "pendingTitle": "{count, plural, one {# rep proposal to review} other {# rep proposals to review}}",
+    "approve": "Approve"
   },
   "adminRecap": {
     "title": "Daily brief",
@@ -361,6 +364,7 @@
     "save": "Save installation",
     "saveError": "Could not save",
     "savedDone": "Installation completed ✓",
+    "savedOffline": "Offline — job saved on the phone, it will sync automatically.",
     "savedProgress": "Progress saved",
     "cardTitle": "Installation",
     "assignTech": "Assigned technician",
@@ -432,6 +436,8 @@
     "capabilities": "Selling modes",
     "capD2d": "Door-to-door",
     "capB2b": "B2B",
+    "dailyGoal": "Visit goal / day (empty = global goal)",
+    "dailyGoalPlaceholder": "e.g. 30",
     "create": "Create",
     "creating": "Creating…",
     "cancel": "Cancel",
@@ -537,6 +543,10 @@
     "saving": "Saving…",
     "savedKnock": "Visit saved",
     "savedOffline": "Offline — visit saved on the phone, it will sync automatically.",
+    "dupeWarning": "A contact already exists at this spot: {name}. Link instead of creating a duplicate?",
+    "dupeLink": "Link",
+    "dnkPropose": "🚫 Don't knock here again — request adding to the list (admin approves)",
+    "noNameContact": "(no name)",
     "savedLead": "Lead created and saved",
     "savedCustomer": "Customer created and saved",
     "saveError": "Could not save. Please retry.",

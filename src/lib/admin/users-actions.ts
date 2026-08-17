@@ -80,7 +80,13 @@ export async function createUser(input: CreateUserInput): Promise<ActionResult> 
 /** Edit a user's name, role and capabilities. */
 export async function updateUser(
   userId: string,
-  fields: { fullName?: string; role?: UserRole; canB2b?: boolean; canD2d?: boolean },
+  fields: {
+    fullName?: string;
+    role?: UserRole;
+    canB2b?: boolean;
+    canD2d?: boolean;
+    dailyGoal?: number | null;
+  },
 ): Promise<ActionResult> {
   const guard = await requireAdmin();
   if (!guard.ok) return guard;
@@ -95,6 +101,12 @@ export async function updateUser(
   const patch: Record<string, unknown> = {};
   if (fields.fullName !== undefined) patch.full_name = fields.fullName.trim() || null;
   if (fields.role !== undefined) patch.role = fields.role;
+  if (fields.dailyGoal !== undefined) {
+    patch.daily_goal =
+      fields.dailyGoal && fields.dailyGoal > 0 && fields.dailyGoal <= 200
+        ? Math.round(fields.dailyGoal)
+        : null;
+  }
   if (fields.canB2b !== undefined) patch.can_do_b2b = fields.canB2b;
   if (fields.canD2d !== undefined) patch.can_do_d2d = fields.canD2d;
 

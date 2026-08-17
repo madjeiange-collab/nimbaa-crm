@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { Trash2, Plus, X } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
-import { addDnkEntry, deleteDnkEntry } from '@/lib/dnk/actions';
+import { addDnkEntry, deleteDnkEntry, approveDnkEntry } from '@/lib/dnk/actions';
 import type { DnkPoint } from '@/components/admin/dnk-map';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ const DnkMap = dynamic(() => import('@/components/admin/dnk-map'), {
 export interface DnkRow extends DnkPoint {
   addedAt: string;
   addedByName: string | null;
+  approved: boolean;
 }
 
 export function DnkManager({ entries }: { entries: DnkRow[] }) {
@@ -102,13 +103,62 @@ export function DnkManager({ entries }: { entries: DnkRow[] }) {
         <p role="alert" className="text-sm font-medium text-destructive">{msg}</p>
       )}
 
+      {/* Rep-proposed points awaiting approval */}
+      {entries.some((e) => !e.approved) && (
+        <Card className="border-brand-amber/60">
+          <CardContent className="space-y-2 pt-4">
+            <p className="text-sm font-semibold">
+              {t('pendingTitle', { count: entries.filter((e) => !e.approved).length })}
+            </p>
+            {entries
+              .filter((e) => !e.approved)
+              .map((e) => (
+                <div key={e.id} className="flex items-center gap-2 rounded-lg border border-dashed p-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      ⏳ {e.address || `${e.lat.toFixed(5)}, ${e.lng.toFixed(5)}`}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {e.reason && <>{e.reason} · </>}
+                      {new Date(e.addedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    disabled={isPending}
+                    onClick={() => {
+                      setMsg(null);
+                      startTransition(async () => {
+                        const res = await approveDnkEntry(e.id);
+                        if (!res.ok) setMsg(t('error'));
+                        router.refresh();
+                      });
+                    }}
+                  >
+                    {t('approve')}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onDelete(e.id)}
+                    disabled={isPending}
+                    aria-label={t('delete')}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="space-y-2 pt-4">
-          <p className="text-sm font-semibold">{t('listTitle', { count: entries.length })}</p>
-          {entries.length === 0 ? (
+          <p className="text-sm font-semibold">{t('listTitle', { count: entries.filter((e) => e.approved).length })}</p>
+          {entries.filter((e) => e.approved).length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('empty')}</p>
           ) : (
-            entries.map((e) => (
+            entries.filter((e) => e.approved).map((e) => (
               <div key={e.id} className="flex items-center gap-2 rounded-lg border p-2.5">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">

@@ -24,6 +24,7 @@ export interface AdminUser {
   role: UserRole;
   can_do_b2b: boolean;
   can_do_d2d: boolean;
+  daily_goal?: number | null;
   is_active: boolean;
 }
 
@@ -56,6 +57,7 @@ export function UsersManager({
   const [eRole, setERole] = useState<UserRole>('rep');
   const [eB2b, setEB2b] = useState(false);
   const [eD2d, setED2d] = useState(false);
+  const [eGoal, setEGoal] = useState('');
   const [resetId, setResetId] = useState<string | null>(null);
   const [resetPw, setResetPw] = useState('');
 
@@ -115,6 +117,7 @@ export function UsersManager({
     setERole(u.role);
     setEB2b(u.can_do_b2b);
     setED2d(u.can_do_d2d);
+    setEGoal(u.daily_goal ? String(u.daily_goal) : '');
   }
 
   return (
@@ -290,6 +293,20 @@ export function UsersManager({
                         </label>
                       </div>
                     )}
+                    {eRole === 'rep' && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">{t('dailyGoal')}</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={200}
+                          inputMode="numeric"
+                          value={eGoal}
+                          onChange={(e) => setEGoal(e.target.value)}
+                          placeholder={t('dailyGoalPlaceholder')}
+                        />
+                      </div>
+                    )}
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={() => setEditId(null)} disabled={isPending}>
                         <X className="mr-1 h-4 w-4" />
@@ -300,7 +317,7 @@ export function UsersManager({
                         disabled={isPending}
                         onClick={() =>
                           handle(
-                            () => updateUser(u.id, { fullName: eFullName, role: eRole, canB2b: eB2b, canD2d: eD2d }),
+                            () => updateUser(u.id, { fullName: eFullName, role: eRole, canB2b: eB2b, canD2d: eD2d, dailyGoal: eGoal ? Number(eGoal) : null }),
                             t('saved'),
                             () => setEditId(null),
                           )
