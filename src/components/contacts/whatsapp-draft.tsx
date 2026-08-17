@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Sparkles, Loader2, MessageCircle, RefreshCw, X } from 'lucide-react';
+import { whatsappUrl } from '@/lib/phone';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -41,7 +42,7 @@ export function WhatsappDraft({ contactId, phone }: { contactId: string; phone: 
     }
   }
 
-  const waHref = `https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(draft)}`;
+  const waHref = whatsappUrl(phone, draft);
 
   if (!open) {
     return (

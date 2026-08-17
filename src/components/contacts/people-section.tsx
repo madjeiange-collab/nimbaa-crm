@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Briefcase, Phone, Mail, MessageCircle, Plus, Trash2, UserRound } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { addContactPerson, deleteContactPerson } from '@/lib/contacts/people-actions';
+import { whatsappUrl } from '@/lib/phone';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -130,7 +131,7 @@ export function PeopleSection({
                     <Phone className="h-4 w-4" /> {t('call')}
                   </a>
                   <a
-                    href={`https://wa.me/${p.phone.replace(/[^0-9]/g, '')}`}
+                    href={whatsappUrl(p.phone)}
                     target="_blank"
                     rel="noreferrer"
                     className="flex min-h-touch items-center justify-center gap-1.5 rounded-md bg-knock-green/10 text-sm font-medium text-knock-green"

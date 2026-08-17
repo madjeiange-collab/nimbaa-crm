@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Phone, MessageCircle, StickyNote, DoorOpen, Pencil, MapPin, Navigation } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { directionsUrl } from '@/lib/geo';
+import { whatsappUrl } from '@/lib/phone';
 import type { ContactLifecycle, PriorityLevel, ActivityType } from '@/types/database';
 import { logActivity, updateContact, assignContact } from '@/lib/contacts/actions';
 import {
@@ -132,9 +133,7 @@ export function ContactDetail({
     (dealsByPerson[d.contactPersonId] ??= []).push(label);
   }
 
-  const whatsappHref = contact.phone
-    ? `https://wa.me/${contact.phone.replace(/[^0-9]/g, '')}`
-    : null;
+  const whatsappHref = contact.phone ? whatsappUrl(contact.phone) : null;
   const goHref = directionsUrl(contact.lat, contact.lng, contact.address);
 
   return (
