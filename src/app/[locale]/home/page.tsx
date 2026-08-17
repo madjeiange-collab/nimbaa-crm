@@ -194,9 +194,12 @@ export default async function HomePage({
   }
   const shownRecap = managerRecap ?? myRecap ?? recap;
 
-  const polygons: number[][][][] = ((turfs ?? []) as { geojson?: { coordinates?: number[][][] } }[])
-    .map((row) => row.geojson?.coordinates)
-    .filter(Boolean) as number[][][][];
+  const turfRows = ((turfs ?? []) as {
+    name?: string | null;
+    geojson?: { coordinates?: number[][][] };
+  }[]).filter((row) => row.geojson?.coordinates);
+  const polygons: number[][][][] = turfRows.map((row) => row.geojson!.coordinates!);
+  const turfNames = turfRows.map((row) => row.name ?? '—');
   const knocks: TurfKnock[] = ((knockRows ?? []) as {
     id: string;
     lat: number | null;
@@ -410,7 +413,7 @@ export default async function HomePage({
                   <MapIcon className="h-4 w-4 text-primary" />
                   {t('coverageTitle')}
                 </p>
-                <CoverageMap polygons={polygons} knocks={knocks} installs={installs} />
+                <CoverageMap polygons={polygons} knocks={knocks} installs={installs} turfNames={turfNames} />
               </CardContent>
             </Card>
           </div>

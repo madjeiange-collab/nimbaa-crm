@@ -17,9 +17,11 @@ const TurfMap = dynamic(() => import('@/components/map/turf-map'), {
 export function TurfView({
   polygons,
   knocks,
+  turfNames,
 }: {
   polygons: number[][][][];
   knocks: TurfKnock[];
+  turfNames?: string[];
 }) {
   const t = useTranslations('turf');
 
@@ -32,7 +34,7 @@ export function TurfView({
       <Card className="overflow-hidden">
         <div className="h-[60vh] min-h-[380px] w-full">
           {/* Counts legend is overlaid on the map itself */}
-          <TurfMap polygons={polygons} knocks={knocks} />
+          <TurfMap polygons={polygons} knocks={knocks} turfNames={turfNames} />
         </div>
       </Card>
 

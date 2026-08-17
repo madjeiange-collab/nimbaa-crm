@@ -47,10 +47,12 @@ export function TechnicianTeamStats({
   const [techIds, setTechIds] = useState<string[]>([]);
   const [terrIds, setTerrIds] = useState<string[]>([]);
 
-  const selectedPolys = useMemo(
-    () => territories.filter((tr) => terrIds.length === 0 || terrIds.includes(tr.id)).map((tr) => tr.coordinates),
+  const selectedTerrs = useMemo(
+    () => territories.filter((tr) => terrIds.length === 0 || terrIds.includes(tr.id)),
     [territories, terrIds],
   );
+  const selectedPolys = useMemo(() => selectedTerrs.map((tr) => tr.coordinates), [selectedTerrs]);
+  const selectedTerrNames = useMemo(() => selectedTerrs.map((tr) => tr.name), [selectedTerrs]);
 
   const rows = useMemo(
     () =>
@@ -302,7 +304,7 @@ export function TechnicianTeamStats({
         <Card>
           <CardContent className="space-y-2 pt-4">
             <p className="text-sm font-semibold">{t('mapTitle')}</p>
-            <CoverageMap polygons={selectedPolys} knocks={[]} installs={mapPoints} />
+            <CoverageMap polygons={selectedPolys} knocks={[]} installs={mapPoints} turfNames={selectedTerrNames} />
           </CardContent>
         </Card>
       )}

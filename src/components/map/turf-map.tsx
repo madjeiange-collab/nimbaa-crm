@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   MapContainer,
   TileLayer,
@@ -286,6 +286,39 @@ function focusBox(center: L.LatLng): L.LatLngBounds {
  * (then Abidjan) when there is no activity yet. The "Ma position" button
  * recentres on live GPS on demand. Runs once.
  */
+function fitActivityView(
+  map: L.Map,
+  polygons: number[][][][],
+  knocks: TurfKnock[],
+  installs: InstallPoint[],
+) {
+  const activity: [number, number][] = [];
+  knocks.forEach((k) => {
+    if (k.lat != null && k.lng != null) activity.push([k.lat, k.lng]);
+  });
+  installs.forEach((p) => {
+    if (p.lat != null && p.lng != null) activity.push([p.lat, p.lng]);
+  });
+
+  const bounds = focusBounds(activity);
+  if (bounds) {
+    // At least the focus box around the activity's centre; wider only if the
+    // activity itself is wider.
+    map.fitBounds(focusBox(bounds.getCenter()).extend(bounds.pad(0.1)));
+    return;
+  }
+
+  // No activity yet: fall back to the turf outlines, then Abidjan.
+  const turfPts: [number, number][] = [];
+  polygons.forEach((poly) => toLatLngRing(poly).forEach((p) => turfPts.push(p)));
+  const turfBounds = focusBounds(turfPts);
+  if (turfBounds) {
+    map.fitBounds(focusBox(turfBounds.getCenter()).extend(turfBounds.pad(0.1)));
+  } else {
+    map.fitBounds(focusBox(L.latLng(ABIDJAN[0], ABIDJAN[1])));
+  }
+}
+
 function InitialView({
   polygons,
   knocks,
@@ -301,33 +334,42 @@ function InitialView({
   useEffect(() => {
     if (done.current) return;
     done.current = true;
+    fitActivityView(map, polygons, knocks, installs);
+  }, [map, polygons, knocks, installs]);
 
-    const activity: [number, number][] = [];
-    knocks.forEach((k) => {
-      if (k.lat != null && k.lng != null) activity.push([k.lat, k.lng]);
-    });
-    installs.forEach((p) => {
-      if (p.lat != null && p.lng != null) activity.push([p.lat, p.lng]);
-    });
+  return null;
+}
 
-    const bounds = focusBounds(activity);
-    if (bounds) {
-      // At least the focus box around the activity's centre; wider only if the
-      // activity itself is wider.
-      map.fitBounds(focusBox(bounds.getCenter()).extend(bounds.pad(0.1)));
+/** Requested by the turf quick-focus select; `n` makes re-picks re-apply. */
+type FocusRequest =
+  | { kind: 'turf'; idx: number; n: number }
+  | { kind: 'activity'; n: number };
+
+/** Applies a quick-focus request: zoom to one turf, or back to the activity. */
+function FocusController({
+  focus,
+  polygons,
+  knocks,
+  installs,
+}: {
+  focus: FocusRequest | null;
+  polygons: number[][][][];
+  knocks: TurfKnock[];
+  installs: InstallPoint[];
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!focus) return;
+    if (focus.kind === 'activity') {
+      fitActivityView(map, polygons, knocks, installs);
       return;
     }
-
-    // No activity yet: fall back to the turf outlines, then Abidjan.
-    const turfPts: [number, number][] = [];
-    polygons.forEach((poly) => toLatLngRing(poly).forEach((p) => turfPts.push(p)));
-    const turfBounds = focusBounds(turfPts);
-    if (turfBounds) {
-      map.fitBounds(focusBox(turfBounds.getCenter()).extend(turfBounds.pad(0.1)));
-    } else {
-      map.fitBounds(focusBox(L.latLng(ABIDJAN[0], ABIDJAN[1])));
-    }
-  }, [map, polygons, knocks, installs]);
+    const ring = toLatLngRing(polygons[focus.idx] ?? []);
+    if (ring.length > 0) map.fitBounds(L.latLngBounds(ring).pad(0.05));
+    // Re-fit only when a new request comes in, not when data props refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, focus]);
 
   return null;
 }
@@ -337,19 +379,51 @@ export default function TurfMap({
   knocks,
   installs = [],
   showLocate = true,
+  turfNames,
 }: {
   polygons: number[][][][];
   knocks: TurfKnock[];
   installs?: InstallPoint[];
   showLocate?: boolean;
+  /** Turf names index-aligned with `polygons` — enables the quick-focus select. */
+  turfNames?: string[];
 }) {
   const t = useTranslations('turf');
   const tLife = useTranslations('lifecycle');
   const tC = useTranslations('contacts');
   const spots = useMemo(() => groupBySpot(knocks), [knocks]);
+  const [focus, setFocus] = useState<FocusRequest | null>(null);
+  const showTurfSelect =
+    !!turfNames && turfNames.length > 0 && turfNames.length === polygons.length;
 
   return (
     <div className="relative h-full w-full">
+      {/* Quick focus per turf: acts as a jump menu (resets to the placeholder
+          so the same secteur can be re-picked after panning away). */}
+      {showTurfSelect && (
+        <select
+          value=""
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === '') return;
+            setFocus(
+              v === 'activity'
+                ? { kind: 'activity', n: (focus?.n ?? 0) + 1 }
+                : { kind: 'turf', idx: Number(v), n: (focus?.n ?? 0) + 1 },
+            );
+          }}
+          aria-label={t('focusTurf')}
+          className="absolute left-12 top-2.5 z-[1000] max-w-[55%] cursor-pointer rounded-md border border-black/20 bg-white px-2 py-1.5 text-xs font-medium text-gray-800 shadow"
+        >
+          <option value="">{t('focusTurf')}</option>
+          <option value="activity">{t('focusActivity')}</option>
+          {turfNames!.map((n, i) => (
+            <option key={i} value={i}>
+              {n}
+            </option>
+          ))}
+        </select>
+      )}
       <MapContainer center={ABIDJAN} zoom={13} minZoom={3} className="h-full w-full" scrollWheelZoom>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -436,6 +510,7 @@ export default function TurfMap({
           </Marker>
         ))}
         <InitialView polygons={polygons} knocks={knocks} installs={installs} />
+        <FocusController focus={focus} polygons={polygons} knocks={knocks} installs={installs} />
       </MapContainer>
     </div>
   );

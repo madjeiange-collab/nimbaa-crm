@@ -45,9 +45,12 @@ export async function TechnicianStats({ userId }: { userId: string }) {
     supabase.rpc('territories_geojson'), // RLS-scoped (usually empty for techs)
   ]);
   const jobs = (data ?? []) as unknown as JobRow[];
-  const polygons: number[][][][] = ((turfs ?? []) as { geojson?: { coordinates?: number[][][] } }[])
-    .map((row) => row.geojson?.coordinates)
-    .filter(Boolean) as number[][][][];
+  const turfRows = ((turfs ?? []) as {
+    name?: string | null;
+    geojson?: { coordinates?: number[][][] };
+  }[]).filter((row) => row.geojson?.coordinates);
+  const polygons: number[][][][] = turfRows.map((row) => row.geojson!.coordinates!);
+  const turfNames = turfRows.map((row) => row.name ?? '—');
   const mapPoints: InstallPoint[] = jobs
     .filter((j) => j.contacts?.lat != null && j.contacts?.lng != null)
     .map((j) => ({
@@ -220,7 +223,7 @@ export async function TechnicianStats({ userId }: { userId: string }) {
         <Card>
           <CardContent className="space-y-2 pt-4">
             <p className="text-sm font-semibold">{t('mapTitle')}</p>
-            <CoverageMap polygons={polygons} knocks={[]} installs={mapPoints} />
+            <CoverageMap polygons={polygons} knocks={[]} installs={mapPoints} turfNames={turfNames} />
           </CardContent>
         </Card>
       )}

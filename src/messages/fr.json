@@ -500,6 +500,8 @@
   "turf": {
     "title": "Mon secteur",
     "noTurf": "Aucun secteur ne vous est assigné. Contactez votre administrateur.",
+    "focusTurf": "Aller au secteur…",
+    "focusActivity": "Vue d'ensemble (activité)",
     "knocks": "{count, plural, =0 {Aucune porte} one {# porte} other {# portes}} frappée{count, plural, =0 {} one {} other {s}}",
     "legend": "Légende",
     "legendGrey": "Pas de réponse / absent",

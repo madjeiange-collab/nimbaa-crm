@@ -139,9 +139,12 @@ export default async function StatsPage({
       name: v.contacts?.name ?? null,
       lifecycle: v.contacts?.lifecycle ?? null,
     }));
-  const polygons: number[][][][] = ((turfs ?? []) as { geojson?: { coordinates?: number[][][] } }[])
-    .map((row) => row.geojson?.coordinates)
-    .filter(Boolean) as number[][][][];
+  const turfRows = ((turfs ?? []) as {
+    name?: string | null;
+    geojson?: { coordinates?: number[][][] };
+  }[]).filter((row) => row.geojson?.coordinates);
+  const polygons: number[][][][] = turfRows.map((row) => row.geojson!.coordinates!);
+  const turfNames = turfRows.map((row) => row.name ?? '—');
 
   // Installations on the rep's own customers → 🔧 markers on the coverage map.
   const { data: insRows } = await supabase
@@ -367,7 +370,7 @@ export default async function StatsPage({
         <Card>
           <CardContent className="space-y-2 pt-4">
             <p className="text-sm font-semibold">{t('coverage')}</p>
-            <CoverageMap polygons={polygons} knocks={coverageKnocks} installs={coverageInstalls} />
+            <CoverageMap polygons={polygons} knocks={coverageKnocks} installs={coverageInstalls} turfNames={turfNames} />
           </CardContent>
         </Card>
       </main>

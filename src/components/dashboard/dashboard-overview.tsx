@@ -82,13 +82,12 @@ export function DashboardOverview({
   const nameOf = useMemo(() => new Map(reps.map((r) => [r.id, r.name])), [reps]);
 
   // Polygons of the selected territories (or all when none selected).
-  const selectedPolys = useMemo(
-    () =>
-      territories
-        .filter((t) => terrIds.length === 0 || terrIds.includes(t.id))
-        .map((t) => t.coordinates),
+  const selectedTerrs = useMemo(
+    () => territories.filter((t) => terrIds.length === 0 || terrIds.includes(t.id)),
     [territories, terrIds],
   );
+  const selectedPolys = useMemo(() => selectedTerrs.map((t) => t.coordinates), [selectedTerrs]);
+  const selectedTerrNames = useMemo(() => selectedTerrs.map((t) => t.name), [selectedTerrs]);
   const inTerr = (lat: number | null, lng: number | null) =>
     terrIds.length === 0 ||
     (lat != null && lng != null && pointInAnyPolygon(lat, lng, selectedPolys));
@@ -220,7 +219,7 @@ export function DashboardOverview({
       <Card>
         <CardContent className="space-y-2 pt-4">
           <p className="text-sm font-semibold">{t('coverageTitle')}</p>
-          <CoverageMap polygons={selectedPolys} knocks={covKnocks} installs={covInstalls} />
+          <CoverageMap polygons={selectedPolys} knocks={covKnocks} installs={covInstalls} turfNames={selectedTerrNames} />
         </CardContent>
       </Card>
 

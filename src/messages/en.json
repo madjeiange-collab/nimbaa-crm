@@ -500,6 +500,8 @@
   "turf": {
     "title": "My turf",
     "noTurf": "No turf is assigned to you. Contact your administrator.",
+    "focusTurf": "Go to sector…",
+    "focusActivity": "Overview (activity)",
     "knocks": "{count, plural, =0 {No doors} one {# door} other {# doors}} knocked",
     "legend": "Legend",
     "legendGrey": "No answer / not home",

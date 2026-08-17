@@ -18,11 +18,12 @@ export default async function TurfPage({
   const supabase = await createClient();
 
   const { data: turfs } = await supabase.rpc('territories_geojson');
-  const polygons: number[][][][] = (turfs ?? [])
-    .map(
-      (row: { geojson: { coordinates?: number[][][] } }) => row.geojson?.coordinates,
-    )
-    .filter(Boolean) as number[][][][];
+  const turfRows = ((turfs ?? []) as {
+    name?: string | null;
+    geojson?: { coordinates?: number[][][] };
+  }[]).filter((row) => row.geojson?.coordinates);
+  const polygons: number[][][][] = turfRows.map((row) => row.geojson!.coordinates!);
+  const turfNames = turfRows.map((row) => row.name ?? '—');
 
   // The rep's own knocks (with coordinates).
   const { data: visits } = await supabase
@@ -39,7 +40,7 @@ export default async function TurfPage({
   return (
     <>
       <AppHeader title={t('title')} />
-      <TurfView polygons={polygons} knocks={knocks} />
+      <TurfView polygons={polygons} knocks={knocks} turfNames={turfNames} />
     </>
   );
 }
