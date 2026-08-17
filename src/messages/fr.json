@@ -301,6 +301,8 @@
     "businessTypeOther": "Précisez le type d'activité",
     "tags": "Tags",
     "tagsPlaceholder": "Ajouter un tag + Entrée",
+    "allTypes": "Tous les types d'activité",
+    "allTags": "Tous les tags",
     "callPerson": "Appeler l'interlocuteur",
     "stage": "Étape",
     "needsInstallation": "Installation requise",

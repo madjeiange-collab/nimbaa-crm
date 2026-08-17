@@ -23,6 +23,7 @@ export async function createDeal(
     value?: number | null;
     needsInstallation?: boolean;
     contactPersonId?: string | null;
+    businessType?: string | null;
   },
 ): Promise<ActionResult> {
   const supabase = await createClient();
@@ -52,6 +53,7 @@ export async function createDeal(
     status: 'open',
     needs_installation: fields.needsInstallation ?? false,
     contact_person_id: fields.contactPersonId ?? null,
+    business_type: fields.businessType?.trim() || null,
     assigned_rep_id: contact?.assigned_rep_id ?? user.id,
     created_by: user.id,
   });

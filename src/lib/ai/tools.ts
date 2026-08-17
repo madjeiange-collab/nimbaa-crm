@@ -187,6 +187,21 @@ export const TOOL_DEFINITIONS: OpenAI.Responses.Tool[] = [
   {
     type: 'function' as const,
     strict: true,
+    name: 'business_type_stats',
+    description:
+      "Analyse par type d'activité (maquis, restaurant, glacier, chawarma, boutique…) : affaires gagnées et pipeline ouvert par type, plus les tags les plus fréquents. Utiliser pour 'quel type de commerce achète le plus', 'combien de maquis ce mois', 'analyse par tag'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', enum: ['week', 'month', 'all'], description: 'Période' },
+      },
+      required: ['period'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
     name: 'stale_deals',
     description:
       "Affaires qui traînent : affaires OUVERTES sans aucune mise à jour depuis N jours, les plus anciennes d'abord, avec client et étape. Utiliser pour 'quelles affaires sont bloquées', 'relances pipeline'.",
@@ -494,7 +509,7 @@ async function contactHistory(db: Db, args: { contact_id: string }) {
         .limit(8),
       db
         .from('deals')
-        .select('title, status, value_xof, won_at, pipeline_stages(name)')
+        .select('title, status, value_xof, won_at, business_type, tags, pipeline_stages(name)')
         .eq('contact_id', args.contact_id),
       db
         .from('contact_people')
@@ -1306,6 +1321,76 @@ async function dailyTrend(db: Db, user: AppUser) {
   };
 }
 
+async function businessTypeStats(db: Db, user: AppUser, args: { period: string }) {
+  const isManager = isManagerRole(user);
+  const since = periodStart(args.period, new Date());
+
+  let wonQ = db
+    .from('deals')
+    .select('value_xof, business_type, tags')
+    .eq('status', 'won')
+    .gte('won_at', since.toISOString())
+    .limit(5000);
+  let openQ = db
+    .from('deals')
+    .select('value_xof, business_type, tags')
+    .eq('status', 'open')
+    .limit(5000);
+  if (!isManager) {
+    wonQ = wonQ.eq('assigned_rep_id', user.id);
+    openQ = openQ.eq('assigned_rep_id', user.id);
+  }
+  const [{ data: won, error: e1 }, { data: open, error: e2 }] = await Promise.all([wonQ, openQ]);
+  if (e1) return { error: e1.message };
+  if (e2) return { error: e2.message };
+
+  type Row = { value_xof: number | null; business_type: string | null; tags: string[] | null };
+  const agg = (rows: Row[]) => {
+    const byType = new Map<string, { affaires: number; ca: number }>();
+    let sansType = 0;
+    for (const d of rows) {
+      const t = d.business_type?.trim();
+      if (!t) {
+        sansType++;
+        continue;
+      }
+      const a = byType.get(t) ?? { affaires: 0, ca: 0 };
+      a.affaires++;
+      a.ca += d.value_xof ?? 0;
+      byType.set(t, a);
+    }
+    const list = [...byType.entries()]
+      .map(([type, v]) => ({
+        type,
+        affaires: v.affaires,
+        ...(isManager ? { ca_fcfa: v.ca } : {}),
+      }))
+      .sort((a, b) => b.affaires - a.affaires);
+    return { list, sansType };
+  };
+  const w = agg((won ?? []) as Row[]);
+  const o = agg((open ?? []) as Row[]);
+
+  const tagCount = new Map<string, number>();
+  for (const d of [...(won ?? []), ...(open ?? [])] as Row[]) {
+    for (const tg of d.tags ?? []) tagCount.set(tg, (tagCount.get(tg) ?? 0) + 1);
+  }
+
+  return {
+    periode: args.period,
+    scope: isManager ? 'équipe' : 'moi',
+    ventes_par_type: w.list,
+    ventes_sans_type: w.sansType,
+    pipeline_ouvert_par_type: o.list,
+    pipeline_sans_type: o.sansType,
+    tags_frequents: [...tagCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 15)
+      .map(([tag, affaires]) => ({ tag, affaires })),
+    note: "types issus du champ « Type d'activité » des affaires ; les affaires sans type sont comptées à part",
+  };
+}
+
 /** Dispatch a tool call. Unknown tool names return an error object. */
 export async function executeTool(
   name: string,
@@ -1339,6 +1424,8 @@ export async function executeTool(
         return await secteurStats(db, user, args as { period: string });
       case 'product_stats':
         return await productStats(db, user, args as { period: string });
+      case 'business_type_stats':
+        return await businessTypeStats(db, user, args as { period: string });
       case 'stale_deals':
         return await staleDeals(db, user, args as { min_days: number });
       case 'neglected_contacts':

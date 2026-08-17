@@ -22,6 +22,8 @@ export interface PipelineDeal {
   repId: string | null;
   repName: string | null;
   territoryId: string | null;
+  businessType: string | null;
+  tags: string[];
 }
 
 export type WonPeriod = 'all' | 'week' | 'month';
@@ -65,6 +67,18 @@ export function PipelineBoard({
   const [repIds, setRepIds] = useState<string[]>(initialRepIds);
   const [terrIds, setTerrIds] = useState<string[]>(initialTerrIds);
   const [wonPeriod, setWonPeriod] = useState<WonPeriod>(initialWonPeriod);
+  const [typeFilter, setTypeFilter] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
+
+  // Filter options come from the data itself (only values actually in use).
+  const typeOptions = useMemo(
+    () => [...new Set(deals.map((d) => d.businessType).filter((t): t is string => !!t))].sort(),
+    [deals],
+  );
+  const tagOptions = useMemo(
+    () => [...new Set(deals.flatMap((d) => d.tags))].sort(),
+    [deals],
+  );
 
   const filtered = useMemo(() => {
     // Won-date cutoff (only constrains won deals; open/lost are unaffected).
@@ -79,11 +93,13 @@ export function PipelineBoard({
         (status === 'all' || d.status === status) &&
         (repIds.length === 0 || (!!d.repId && repIds.includes(d.repId))) &&
         (terrIds.length === 0 || (!!d.territoryId && terrIds.includes(d.territoryId))) &&
+        (typeFilter === '' || d.businessType === typeFilter) &&
+        (tagFilter === '' || d.tags.includes(tagFilter)) &&
         (cutoff === null ||
           d.status !== 'won' ||
           (!!d.wonAt && new Date(d.wonAt).getTime() >= cutoff)),
     );
-  }, [deals, status, repIds, terrIds, wonPeriod]);
+  }, [deals, status, repIds, terrIds, wonPeriod, typeFilter, tagFilter]);
 
   const byStage = useMemo(() => {
     const m = new Map<string, PipelineDeal[]>();
@@ -102,13 +118,15 @@ export function PipelineBoard({
   function exportCsv() {
     const stageName = new Map(stages.map((s) => [s.id, s.name]));
     downloadCsv('pipeline.csv', [
-      ['Affaire', 'Client', 'Commercial', 'Statut', 'Étape', 'Valeur XOF'],
+      ['Affaire', 'Client', 'Commercial', 'Statut', 'Étape', "Type d'activité", 'Tags', 'Valeur XOF'],
       ...filtered.map((d) => [
         d.product ?? d.title ?? '',
         d.name ?? '',
         d.repName ?? '',
         d.status,
         d.stageId ? (stageName.get(d.stageId) ?? '') : '',
+        d.businessType ?? '',
+        d.tags.join(' | '),
         d.value ?? '',
       ]),
     ]);
@@ -140,6 +158,42 @@ export function PipelineBoard({
         <RepMultiFilter reps={reps} selected={repIds} onChange={setRepIds} />
         <TerritoryFilter territories={territories} selected={terrIds} onChange={setTerrIds} />
       </div>
+
+      {/* Type d'activité + tag filters — shown once deals carry them. */}
+      {(typeOptions.length > 0 || tagOptions.length > 0) && (
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {typeOptions.length > 0 && (
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              aria-label={tD('businessType')}
+              className="flex min-h-touch w-full rounded-md border border-input bg-background px-2 text-sm sm:w-56"
+            >
+              <option value="">{tD('allTypes')}</option>
+              {typeOptions.map((ty) => (
+                <option key={ty} value={ty}>
+                  {ty}
+                </option>
+              ))}
+            </select>
+          )}
+          {tagOptions.length > 0 && (
+            <select
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              aria-label={tD('tags')}
+              className="flex min-h-touch w-full rounded-md border border-input bg-background px-2 text-sm sm:w-56"
+            >
+              <option value="">{tD('allTags')}</option>
+              {tagOptions.map((tg) => (
+                <option key={tg} value={tg}>
+                  {tg}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
 
       {/* Won-date filter — narrows won deals to a recent period. */}
       <div className="flex flex-wrap items-center gap-2">
@@ -179,6 +233,23 @@ export function PipelineBoard({
                     <div className="rounded-lg border bg-card p-2.5 shadow-sm transition-colors hover:bg-accent">
                       <p className="truncate text-sm font-medium">{d.product ?? d.title ?? tD('untitled')}</p>
                       <p className="truncate text-xs text-muted-foreground">{d.name ?? '—'}</p>
+                      {(d.businessType || d.tags.length > 0) && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {d.businessType && (
+                            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                              {d.businessType}
+                            </span>
+                          )}
+                          {d.tags.slice(0, 3).map((tg) => (
+                            <span
+                              key={tg}
+                              className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground"
+                            >
+                              {tg}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
                         {d.value != null ? <span>{d.value.toLocaleString('fr-FR')} XOF</span> : <span />}
                         {d.repName && <span className="truncate">{d.repName}</span>}

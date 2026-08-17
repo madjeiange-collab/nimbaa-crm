@@ -46,7 +46,7 @@ export default async function PipelinePage({
     await Promise.all([
       supabase
         .from('deals')
-        .select('id, title, value_xof, status, pipeline_stage_id, won_at, assigned_rep_id, contacts(id, name, territory_id), products(name)')
+        .select('id, title, value_xof, status, pipeline_stage_id, won_at, assigned_rep_id, business_type, tags, contacts(id, name, territory_id), products(name)')
         .order('updated_at', { ascending: false })
         .limit(2000),
       supabase.from('pipeline_stages').select('id, name, sort_order, is_active').order('sort_order'),
@@ -73,6 +73,8 @@ export default async function PipelinePage({
     pipeline_stage_id: string | null;
     won_at: string | null;
     assigned_rep_id: string | null;
+    business_type: string | null;
+    tags: string[] | null;
     contacts: { id: string; name: string | null; territory_id: string | null } | null;
     products: { name: string | null } | null;
   };
@@ -89,6 +91,8 @@ export default async function PipelinePage({
     repId: d.assigned_rep_id,
     repName: d.assigned_rep_id ? (repName.get(d.assigned_rep_id) ?? '—') : null,
     territoryId: d.contacts?.territory_id ?? null,
+    businessType: d.business_type,
+    tags: d.tags ?? [],
   }));
 
   const stageRows: PipelineStage[] = (stages ?? [])

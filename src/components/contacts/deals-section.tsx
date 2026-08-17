@@ -443,6 +443,7 @@ export function DealsSection({
   const [newTitle, setNewTitle] = useState('');
   const [newNeedsInstall, setNewNeedsInstall] = useState(false);
   const [newPersonId, setNewPersonId] = useState('');
+  const [newType, setNewType] = useState<string | null>(null);
 
   function addDeal() {
     startTransition(async () => {
@@ -450,10 +451,12 @@ export function DealsSection({
         title: newTitle.trim() || null,
         needsInstallation: newNeedsInstall,
         contactPersonId: newPersonId || null,
+        businessType: newType,
       });
       setNewTitle('');
       setNewNeedsInstall(false);
       setNewPersonId('');
+      setNewType(null);
       router.refresh();
     });
   }
@@ -489,6 +492,15 @@ export function DealsSection({
         <div className="space-y-2 rounded-lg border border-dashed p-3">
           <p className="text-xs font-medium text-muted-foreground">{t('newAffaire')}</p>
           <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={t('productPlaceholder')} />
+          <div className="space-y-1">
+            <Label className="text-xs">{t('businessType')}</Label>
+            <BusinessTypeSelect
+              value={newType}
+              onCommit={setNewType}
+              emptyLabel={t('noBusinessType')}
+              otherPlaceholder={t('businessTypeOther')}
+            />
+          </div>
           <div className="space-y-1.5">
             <Label className="text-xs">{t('person')}</Label>
             {people.length > 0 && (

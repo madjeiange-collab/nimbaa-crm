@@ -301,6 +301,8 @@
     "businessTypeOther": "Specify the business type",
     "tags": "Tags",
     "tagsPlaceholder": "Add a tag + Enter",
+    "allTypes": "All business types",
+    "allTags": "All tags",
     "callPerson": "Call contact person",
     "stage": "Stage",
     "needsInstallation": "Needs installation",
