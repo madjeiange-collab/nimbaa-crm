@@ -21,7 +21,7 @@ export default async function CommissionsPage({
   const [{ data: entries }, { data: users }, { data: subs }] = await Promise.all([
     supabase
       .from('commission_entries')
-      .select('rep_id, kind, period_index, amount_xof, status, period_month, earned_at, paid_at, deals(title, contacts(name), products(name))')
+      .select('rep_id, kind, period_index, amount_xof, base_xof, rate_pct, status, period_month, earned_at, paid_at, deals(title, value_xof, contacts(name), products(name))')
       .order('period_month', { ascending: false })
       .limit(5000),
     supabase.from('users').select('id, full_name, username, role'),
@@ -45,10 +45,13 @@ export default async function CommissionsPage({
     kind: string | null;
     period_index: number;
     amount_xof: number;
+    base_xof: number | null;
+    rate_pct: number | null;
     status: string;
     period_month: string;
     deals: {
       title: string | null;
+      value_xof: number | null;
       contacts: { name: string | null } | null;
       products: { name: string } | null;
     } | null;
@@ -63,6 +66,14 @@ export default async function CommissionsPage({
     periodIndex: e.period_index,
     client: e.deals?.contacts?.name ?? '—',
     product: e.deals?.products?.name ?? e.deals?.title ?? '—',
+    // Calculation shown per line: snapshot preferred, deal value as fallback
+    // for entries created before the snapshot columns existed.
+    base: e.base_xof ?? e.deals?.value_xof ?? null,
+    rate:
+      e.rate_pct ??
+      (e.base_xof ?? e.deals?.value_xof
+        ? Math.round((e.amount_xof / ((e.base_xof ?? e.deals?.value_xof) as number)) * 1000) / 10
+        : null),
   }));
 
   const subRows = (subs ?? []) as { status: string; monthly_price_xof: number; start_date: string }[];

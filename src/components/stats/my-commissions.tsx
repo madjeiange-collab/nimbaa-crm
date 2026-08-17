@@ -15,7 +15,7 @@ export async function MyCommissions({ userId }: { userId: string }) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('commission_entries')
-    .select('kind, amount_xof, status, period_month, period_index, deals(title, contacts(name), products(name))')
+    .select('kind, amount_xof, base_xof, rate_pct, status, period_month, period_index, deals(title, value_xof, contacts(name), products(name))')
     .eq('rep_id', userId)
     .order('period_month', { ascending: false })
     .limit(500);
@@ -24,11 +24,14 @@ export async function MyCommissions({ userId }: { userId: string }) {
   const rows = (data ?? []) as unknown as {
     kind: string | null;
     amount_xof: number;
+    base_xof: number | null;
+    rate_pct: number | null;
     status: string;
     period_month: string;
     period_index: number;
     deals: {
       title: string | null;
+      value_xof: number | null;
       contacts: { name: string | null } | null;
       products: { name: string } | null;
     } | null;
@@ -85,6 +88,14 @@ export async function MyCommissions({ userId }: { userId: string }) {
               <span className="min-w-0 truncate">
                 {r.kind === 'install' ? '🔧' : '💼'} {r.deals?.contacts?.name ?? '—'} ·{' '}
                 {r.deals?.products?.name ?? r.deals?.title ?? '—'} · {t('sliceN', { n: r.period_index })}
+                {(() => {
+                  const base = r.base_xof ?? r.deals?.value_xof ?? null;
+                  const rate =
+                    r.rate_pct ?? (base ? Math.round((r.amount_xof / base) * 1000) / 10 : null);
+                  return base != null && rate != null
+                    ? ` · ${base.toLocaleString('fr-FR')} × ${rate} %`
+                    : '';
+                })()}
               </span>
               <span
                 className={`shrink-0 font-medium ${

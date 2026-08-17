@@ -21,6 +21,14 @@ export interface CommissionRow {
   periodIndex: number;
   client: string;
   product: string;
+  base: number | null;
+  rate: number | null;
+}
+
+/** "25 000 × 10 % = 2 500 FCFA" — the visible math behind a ledger line. */
+function calcLabel(r: { base: number | null; rate: number | null; amount: number }): string | null {
+  if (r.base == null || r.rate == null) return null;
+  return `${r.base.toLocaleString('fr-FR')} × ${r.rate} % = ${r.amount.toLocaleString('fr-FR')} FCFA`;
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -175,10 +183,11 @@ function DetailedReport({
 
   function exportDetail() {
     downloadCsv('commissions-detail.csv', [
-      ['Personne', 'Rôle', 'Type', 'Client', 'Produit', 'Mensualité', 'Mois', 'Montant FCFA', 'Statut'],
+      ['Personne', 'Rôle', 'Type', 'Client', 'Produit', 'Mensualité', 'Mois', 'Base FCFA', 'Taux %', 'Montant FCFA', 'Statut'],
       ...filtered.map((r) => [
         r.name, r.role, r.kind === 'install' ? 'installation' : 'vente',
-        r.client, r.product, r.periodIndex, r.periodMonth, r.amount, r.status,
+        r.client, r.product, r.periodIndex, r.periodMonth,
+        r.base ?? '', r.rate ?? '', r.amount, r.status,
       ]),
     ]);
   }
@@ -242,6 +251,7 @@ function DetailedReport({
                   <p className="text-xs text-muted-foreground">
                     {t('sliceN', { n: r.periodIndex })} ·{' '}
                     {new Date(r.periodMonth + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {calcLabel(r) && <> · {calcLabel(r)}</>}
                   </p>
                 </div>
                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[r.status] ?? 'bg-muted'}`}>

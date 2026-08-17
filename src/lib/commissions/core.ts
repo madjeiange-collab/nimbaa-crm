@@ -74,6 +74,8 @@ export async function ensureCommissionForWonDeal(
           period_index: i + 1,
           period_month: addMonths(today, i),
           amount_xof: slice,
+          base_xof: price,
+          rate_pct: pct,
           // Month 1 is the signup month — earned at the sale itself.
           status: i === 0 ? 'earned' : 'pending',
           earned_at: i === 0 ? new Date().toISOString() : null,
@@ -93,6 +95,8 @@ export async function ensureCommissionForWonDeal(
         period_index: 1,
         period_month: today,
         amount_xof: slice,
+        base_xof: price,
+        rate_pct: pct,
         status: 'earned',
         earned_at: new Date().toISOString(),
       });
@@ -147,6 +151,8 @@ export async function ensureTechCommissionForInstall(
       period_index: 1,
       period_month: new Date().toISOString().slice(0, 10),
       amount_xof: Math.round((price * pct) / 100),
+      base_xof: price,
+      rate_pct: pct,
       status: 'earned',
       earned_at: new Date().toISOString(),
     });
