@@ -16,6 +16,77 @@ export interface Product {
   price_xof: number;
   commission_pct: number;
   is_active: boolean;
+  billing_interval?: string;
+  commission_mode?: string;
+  commission_months?: number;
+}
+
+const INTERVALS = ['one_time', 'daily', 'weekly', 'monthly'] as const;
+
+/** Labeled product fields — shared by the add and edit forms. */
+function ProductFields({
+  t,
+  idPrefix,
+  name, setName,
+  price, setPrice,
+  pct, setPct,
+  interval, setInterval,
+  mode, setMode,
+  months, setMonths,
+}: {
+  t: ReturnType<typeof useTranslations<'adminProducts'>>;
+  idPrefix: string;
+  name: string; setName: (v: string) => void;
+  price: string; setPrice: (v: string) => void;
+  pct: string; setPct: (v: string) => void;
+  interval: string; setInterval: (v: string) => void;
+  mode: string; setMode: (v: string) => void;
+  months: string; setMonths: (v: string) => void;
+}) {
+  const selectCls =
+    'flex min-h-touch w-full rounded-md border border-input bg-background px-2 text-sm';
+  return (
+    <div className="space-y-2">
+      <div className="space-y-1">
+        <Label htmlFor={`${idPrefix}-name`}>{t('name')}</Label>
+        <Input id={`${idPrefix}-name`} value={name} onChange={(e) => setName(e.target.value)} placeholder={t('namePlaceholder')} />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label htmlFor={`${idPrefix}-price`}>{t('price')}</Label>
+          <Input id={`${idPrefix}-price`} value={price} inputMode="numeric" onChange={(e) => setPrice(e.target.value)} placeholder="15000" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`${idPrefix}-pct`}>{t('commissionPct')}</Label>
+          <Input id={`${idPrefix}-pct`} value={pct} inputMode="decimal" onChange={(e) => setPct(e.target.value)} placeholder="10" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label htmlFor={`${idPrefix}-interval`}>{t('billing')}</Label>
+          <select id={`${idPrefix}-interval`} value={interval} onChange={(e) => setInterval(e.target.value)} className={selectCls}>
+            {INTERVALS.map((i) => (
+              <option key={i} value={i}>{t(`billing_${i}` as never)}</option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`${idPrefix}-mode`}>{t('commissionMode')}</Label>
+          <select id={`${idPrefix}-mode`} value={mode} onChange={(e) => setMode(e.target.value)} className={selectCls}>
+            <option value="once">{t('mode_once')}</option>
+            <option value="recurring">{t('mode_recurring')}</option>
+          </select>
+        </div>
+      </div>
+      {mode === 'recurring' && (
+        <div className="space-y-1">
+          <Label htmlFor={`${idPrefix}-months`}>{t('commissionMonths')}</Label>
+          <Input id={`${idPrefix}-months`} value={months} inputMode="numeric" onChange={(e) => setMonths(e.target.value)} placeholder="3" />
+          <p className="text-xs text-muted-foreground">{t('monthsHint')}</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ProductsEditor({ products }: { products: Product[] }) {
@@ -27,11 +98,17 @@ export function ProductsEditor({ products }: { products: Product[] }) {
   const [nName, setNName] = useState('');
   const [nPrice, setNPrice] = useState('');
   const [nPct, setNPct] = useState('');
+  const [nInterval, setNInterval] = useState('one_time');
+  const [nMode, setNMode] = useState('once');
+  const [nMonths, setNMonths] = useState('3');
 
   const [editId, setEditId] = useState<string | null>(null);
   const [eName, setEName] = useState('');
   const [ePrice, setEPrice] = useState('');
   const [ePct, setEPct] = useState('');
+  const [eInterval, setEInterval] = useState('one_time');
+  const [eMode, setEMode] = useState('once');
+  const [eMonths, setEMonths] = useState('3');
 
   function run(fn: () => Promise<unknown>) {
     setMsg(null);
@@ -58,11 +135,16 @@ export function ProductsEditor({ products }: { products: Product[] }) {
               >
                 {editId === p.id ? (
                   <div className="space-y-2">
-                    <Input value={eName} onChange={(e) => setEName(e.target.value)} placeholder={t('name')} />
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input value={ePrice} inputMode="numeric" onChange={(e) => setEPrice(e.target.value)} placeholder={t('price')} />
-                      <Input value={ePct} inputMode="decimal" onChange={(e) => setEPct(e.target.value)} placeholder={t('commissionPct')} />
-                    </div>
+                    <ProductFields
+                      t={t}
+                      idPrefix={`e-${p.id}`}
+                      name={eName} setName={setEName}
+                      price={ePrice} setPrice={setEPrice}
+                      pct={ePct} setPct={setEPct}
+                      interval={eInterval} setInterval={setEInterval}
+                      mode={eMode} setMode={setEMode}
+                      months={eMonths} setMonths={setEMonths}
+                    />
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={() => setEditId(null)} disabled={isPending}>
                         <X className="mr-1 h-4 w-4" /> {t('cancel')}
@@ -72,7 +154,14 @@ export function ProductsEditor({ products }: { products: Product[] }) {
                         disabled={isPending}
                         onClick={() =>
                           run(async () => {
-                            await updateProduct(p.id, { name: eName, priceXof: num(ePrice), commissionPct: num(ePct) });
+                            await updateProduct(p.id, {
+                              name: eName,
+                              priceXof: num(ePrice),
+                              commissionPct: num(ePct),
+                              billingInterval: eInterval,
+                              commissionMode: eMode,
+                              commissionMonths: num(eMonths) || 3,
+                            });
                             setEditId(null);
                           })
                         }
@@ -86,7 +175,9 @@ export function ProductsEditor({ products }: { products: Product[] }) {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{p.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {p.price_xof.toLocaleString('fr-FR')} XOF · {t('commissionPct')} {p.commission_pct}%
+                        {p.price_xof.toLocaleString('fr-FR')} XOF · {t(`billing_${p.billing_interval ?? 'one_time'}` as never)} ·{' '}
+                        {t('commissionPct')} {p.commission_pct}%
+                        {p.commission_mode === 'recurring' && ` ×${p.commission_months ?? 3} ${t('monthsShort')}`}
                       </p>
                     </div>
                     <button
@@ -97,6 +188,9 @@ export function ProductsEditor({ products }: { products: Product[] }) {
                         setEName(p.name);
                         setEPrice(String(p.price_xof));
                         setEPct(String(p.commission_pct));
+                        setEInterval(p.billing_interval ?? 'one_time');
+                        setEMode(p.commission_mode ?? 'once');
+                        setEMonths(String(p.commission_months ?? 3));
                       }}
                       className="text-muted-foreground hover:text-foreground"
                     >
@@ -132,19 +226,31 @@ export function ProductsEditor({ products }: { products: Product[] }) {
       <Card>
         <CardContent className="space-y-2 pt-4">
           <Label className="text-sm font-semibold">{t('addProduct')}</Label>
-          <Input value={nName} onChange={(e) => setNName(e.target.value)} placeholder={t('name')} />
-          <div className="grid grid-cols-2 gap-2">
-            <Input value={nPrice} inputMode="numeric" onChange={(e) => setNPrice(e.target.value)} placeholder={t('price')} />
-            <Input value={nPct} inputMode="decimal" onChange={(e) => setNPct(e.target.value)} placeholder={t('commissionPct')} />
-          </div>
+          <ProductFields
+            t={t}
+            idPrefix="new"
+            name={nName} setName={setNName}
+            price={nPrice} setPrice={setNPrice}
+            pct={nPct} setPct={setNPct}
+            interval={nInterval} setInterval={setNInterval}
+            mode={nMode} setMode={setNMode}
+            months={nMonths} setMonths={setNMonths}
+          />
           <Button
             disabled={isPending || !nName.trim()}
             onClick={() =>
               run(async () => {
-                await addProduct(nName, num(nPrice), num(nPct));
+                await addProduct(nName, num(nPrice), num(nPct), {
+                  billingInterval: nInterval,
+                  commissionMode: nMode,
+                  commissionMonths: num(nMonths) || 3,
+                });
                 setNName('');
                 setNPrice('');
                 setNPct('');
+                setNInterval('one_time');
+                setNMode('once');
+                setNMonths('3');
               })
             }
           >
