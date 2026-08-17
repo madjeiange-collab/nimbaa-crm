@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { AppHeader } from '@/components/shared/app-header';
 import { StatTile } from '@/components/charts/stat-tile';
 import { Funnel } from '@/components/charts/funnel';
+import { DealStageFunnel } from '@/components/charts/deal-stage-funnel';
 import { BarDays } from '@/components/charts/bar-days';
 import { ProgressRing } from '@/components/charts/progress-ring';
 import { Donut } from '@/components/charts/donut';
@@ -52,8 +53,15 @@ export default async function StatsPage({
   const d14 = new Date(now.getTime() - 14 * 864e5);
   const d30 = new Date(now.getTime() - 30 * 864e5);
 
-  const [{ data: visits }, { data: contacts }, { data: appts }, { data: relance }, { data: turfs }] =
-    await Promise.all([
+  const [
+    { data: visits },
+    { data: contacts },
+    { data: appts },
+    { data: relance },
+    { data: turfs },
+    { data: myDeals },
+    { data: stageRows },
+  ] = await Promise.all([
       supabase
         .from('visits')
         .select('id, visited_at, disposition, lat, lng, contact_id, contacts(name, lifecycle)')
@@ -75,7 +83,31 @@ export default async function StatsPage({
         .order('updated_at', { ascending: true })
         .limit(5),
       supabase.rpc('territories_geojson'),
+      supabase
+        .from('deals')
+        .select('pipeline_stage_id, status, value_xof')
+        .eq('assigned_rep_id', user.id)
+        .limit(2000),
+      supabase
+        .from('pipeline_stages')
+        .select('id, name, is_won, is_lost, is_active')
+        .order('sort_order'),
     ]);
+
+  const funnelStages = ((stageRows ?? []) as {
+    id: string;
+    name: string;
+    is_won: boolean;
+    is_lost: boolean;
+    is_active: boolean;
+  }[])
+    .filter((s) => s.is_active || s.is_won || s.is_lost)
+    .map((s) => ({ id: s.id, name: s.name, isWon: s.is_won, isLost: s.is_lost }));
+  const funnelDeals = ((myDeals ?? []) as {
+    pipeline_stage_id: string | null;
+    status: 'open' | 'won' | 'lost';
+    value_xof: number | null;
+  }[]).map((d) => ({ stageId: d.pipeline_stage_id, status: d.status, valueXof: d.value_xof }));
 
   const vs = (visits ?? []) as unknown as {
     id: string;
@@ -357,6 +389,13 @@ export default async function StatsPage({
             />
           </CardContent>
         </Card>
+
+        {/* Deal-based funnel: the rep's own pipeline by stage (FCFA manager-only) */}
+        <DealStageFunnel
+          stages={funnelStages}
+          deals={funnelDeals}
+          showMoney={user.role === 'manager' || user.role === 'admin'}
+        />
 
         {/* Quality donut */}
         <Card>

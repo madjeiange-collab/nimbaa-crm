@@ -96,6 +96,14 @@
     "removePhoto": "Retirer",
     "photoError": "Échec de l'envoi — réessayez."
   },
+  "dealFunnel": {
+    "title": "Affaires par étape",
+    "empty": "Aucune affaire pour le moment.",
+    "won": "Gagnées",
+    "lost": "Perdues",
+    "conversion": "Conversion",
+    "pipelineValue": "Valeur du pipeline"
+  },
   "adminImport": {
     "title": "Importer des contacts",
     "intro": "Importez des prospects depuis un fichier CSV (export Excel : « CSV UTF-8 »). Colonnes reconnues automatiquement ; vous pouvez corriger l'association ci-dessous. Les doublons (même téléphone) sont ignorés.",

@@ -96,6 +96,14 @@
     "removePhoto": "Remove",
     "photoError": "Upload failed — try again."
   },
+  "dealFunnel": {
+    "title": "Deals by stage",
+    "empty": "No deals yet.",
+    "won": "Won",
+    "lost": "Lost",
+    "conversion": "Conversion",
+    "pipelineValue": "Pipeline value"
+  },
   "adminImport": {
     "title": "Import contacts",
     "intro": "Import prospects from a CSV file (Excel export: \"CSV UTF-8\"). Columns are detected automatically; you can adjust the mapping below. Duplicates (same phone) are skipped.",

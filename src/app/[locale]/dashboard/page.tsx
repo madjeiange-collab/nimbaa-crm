@@ -25,8 +25,16 @@ export default async function DashboardPage({
   const now = new Date();
   const d30 = new Date(now.getTime() - 30 * 864e5);
 
-  const [{ data: users }, { data: visits }, { data: contacts }, { data: flagged }, { data: turfs }, { data: coverage }] =
-    await Promise.all([
+  const [
+    { data: users },
+    { data: visits },
+    { data: contacts },
+    { data: flagged },
+    { data: turfs },
+    { data: coverage },
+    { data: dealRows },
+    { data: stageRows },
+  ] = await Promise.all([
       supabase.from('users').select('id, full_name, username, role'),
       supabase
         .from('visits')
@@ -44,6 +52,14 @@ export default async function DashboardPage({
         .eq('visit_type', 'd2d_knock')
         .not('lat', 'is', null)
         .limit(2000),
+      supabase
+        .from('deals')
+        .select('assigned_rep_id, pipeline_stage_id, status, value_xof, contacts(territory_id)')
+        .limit(5000),
+      supabase
+        .from('pipeline_stages')
+        .select('id, name, is_won, is_lost, is_active')
+        .order('sort_order'),
     ]);
 
   const installData = await loadInstallManagerData(supabase);
@@ -54,6 +70,29 @@ export default async function DashboardPage({
       name: u.full_name ?? u.username ?? '—',
     }),
   );
+
+  const deals: DashboardOverviewProps['deals'] = ((dealRows ?? []) as unknown as {
+    assigned_rep_id: string | null;
+    pipeline_stage_id: string | null;
+    status: 'open' | 'won' | 'lost';
+    value_xof: number | null;
+    contacts: { territory_id: string | null } | null;
+  }[]).map((d) => ({
+    assigned_rep_id: d.assigned_rep_id,
+    territory_id: d.contacts?.territory_id ?? null,
+    stage_id: d.pipeline_stage_id,
+    status: d.status,
+    value_xof: d.value_xof,
+  }));
+  const stages: DashboardOverviewProps['stages'] = ((stageRows ?? []) as {
+    id: string;
+    name: string;
+    is_won: boolean;
+    is_lost: boolean;
+    is_active: boolean;
+  }[])
+    .filter((s) => s.is_active || s.is_won || s.is_lost)
+    .map((s) => ({ id: s.id, name: s.name, isWon: s.is_won, isLost: s.is_lost }));
 
   const territories: DashboardOverviewProps['territories'] = (
     (turfs ?? []) as { id: string; name: string; geojson?: { coordinates?: number[][][] } }[]
@@ -75,6 +114,8 @@ export default async function DashboardPage({
             flagged={(flagged ?? []) as DashboardOverviewProps['flagged']}
             coverage={(coverage ?? []) as unknown as DashboardOverviewProps['coverage']}
             installations={installData.installations}
+            deals={deals}
+            stages={stages}
           />
         }
         technician={

@@ -6,6 +6,7 @@ import { Images, KanbanSquare, AlertTriangle } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { StatTile } from '@/components/charts/stat-tile';
 import { Funnel } from '@/components/charts/funnel';
+import { DealStageFunnel, type FunnelStage } from '@/components/charts/deal-stage-funnel';
 import { CoverageMap } from '@/components/charts/coverage-map';
 import type { InstallPoint } from '@/components/map/turf-map';
 import type { ManagerInstallRow } from '@/lib/installations/manager-data';
@@ -51,6 +52,14 @@ interface OverviewTerritory {
   coordinates: number[][][];
 }
 
+export interface OverviewDeal {
+  assigned_rep_id: string | null;
+  territory_id: string | null;
+  stage_id: string | null;
+  status: 'open' | 'won' | 'lost';
+  value_xof: number | null;
+}
+
 export interface DashboardOverviewProps {
   nowIso: string;
   reps: { id: string; name: string }[];
@@ -60,6 +69,8 @@ export interface DashboardOverviewProps {
   flagged: OverviewFlag[];
   coverage: OverviewCoverage[];
   installations?: ManagerInstallRow[];
+  deals?: OverviewDeal[];
+  stages?: FunnelStage[];
 }
 
 export function DashboardOverview({
@@ -71,6 +82,8 @@ export function DashboardOverview({
   flagged,
   coverage,
   installations = [],
+  deals = [],
+  stages = [],
 }: DashboardOverviewProps) {
   const t = useTranslations('dashboard');
   const tS = useTranslations('stats');
@@ -113,6 +126,11 @@ export function DashboardOverview({
     () => flagged.filter((f) => inSel(f.rep_id) && inTerr(f.lat, f.lng)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [flagged, repIds, terrIds, selectedPolys],
+  );
+  const filteredDeals = useMemo(
+    () => deals.filter((d) => inSel(d.assigned_rep_id) && inTerrContact(d.territory_id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [deals, repIds, terrIds],
   );
   const covKnocks: TurfKnock[] = useMemo(
     () =>
@@ -259,6 +277,19 @@ export function DashboardOverview({
           />
         </CardContent>
       </Card>
+
+      {/* Deal-based funnel — the pipeline by stage, rep/secteur-filtered */}
+      {stages.length > 0 && (
+        <DealStageFunnel
+          stages={stages}
+          deals={filteredDeals.map((d) => ({
+            stageId: d.stage_id,
+            status: d.status,
+            valueXof: d.value_xof,
+          }))}
+          showMoney
+        />
+      )}
 
       {/* Flagged */}
       <Card>
