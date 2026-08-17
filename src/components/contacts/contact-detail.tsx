@@ -91,6 +91,7 @@ export function ContactDetail({
   products,
   people = [],
   canInstall,
+  isManager = false,
 }: {
   contact: ContactFull;
   stages: Stage[];
@@ -101,6 +102,7 @@ export function ContactDetail({
   products: ProductOption[];
   people?: PersonCard[];
   canInstall: boolean;
+  isManager?: boolean;
 }) {
   const t = useTranslations('contacts');
   const tLife = useTranslations('lifecycle');
@@ -282,6 +284,7 @@ export function ContactDetail({
         people={people as PersonOption[]}
         technicians={technicians}
         canInstall={canInstall}
+        isManager={isManager}
       />
 
       {/* Activity composer */}

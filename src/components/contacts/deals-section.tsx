@@ -16,6 +16,7 @@ import { RoleSelect, DEFAULT_ROLE } from '@/components/shared/role-select';
 import { BusinessTypeSelect } from '@/components/shared/business-type-select';
 import { TagsInput } from '@/components/shared/tags-input';
 import { assignInstaller } from '@/lib/installations/actions';
+import { cancelSubscription } from '@/lib/commissions/actions';
 import { INSTALL_STATUS_BADGE, INSTALL_STATUS_BY_KEY } from '@/lib/installations/protocol';
 import type { DealStatus, InstallStatus } from '@/types/database';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,7 @@ export interface DealCard {
   contactPersonId: string | null;
   businessType: string | null;
   tags: string[];
+  subscription?: DealSubscription | null;
   installs: DealInstall[];
 }
 
@@ -56,6 +58,19 @@ export interface PersonOption {
   phone: string | null;
 }
 
+export interface DealSubscription {
+  id: string;
+  status: 'active' | 'cancelled';
+  slices: { index: number; status: string; amount: number; month: string }[];
+}
+
+const SLICE_DOT: Record<string, string> = {
+  earned: '●',
+  paid: '●',
+  pending: '○',
+  expired: '✕',
+};
+
 export interface DealStage {
   id: string;
   name: string;
@@ -66,6 +81,11 @@ export interface DealStage {
 export interface ProductOption {
   id: string;
   name: string;
+  price_xof?: number;
+  commission_pct?: number;
+  commission_mode?: string;
+  commission_months?: number;
+  tech_commission_pct?: number;
 }
 
 const STATUS_BADGE: Record<DealStatus, string> = {
@@ -236,6 +256,7 @@ function DealRow({
   people,
   technicians,
   canInstall,
+  isManager = false,
 }: {
   contactId: string;
   deal: DealCard;
@@ -244,6 +265,7 @@ function DealRow({
   people: PersonOption[];
   technicians: { id: string; name: string }[];
   canInstall: boolean;
+  isManager?: boolean;
 }) {
   const t = useTranslations('deals');
   const tInstall = useTranslations('installation');
@@ -301,6 +323,25 @@ function DealRow({
           <p className="text-xs text-muted-foreground">
             {t('value')}: {(deal.valueXof ?? 0).toLocaleString('fr-FR')} XOF
           </p>
+          {(() => {
+            const prod = products.find((x) => x.id === deal.productId);
+            const pct = prod?.commission_pct ?? 0;
+            if (!prod || pct <= 0) return null;
+            const base = deal.valueXof ?? prod.price_xof ?? 0;
+            const slice = Math.round((base * pct) / 100);
+            const months = prod.commission_mode === 'recurring' ? (prod.commission_months ?? 3) : 1;
+            return (
+              <p className="text-xs font-medium text-primary">
+                {prod.commission_mode === 'recurring'
+                  ? t('commissionPotentialRecurring', {
+                      slice: slice.toLocaleString('fr-FR'),
+                      months,
+                      total: (slice * months).toLocaleString('fr-FR'),
+                    })
+                  : t('commissionPotentialOnce', { amount: slice.toLocaleString('fr-FR') })}
+              </p>
+            );
+          })()}
         </div>
         <div className="space-y-1">
           <Label className="text-xs">{t('stage')}</Label>
@@ -385,6 +426,49 @@ function DealRow({
         />
       </div>
 
+      {/* Subscription + commission slices (recurring products, once won) */}
+      {deal.subscription && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md bg-primary/5 px-3 py-2 text-sm">
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              deal.subscription.status === 'active'
+                ? 'bg-brand-green/15 text-brand-green'
+                : 'bg-destructive/10 text-destructive'
+            }`}
+          >
+            {deal.subscription.status === 'active' ? t('subActive') : t('subCancelled')}
+          </span>
+          <span className="font-mono text-base tracking-widest" title={t('sliceHint')}>
+            {deal.subscription.slices.map((s) => SLICE_DOT[s.status] ?? '○').join('')}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {t('sliceSummary', {
+              earned: deal.subscription.slices.filter((s) => s.status === 'earned' || s.status === 'paid').length,
+              total: deal.subscription.slices.length,
+              amount: deal.subscription.slices
+                .filter((s) => s.status === 'earned' || s.status === 'paid')
+                .reduce((sum, s) => sum + s.amount, 0)
+                .toLocaleString('fr-FR'),
+            })}
+          </span>
+          {isManager && deal.subscription.status === 'active' && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+              disabled={isPending}
+              onClick={() => {
+                if (!window.confirm(t('cancelSubConfirm'))) return;
+                run(() => cancelSubscription(deal.subscription!.id, contactId));
+              }}
+            >
+              {t('cancelSub')}
+            </Button>
+          )}
+        </div>
+      )}
+
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
@@ -428,6 +512,7 @@ export function DealsSection({
   people = [],
   technicians,
   canInstall,
+  isManager = false,
 }: {
   contactId: string;
   deals: DealCard[];
@@ -436,6 +521,7 @@ export function DealsSection({
   people?: PersonOption[];
   technicians: { id: string; name: string }[];
   canInstall: boolean;
+  isManager?: boolean;
 }) {
   const t = useTranslations('deals');
   const router = useRouter();
@@ -483,6 +569,7 @@ export function DealsSection({
                 people={people}
                 technicians={technicians}
                 canInstall={canInstall}
+                isManager={isManager}
               />
             ))}
           </div>

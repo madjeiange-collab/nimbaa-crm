@@ -8,6 +8,7 @@ import { Donut } from '@/components/charts/donut';
 import { CoverageMap } from '@/components/charts/coverage-map';
 import type { InstallPoint } from '@/components/map/turf-map';
 import { Card, CardContent } from '@/components/ui/card';
+import { MyCommissions } from '@/components/stats/my-commissions';
 import { INSTALL_STATUSES } from '@/lib/installations/protocol';
 import type { InstallStatus } from '@/types/database';
 
@@ -124,6 +125,9 @@ export async function TechnicianStats({ userId }: { userId: string }) {
         <StatTile label={t('kpiOpen')} value={openJobs.length} accent="amber" href="/installs" />
         <StatTile label={t('kpiRevisits')} value={revisits} accent="red" />
       </div>
+
+      {/* Own commission ledger (completed installations) */}
+      <MyCommissions userId={userId} />
 
       {/* Drill-downs: my install pipeline + install photo audit */}
       <div className="grid grid-cols-2 gap-2">

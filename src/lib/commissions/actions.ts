@@ -7,6 +7,28 @@ import { getCurrentUser } from '@/lib/auth/session';
 export type CommissionResult = { ok: true } | { ok: false; error: string };
 
 /**
+ * Payroll cut: flips every EARNED entry to PAID (they leave "à payer" and
+ * enter the history). Manager/admin only.
+ */
+export async function payEarnedCommissions(): Promise<
+  { ok: true; count: number } | { ok: false; error: string }
+> {
+  const me = await getCurrentUser();
+  if (!me) return { ok: false, error: 'unauthenticated' };
+  if (me.role !== 'manager' && me.role !== 'admin') return { ok: false, error: 'forbidden' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('commission_entries')
+    .update({ status: 'paid', paid_at: new Date().toISOString() })
+    .eq('status', 'earned')
+    .select('id');
+  if (error) return { ok: false, error: 'saveFailed' };
+  revalidatePath('/[locale]/dashboard/commissions', 'page');
+  return { ok: true, count: (data ?? []).length };
+}
+
+/**
  * Marks a subscription cancelled (the one manual signal of the model) and
  * expires its remaining pending slices. Manager/admin only.
  */

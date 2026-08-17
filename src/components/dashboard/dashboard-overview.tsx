@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Images, KanbanSquare, AlertTriangle } from 'lucide-react';
+import { Images, KanbanSquare, AlertTriangle, BadgeDollarSign } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { StatTile } from '@/components/charts/stat-tile';
 import { Funnel } from '@/components/charts/funnel';
@@ -244,6 +244,7 @@ export function DashboardOverview({
   const navCards = [
     { href: '/dashboard/pipeline', icon: KanbanSquare, label: t('pipeline') },
     { href: '/dashboard/photos', icon: Images, label: t('photos') },
+    { href: '/dashboard/commissions', icon: BadgeDollarSign, label: t('commissions') },
   ];
 
   // Carry the active rep/secteur filter into the pipeline drill-down so its

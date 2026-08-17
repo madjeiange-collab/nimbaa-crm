@@ -17,6 +17,7 @@ import { dispositionCssColor } from '@/lib/visits/dispositions';
 import type { InstallPoint, TurfKnock } from '@/components/map/turf-map';
 import { TechnicianStats } from '@/components/stats/technician-stats';
 import { StatsFilters } from '@/components/stats/stats-filters';
+import { MyCommissions } from '@/components/stats/my-commissions';
 
 const DEFAULT_DAILY_GOAL = 30; // fallback when neither user nor app setting has one
 
@@ -480,6 +481,9 @@ export default async function StatsPage({
             />
           </CardContent>
         </Card>
+
+        {/* Own commission ledger (renders only once entries exist) */}
+        <MyCommissions userId={targetId} />
 
         {/* Deal-based funnel: the rep's own pipeline by stage (FCFA manager-only) */}
         <DealStageFunnel

@@ -68,10 +68,42 @@ export default async function ContactDetailPage({
 
   const { data: productRows } = await supabase
     .from('products')
-    .select('id, name')
+    .select('id, name, price_xof, commission_pct, commission_mode, commission_months, tech_commission_pct')
     .eq('is_active', true)
     .order('sort_order', { ascending: true });
   const products: ProductOption[] = (productRows ?? []) as ProductOption[];
+
+  // Subscriptions + commission slices of this contact's deals (pre-0021 DB
+  // degrades to none). RLS: reps see their own, managers everything.
+  const { data: subRows } = await supabase
+    .from('subscriptions')
+    .select('id, deal_id, status, commission_months, commission_entries(period_index, status, amount_xof, period_month)')
+    .eq('contact_id', id);
+  const subByDeal = new Map(
+    ((subRows ?? []) as unknown as {
+      id: string;
+      deal_id: string | null;
+      status: string;
+      commission_months: number;
+      commission_entries: { period_index: number; status: string; amount_xof: number; period_month: string }[];
+    }[])
+      .filter((s) => s.deal_id)
+      .map((s) => [
+        s.deal_id as string,
+        {
+          id: s.id,
+          status: s.status as 'active' | 'cancelled',
+          slices: (s.commission_entries ?? [])
+            .sort((a, b) => a.period_index - b.period_index)
+            .map((e) => ({
+              index: e.period_index,
+              status: e.status,
+              amount: e.amount_xof,
+              month: e.period_month,
+            })),
+        },
+      ]),
+  );
 
   type UserRow = {
     id: string;
@@ -201,6 +233,7 @@ export default async function ContactDetailPage({
     contactPersonId: d.contact_person_id ?? null,
     businessType: dealMeta.get(d.id)?.business_type ?? null,
     tags: dealMeta.get(d.id)?.tags ?? [],
+    subscription: subByDeal.get(d.id) ?? null,
     installs: (d.installations ?? []).map((i) => ({
       id: i.id,
       status: i.status,
@@ -236,6 +269,7 @@ export default async function ContactDetailPage({
           products={products}
           people={people}
           canInstall={canInstall}
+          isManager={user.role === 'manager' || user.role === 'admin'}
         />
       </main>
     </>
