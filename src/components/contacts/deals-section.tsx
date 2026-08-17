@@ -12,6 +12,7 @@ import {
 } from '@/lib/deals/actions';
 import { addContactPerson, assignDealPerson } from '@/lib/contacts/people-actions';
 import { PhoneInput } from '@/components/shared/phone-input';
+import { RoleSelect, DEFAULT_ROLE } from '@/components/shared/role-select';
 import { assignInstaller } from '@/lib/installations/actions';
 import { INSTALL_STATUS_BADGE, INSTALL_STATUS_BY_KEY } from '@/lib/installations/protocol';
 import type { DealStatus, InstallStatus } from '@/types/database';
@@ -84,7 +85,7 @@ function QuickAddPerson({
   const tP = useTranslations('people');
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
-  const [role, setRole] = useState('');
+  const [role, setRole] = useState(DEFAULT_ROLE);
   const [phone, setPhone] = useState('');
   const [error, setError] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -109,7 +110,7 @@ function QuickAddPerson({
         placeholder={tP('namePlaceholder')}
         autoFocus
       />
-      <Input value={role} onChange={(e) => setRole(e.target.value)} placeholder={tP('rolePlaceholder')} />
+      <RoleSelect value={role} onChange={setRole} otherPlaceholder={tP('rolePlaceholder')} />
       <PhoneInput value={phone} onChange={setPhone} placeholder={tP('phonePlaceholder')} />
       {error && <p className="text-xs text-destructive">{tP('error')}</p>}
       <div className="flex gap-2">
@@ -126,7 +127,7 @@ function QuickAddPerson({
                 return;
               }
               setName('');
-              setRole('');
+              setRole(DEFAULT_ROLE);
               setPhone('');
               setOpen(false);
               await onCreated(res.personId);

@@ -7,6 +7,7 @@ import { useRouter } from '@/i18n/navigation';
 import { addContactPerson, deleteContactPerson } from '@/lib/contacts/people-actions';
 import { whatsappUrl } from '@/lib/phone';
 import { PhoneInput } from '@/components/shared/phone-input';
+import { RoleSelect, DEFAULT_ROLE } from '@/components/shared/role-select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,7 +35,7 @@ export function PeopleSection({
   const [isPending, startTransition] = useTransition();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
-  const [role, setRole] = useState('');
+  const [role, setRole] = useState(DEFAULT_ROLE);
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState(false);
@@ -49,7 +50,7 @@ export function PeopleSection({
         return;
       }
       setName('');
-      setRole('');
+      setRole(DEFAULT_ROLE);
       setPhone('');
       setEmail('');
       setAdding(false);
@@ -153,11 +154,7 @@ export function PeopleSection({
               placeholder={t('namePlaceholder')}
               autoFocus
             />
-            <Input
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              placeholder={t('rolePlaceholder')}
-            />
+            <RoleSelect value={role} onChange={setRole} otherPlaceholder={t('rolePlaceholder')} />
             <PhoneInput value={phone} onChange={setPhone} placeholder={t('phonePlaceholder')} />
             <Input
               value={email}
