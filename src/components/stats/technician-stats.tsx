@@ -30,8 +30,23 @@ const STATUS_CSS: Record<string, string> = {
   green: 'hsl(var(--knock-green))',
 };
 
-/** Installation-focused statistics for a technician. */
-export async function TechnicianStats({ userId }: { userId: string }) {
+/**
+ * Installation-focused statistics for one person, scoped to their own jobs.
+ *
+ * A technician gets this as their whole statistics page. A commercial who has
+ * opened interventions gets it embedded under their commercial figures — same
+ * numbers, same scope, so it is passed `embedded` (no page wrapper) and
+ * `showCommissions={false}`, because that page already carries the ledger.
+ */
+export async function TechnicianStats({
+  userId,
+  embedded = false,
+  showCommissions = true,
+}: {
+  userId: string;
+  embedded?: boolean;
+  showCommissions?: boolean;
+}) {
   const t = await getTranslations('installation');
   const tStatus = await getTranslations('installation.status');
   const tS = await getTranslations('stats');
@@ -116,8 +131,9 @@ export async function TechnicianStats({ userId }: { userId: string }) {
     .sort((a, b) => (a.when! < b.when! ? -1 : 1))
     .slice(0, 6);
 
+  const Wrapper = embedded ? 'div' : 'main';
   return (
-    <main className="mx-auto max-w-3xl space-y-4 p-4">
+    <Wrapper className={embedded ? 'space-y-4' : 'mx-auto max-w-3xl space-y-4 p-4'}>
       {/* KPI tiles */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <StatTile label={t('kpiDoneWeek')} value={doneWeek} accent="green" />
@@ -127,7 +143,7 @@ export async function TechnicianStats({ userId }: { userId: string }) {
       </div>
 
       {/* Own commission ledger (completed installations) */}
-      <MyCommissions userId={userId} />
+      {showCommissions && <MyCommissions userId={userId} />}
 
       {/* Drill-downs: my install pipeline + install photo audit */}
       <div className="grid grid-cols-2 gap-2">
@@ -231,6 +247,6 @@ export async function TechnicianStats({ userId }: { userId: string }) {
           </CardContent>
         </Card>
       )}
-    </main>
+    </Wrapper>
   );
 }

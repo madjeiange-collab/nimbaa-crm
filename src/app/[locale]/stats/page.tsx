@@ -104,6 +104,15 @@ export default async function StatsPage({
   }[]).filter((u) => u.is_active && u.role !== 'technician');
   const target = repOptions.find((u) => u.id === spEarly.rep) ?? null;
   const targetId = target?.id ?? user.id;
+
+  // A commercial can open interventions now, so the person being looked at may
+  // have chantiers of their own. Show the installation figures only when there
+  // is something to show — a pure door-knocker should not carry an empty panel.
+  const { count: ownJobs } = await supabase
+    .from('installations')
+    .select('*', { count: 'exact', head: true })
+    .eq('installer_id', targetId);
+  const hasInstallWork = (ownJobs ?? 0) > 0;
   const targetGoalOverride = target ? target.daily_goal : user.daily_goal;
 
   const [
@@ -539,6 +548,17 @@ export default async function StatsPage({
 
         {/* Own commission ledger (renders only once entries exist) */}
         <MyCommissions userId={targetId} />
+
+        {/* Their own chantiers, on the same terms a technician sees them. The
+            ledger above already covers both trades, so it is not repeated. */}
+        {hasInstallWork && (
+          <Card>
+            <CardContent className="space-y-3 pt-4">
+              <p className="text-sm font-semibold">{tHome('techStats')}</p>
+              <TechnicianStats userId={targetId} embedded showCommissions={false} />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Deal-based funnel: the rep's own pipeline by stage (FCFA manager-only) */}
         <DealStageFunnel
