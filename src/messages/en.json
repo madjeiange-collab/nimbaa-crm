@@ -782,7 +782,7 @@
     "commissions": "Commissions",
     "controls": "Check-In and -Out",
     "controlsTitle": "Check-In and -Out",
-    "controlsHint": "Time spent at the customer over {period}, measured between the arrival photo (check-in) and the end photo (check-out) — with the related consistency checks.",
+    "controlsHint": "Time spent at the customer, measured between the arrival photo (check-in) and the end photo (check-out) — with the related consistency checks.",
     "periodLabel": "Period",
     "period_day": "Today",
     "period_week": "7 days",

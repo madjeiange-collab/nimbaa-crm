@@ -329,9 +329,7 @@ export default async function ControlsPage({
       <AppHeader title={t('controlsTitle')} />
       <main className="mx-auto max-w-4xl space-y-4 p-4">
         <PeriodFilter active={period} />
-        <p className="text-sm text-muted-foreground">
-          {t('controlsHint', { period: t(`period_${period}` as never).toLowerCase() })}
-        </p>
+        <p className="text-sm text-muted-foreground">{t('controlsHint')}</p>
         {vErr && (
           <Card>
             <CardContent className="pt-4 text-sm text-muted-foreground">

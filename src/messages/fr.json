@@ -782,7 +782,7 @@
     "commissions": "Commissions",
     "controls": "Check-In and -Out",
     "controlsTitle": "Check-In and -Out",
-    "controlsHint": "Temps passé chez le client sur {period}, mesuré entre la photo d'arrivée (check-in) et la photo de fin (check-out) — avec les vérifications de cohérence associées.",
+    "controlsHint": "Temps passé chez le client, mesuré entre la photo d'arrivée (check-in) et la photo de fin (check-out) — avec les vérifications de cohérence associées.",
     "periodLabel": "Période",
     "period_day": "Aujourd'hui",
     "period_week": "7 jours",
