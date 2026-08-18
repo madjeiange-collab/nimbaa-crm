@@ -1020,6 +1020,13 @@
     "nothingYet": "nothing received today",
     "goal": "goal {n}",
     "travel": "{n} min travel",
-    "receivedNote": "Times are when the passage was RECEIVED. A visit logged offline arrives on sync: an empty hour can be a dead zone, not a pause."
+    "receivedNote": "Times are when the passage was RECEIVED. A visit logged offline arrives on sync: an empty hour can be a dead zone, not a pause.",
+    "legendWon": "sold · site finished",
+    "legendWarm": "interested or appointment · needs a return",
+    "legendRefused": "refused",
+    "legendInProgress": "site in progress",
+    "legendNone": "no answer · away",
+    "legendBar": "minutes on site within the hour",
+    "legendMarks": "✓ sold · ● engaged · ✕ refused · ↻ returns"
   }
 }

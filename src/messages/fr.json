@@ -1020,6 +1020,13 @@
     "nothingYet": "rien reçu aujourd’hui",
     "goal": "objectif {n}",
     "travel": "{n} min de trajet",
-    "receivedNote": "Les heures sont celles où le passage a été REÇU. Une visite enregistrée hors réseau arrive à la synchronisation : une heure vide peut être une zone sans couverture, pas une pause."
+    "receivedNote": "Les heures sont celles où le passage a été REÇU. Une visite enregistrée hors réseau arrive à la synchronisation : une heure vide peut être une zone sans couverture, pas une pause.",
+    "legendWon": "vendu · chantier terminé",
+    "legendWarm": "intéressé ou RDV · retour requis",
+    "legendRefused": "refus",
+    "legendInProgress": "chantier en cours",
+    "legendNone": "sans réponse · absent",
+    "legendBar": "minutes sur place dans l’heure",
+    "legendMarks": "✓ vendus · ● engagés · ✕ refus · ↻ retours"
   }
 }

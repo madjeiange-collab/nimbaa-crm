@@ -35,6 +35,33 @@ const OUTCOME_FILL: Record<string, string> = {
   in_progress: 'bg-primary/15',
 };
 
+/** Reads the grid back to you, in the grid's own colours. */
+function Legend() {
+  const t = useTranslations('hourly');
+  const items: { cls: string; label: string }[] = [
+    { cls: OUTCOME_FILL.sold, label: t('legendWon') },
+    { cls: OUTCOME_FILL.interested, label: t('legendWarm') },
+    { cls: OUTCOME_FILL.refused, label: t('legendRefused') },
+    { cls: OUTCOME_FILL.in_progress, label: t('legendInProgress') },
+    { cls: 'bg-muted', label: t('legendNone') },
+  ];
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1 text-xs text-muted-foreground">
+      {items.map((it) => (
+        <span key={it.label} className="inline-flex items-center gap-1.5">
+          <span className={`inline-block h-3 w-3 shrink-0 rounded-sm ${it.cls}`} aria-hidden />
+          {it.label}
+        </span>
+      ))}
+      <span className="inline-flex items-center gap-1.5">
+        <span className="inline-block h-[3px] w-4 shrink-0 rounded bg-foreground/25" aria-hidden />
+        {t('legendBar')}
+      </span>
+      <span>{t('legendMarks')}</span>
+    </div>
+  );
+}
+
 /**
  * One hour for one person. The number is the count, the fill is divided in
  * proportion to what the hour produced, and the bar underneath is minutes on
@@ -358,7 +385,8 @@ export function HourlyMatrix({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border">
+    <div className="space-y-2">
+      <div className="overflow-x-auto rounded-lg border">
       <table className="w-full min-w-[980px] border-collapse text-sm [font-variant-numeric:tabular-nums]">
         <thead>
           <tr className="text-xs text-muted-foreground">
@@ -406,6 +434,8 @@ export function HourlyMatrix({
           />
         </tbody>
       </table>
+      </div>
+      <Legend />
     </div>
   );
 }
