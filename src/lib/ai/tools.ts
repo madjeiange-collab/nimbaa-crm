@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { pointInAnyPolygon } from '@/lib/geo';
 import { computeBoards, getPointConfig, startOfWeekIso } from '@/lib/leaderboard/score';
 import { summarizeCheckins } from '@/lib/checkin/summary';
+import { loadMyTasks, loadOpenTasks } from '@/lib/tasks/queries';
 
 /**
  * Assistant tools. Every executor runs on the LOGGED-IN user's Supabase
@@ -197,6 +198,25 @@ export const TOOL_DEFINITIONS: OpenAI.Responses.Tool[] = [
         period: { type: 'string', enum: ['today', 'week', 'month'], description: 'Période' },
       },
       required: ['period'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'my_tasks',
+    description:
+      "Suivis à faire : rendez-vous et retours chantier en attente, avec le client, l'échéance, ce qui reste à faire et qui en a la charge. En retard d'abord. Utiliser pour « qu'est-ce que je dois faire », « mes rendez-vous », « quels retours chantier sont en attente », « qu'est-ce qui traîne ».",
+    parameters: {
+      type: 'object',
+      properties: {
+        scope: {
+          type: 'string',
+          enum: ['mine', 'team'],
+          description: "mine = mes suivis ; team = toute l'équipe (managers seulement)",
+        },
+      },
+      required: ['scope'],
       additionalProperties: false,
     },
   },
@@ -1442,6 +1462,28 @@ async function commissionStats(db: Db, user: AppUser, args: { period: string }) 
   return result;
 }
 
+/** Open follow-ups. A field user always gets their own, whatever they ask. */
+async function myTasks(db: Db, user: AppUser, args: { scope: string }) {
+  const team = args.scope === 'team' && isManagerRole(user);
+  const rows = team ? await loadOpenTasks(db) : await loadMyTasks(db, user.id, 50);
+  const nowMs = Date.now();
+  const line = (t: (typeof rows)[number]) => ({
+    quoi: t.title,
+    type: t.kind === 'rdv' ? 'rendez-vous' : t.kind === 'revisit' ? 'retour chantier' : 'suivi',
+    client: t.contactName,
+    pour_le: t.dueAt,
+    reste_a_faire: t.details ?? undefined,
+    ...(team ? { responsable: t.assigneeName } : {}),
+  });
+  return {
+    scope: team ? 'équipe' : 'moi',
+    total: rows.length,
+    en_retard: rows.filter((t) => t.dueAt && new Date(t.dueAt).getTime() < nowMs).map(line),
+    a_venir: rows.filter((t) => !t.dueAt || new Date(t.dueAt).getTime() >= nowMs).map(line),
+    note: 'un suivi naît d\'un rendez-vous pris ou d\'un chantier laissé en "retour requis" ; il se ferme quand le travail est fait',
+  };
+}
+
 /**
  * Time on site. Role-scoped like the rest: a manager sees the team and the
  * per-person breakdown, a field user only their own passages.
@@ -1566,6 +1608,8 @@ export async function executeTool(
         return await commissionStats(db, user, args as { period: string });
       case 'checkin_stats':
         return await checkinStats(db, user, args as { period: string });
+      case 'my_tasks':
+        return await myTasks(db, user, args as { scope: string });
       case 'stale_deals':
         return await staleDeals(db, user, args as { min_days: number });
       case 'neglected_contacts':

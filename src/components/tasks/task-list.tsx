@@ -37,7 +37,15 @@ export function TaskList({
   const fmtDue = (iso: string | null) => {
     if (!iso) return null;
     const d = new Date(iso);
-    const withTime = iso.includes('T') && !iso.endsWith('T00:00:00.000Z');
+    // A revisit is due on a DAY; only a rendez-vous carries a real time, so
+    // midnight means "no time given" rather than "due at 00:00".
+    const parts = new Intl.DateTimeFormat('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Africa/Abidjan',
+    }).format(d);
+    const withTime = parts !== '00:00';
     return d.toLocaleDateString('fr-FR', {
       day: 'numeric',
       month: 'short',
