@@ -1,7 +1,6 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Wrench } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { ArrowLeft } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { requireUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
@@ -29,7 +28,6 @@ export default async function ContactDetailPage({
   const user = await requireUser();
   const t = await getTranslations('contacts');
   const tTasks = await getTranslations('tasks');
-  const tInt = await getTranslations('intervention');
 
   const supabase = await createClient();
   const contactTasks = await loadContactTasks(supabase, id);
@@ -62,7 +60,7 @@ export default async function ContactDetailPage({
     await Promise.all([
       supabase.from('pipeline_stages').select('id, name, sort_order, is_won, is_lost').eq('is_active', true).order('sort_order'),
       supabase.from('activities').select('id, type, content, created_at, rep_id').eq('contact_id', id).order('created_at', { ascending: false }),
-      supabase.from('visits').select('id, disposition, notes, visited_at, started_at, rep_id, visit_photos(storage_path)').eq('contact_id', id).order('visited_at', { ascending: false }),
+      supabase.from('visits').select('id, disposition, notes, visited_at, started_at, rep_id, visit_type, install_status, visit_photos(storage_path)').eq('contact_id', id).order('visited_at', { ascending: false }),
       supabase.from('users').select('id, full_name, username, role'),
       supabase
         .from('deals')
@@ -166,6 +164,8 @@ export default async function ContactDetailPage({
         visited_at: string;
         started_at: string | null;
         rep_id: string | null;
+        visit_type: string | null;
+        install_status: string | null;
         visit_photos?: { storage_path: string }[];
       }) => ({
         kind: 'visit' as const,
@@ -174,6 +174,8 @@ export default async function ContactDetailPage({
         disposition: v.disposition,
         content: v.notes,
         repName: v.rep_id ? (nameOf.get(v.rep_id) ?? null) : null,
+        visitType: v.visit_type,
+        installStatus: v.install_status,
         durationMin: v.started_at
           ? Math.max(
               0,
@@ -300,15 +302,8 @@ export default async function ContactDetailPage({
           canInstall={canInstall}
           isManager={user.role === 'manager' || user.role === 'admin'}
         />
-        {/* Raise an SAV / warranty / maintenance job here — no sale needed. */}
-        {canInstall && (
-          <Link href={`/install/new?contact=${id}`} className="block">
-            <Card className="flex items-center justify-center gap-2 p-3 text-sm font-medium text-primary transition-colors hover:bg-accent">
-              <Wrench className="h-4 w-4" />
-              {tInt('newIntervention')}
-            </Card>
-          </Link>
-        )}
+        {/* Raising an SAV / warranty / maintenance job sits with "Visite" in the
+            composer above — down here it read as an afterthought. */}
 
         {/* Each job as its trips: how many returns, how long, with the photos */}
         {jobHistories.map((h) => (

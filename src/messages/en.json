@@ -28,6 +28,7 @@
   "intervention": {
     "pageTitle": "New intervention",
     "newIntervention": "New intervention (service, warranty…)",
+    "interventionShort": "Intervention",
     "customer": "Customer",
     "searchCustomer": "Search a customer…",
     "noMatch": "No match",

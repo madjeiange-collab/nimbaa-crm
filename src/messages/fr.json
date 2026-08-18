@@ -28,6 +28,7 @@
   "intervention": {
     "pageTitle": "Nouvelle intervention",
     "newIntervention": "Nouvelle intervention (SAV, garantie…)",
+    "interventionShort": "Intervention",
     "customer": "Client",
     "searchCustomer": "Rechercher un client…",
     "noMatch": "Aucun résultat",

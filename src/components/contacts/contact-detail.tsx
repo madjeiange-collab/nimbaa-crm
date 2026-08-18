@@ -2,7 +2,16 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { Phone, MessageCircle, StickyNote, DoorOpen, Pencil, MapPin, Navigation } from 'lucide-react';
+import {
+  Phone,
+  MessageCircle,
+  StickyNote,
+  DoorOpen,
+  Pencil,
+  MapPin,
+  Navigation,
+  Wrench,
+} from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { directionsUrl } from '@/lib/geo';
 import { whatsappUrl } from '@/lib/phone';
@@ -61,6 +70,13 @@ export type TimelineItem =
       photos: string[];
       /** Minutes between the arrival photo and the save — time at the customer. */
       durationMin: number | null;
+      /**
+       * Commercial call or technical trip. Both are `visits` rows against the
+       * same customer, and the history is only honest if it says which.
+       */
+      visitType: string | null;
+      /** What the technician concluded on that trip (technical trips only). */
+      installStatus: string | null;
     }
   | {
       kind: 'activity';
@@ -110,6 +126,8 @@ export function ContactDetail({
   const tLife = useTranslations('lifecycle');
   const tPrio = useTranslations('priority');
   const tDisp = useTranslations('dispositions');
+  const tInt = useTranslations('intervention');
+  const tInst = useTranslations('installation');
   const tCommon = useTranslations('common');
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -309,13 +327,26 @@ export function ContactDetail({
       <Card>
         <CardContent className="space-y-3 pt-4">
           <p className="text-sm font-semibold">{t('logActivity')}</p>
-          <div className="grid grid-cols-4 gap-2">
+          {/* Going to the customer. These two leave the page and record a trip
+              with photos and GPS, so they lead — the three below only choose
+              which kind of note the box underneath will save. */}
+          <div className={`grid gap-2 ${canInstall ? 'grid-cols-2' : 'grid-cols-1'}`}>
             <Link
               href={`/visit/new?contact=${contact.id}`}
-              className="flex min-h-touch flex-col items-center justify-center gap-0.5 rounded-lg bg-primary/10 px-1 text-xs font-medium text-primary hover:bg-primary/15"
+              className="flex min-h-touch items-center justify-center gap-2 rounded-lg bg-primary/10 px-2 text-sm font-semibold text-primary hover:bg-primary/15"
             >
               <DoorOpen className="h-4 w-4" /> {t('visitShort')}
             </Link>
+            {canInstall && (
+              <Link
+                href={`/install/new?contact=${contact.id}`}
+                className="flex min-h-touch items-center justify-center gap-2 rounded-lg bg-blue-100 px-2 text-sm font-semibold text-blue-800 hover:bg-blue-200"
+              >
+                <Wrench className="h-4 w-4" /> {tInt('interventionShort')}
+              </Link>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-2">
             {(
               [
                 { k: 'call', label: t('typeCall'), icon: Phone },
@@ -365,19 +396,40 @@ export function ContactDetail({
           <Card className="p-4 text-sm text-muted-foreground">{t('noHistory')}</Card>
         ) : (
           <div className="space-y-2">
-            {timeline.map((it) => (
-              <Card key={`${it.kind}-${it.id}`} className="p-3">
+            {timeline.map((it) => {
+              // The two field streams are told apart by the stripe: green for a
+              // commercial call, blue for a technician's trip — the same blue
+              // the installation statuses use everywhere else.
+              const tech = it.kind === 'visit' && it.visitType === 'installation';
+              const duration = it.kind === 'visit' && it.durationMin != null
+                ? ` · ⏱ ${it.durationMin} min`
+                : '';
+              return (
+              <Card
+                key={`${it.kind}-${it.id}`}
+                className={`p-3 ${
+                  tech
+                    ? 'border-l-4 border-l-blue-500'
+                    : it.kind === 'visit'
+                      ? 'border-l-4 border-l-primary'
+                      : ''
+                }`}
+              >
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">
-                    {it.kind === 'visit'
-                      ? `${t('visitLabel')}${it.disposition ? ' · ' + tDisp(it.disposition as never) : ''}${
-                          it.durationMin != null ? ` · ⏱ ${it.durationMin} min` : ''
-                        }`
-                      : it.activityType === 'call'
-                        ? t('typeCall')
-                        : it.activityType === 'whatsapp'
-                          ? t('typeWhatsapp')
-                          : t('typeNote')}
+                  <span className={`font-medium ${tech ? 'text-blue-800' : 'text-foreground'}`}>
+                    {tech
+                      ? `${tInt('interventionShort')}${
+                          it.kind === 'visit' && it.installStatus
+                            ? ' · ' + tInst(`status.${it.installStatus}` as never)
+                            : ''
+                        }${duration}`
+                      : it.kind === 'visit'
+                        ? `${t('visitLabel')}${it.disposition ? ' · ' + tDisp(it.disposition as never) : ''}${duration}`
+                        : it.activityType === 'call'
+                          ? t('typeCall')
+                          : it.activityType === 'whatsapp'
+                            ? t('typeWhatsapp')
+                            : t('typeNote')}
                   </span>
                   <span className="shrink-0 text-right">
                     {it.repName && <span className="font-medium text-foreground">{it.repName}</span>}
@@ -400,7 +452,8 @@ export function ContactDetail({
                   </div>
                 )}
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
