@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { CalendarClock, RotateCcw, ArrowUp, ArrowDown, Minus, KanbanSquare, Images } from 'lucide-react';
+import { CalendarClock, Clock, RotateCcw, ArrowUp, ArrowDown, Minus, KanbanSquare, Images } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { StatTile } from '@/components/charts/stat-tile';
 import { BarDays } from '@/components/charts/bar-days';
@@ -31,6 +31,7 @@ export function TechnicianTeamStats({
   technicians,
   territories,
   showNav = true,
+  canSeeControls = false,
 }: {
   nowIso: string;
   installations: ManagerInstallRow[];
@@ -38,6 +39,8 @@ export function TechnicianTeamStats({
   territories: ManagerTerritory[];
   /** Show the nav cards to the pipeline + photo sub-pages (manager area only). */
   showNav?: boolean;
+  /** Check-In and -Out is manager/admin only — hide the card for everyone else. */
+  canSeeControls?: boolean;
 }) {
   const t = useTranslations('installation');
   const tStatus = useTranslations('installation.status');
@@ -222,6 +225,14 @@ export function TechnicianTeamStats({
               <span className="text-xs font-medium">{tD('installPhotos')}</span>
             </Card>
           </Link>
+          {canSeeControls && (
+            <Link href="/dashboard/controls" className="col-span-2 block">
+              <Card className="flex flex-col items-center gap-1.5 p-3 text-center transition-colors hover:bg-accent">
+                <Clock className="h-6 w-6 text-primary" />
+                <span className="text-xs font-medium">{tD('controls')}</span>
+              </Card>
+            </Link>
+          )}
         </div>
       )}
 
