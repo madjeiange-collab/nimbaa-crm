@@ -950,7 +950,7 @@
       <li><strong>Pipeline</strong> — toutes les affaires par étape, avec type d'activité et tags sur chaque carte, filtres et export CSV.</li>
       <li><strong>Audit photos</strong> — contrôle des photos de visites et d'installations.</li>
       <li><strong>Pipeline installations</strong> — suivi des poses en attente, en cours, terminées.</li>
-      <li><strong>Journée en cours</strong> — le suivi heure par heure de la journée qui se déroule (12b).</li>
+      <li><strong>Journée en cours</strong> — le suivi heure par heure de la journée qui se déroule (12b), et la relecture d'une journée passée pour une réunion d'équipe (12d).</li>
       <li><strong>Check-In and -Out</strong> — temps passé chez le client et vérifications automatiques (ci-dessous).</li>
       <li><strong>Commissions</strong> — le panneau de paie (section 13).</li>
     </ul>
@@ -967,6 +967,7 @@
   <div class="txt">
     <h3>Journée en cours — le suivi heure par heure</h3>
     <p>Les autres écrans racontent la journée <strong>après</strong> coup. Celui-ci la raconte pendant : une ligne par personne, une colonne par heure, de 6 h à 19 h. Il s'ouvre depuis l'<strong>Espace manager</strong>, et une ligne sur l'accueil du manager y mène directement.</p>
+    <p>Le même écran sert aussi à <strong>revoir une journée terminée</strong> — c'est l'objet de 12d.</p>
 
     <h4>À rappeler maintenant</h4>
     <p>En haut, avant la matrice, les seules lignes qui demandent une action : qui n'a <strong>rien enregistré</strong> ce matin, et qui est <strong>silencieux</strong> depuis plus de deux heures. La matrice dit la forme de la journée ; cette liste dit qui appeler.</p>
@@ -1023,6 +1024,69 @@
   <figure class="phone">
     <img src="/manuel/28-journee-detail.png" alt="Détail d'une personne : ses passages de la journée avec heures, durées, résultats, photos et temps de trajet intercalés" />
     <figcaption>La journée d'un commercial, passage par passage, avec les trajets intercalés.</figcaption>
+  </figure>
+</section>
+
+<!-- ---- 12d. Choisir la journée ---- -->
+<section class="screen sub" id="journee-choix">
+  <div class="txt">
+    <h3>Revoir une journée passée</h3>
+    <p>Sous le titre, une barre de date. Elle sert deux usages : suivre la journée en cours, et <strong>rouvrir une journée terminée</strong> pour la revoir avec l'équipe.</p>
+
+    <h4>Les trois façons de changer de jour</h4>
+    <div class="tablewrap"><table>
+      <tr><th>Commande</th><th>Ce qu'elle fait</th></tr>
+      <tr><td>Les <strong>flèches ‹ ›</strong></td><td>Un jour en arrière, un jour en avant. C'est ce qu'on utilise <strong>pendant</strong> une réunion, pour parcourir une semaine.</td></tr>
+      <tr><td><strong>Aujourd'hui</strong> · <strong>Hier</strong></td><td>Les deux journées qu'on ouvre le plus souvent, en une touche.</td></tr>
+      <tr><td>Le <strong>bouton date</strong></td><td>Ouvre le calendrier, pour sauter directement à une journée précise.</td></tr>
+    </table></div>
+
+    <h4>Le calendrier</h4>
+    <p>Il a <strong>deux niveaux</strong>. Les flèches du haut changent de <strong>mois</strong> ; toucher « août 2026 ▾ » remplace la grille par les <strong>douze mois</strong> d'une année, avec les flèches d'<strong>année</strong> de part et d'autre. N'importe quelle journée est donc à trois touches au plus.</p>
+    <p>Le <strong>point vert</strong> sous un chiffre signale une journée où des passages ont été enregistrés. C'est ce qui rend la remontée utilisable : les dimanches et les jours fériés se repèrent sans les ouvrir. Les journées grises sont hors d'atteinte — le futur, et tout ce qui précède le premier passage jamais enregistré. Dans le sélecteur d'années, un <strong>mois sans aucune donnée</strong> est éteint pour la même raison.</p>
+
+    <div class="callout tip">
+      <span class="lbl">Partager une journée</span>
+      <p>La date est inscrite dans l'<strong>adresse de la page</strong>. Copiez le lien et envoyez-le avant la réunion : tout le monde ouvrira exactement la même journée.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/29-journee-calendrier.png" alt="Le calendrier ouvert sur août 2026 : les jours avec passages portent un point vert, les jours à venir sont éteints" />
+    <figcaption>Le point marque les journées qui contiennent quelque chose — inutile d'ouvrir les autres.</figcaption>
+  </figure>
+</section>
+
+<!-- ---- 12e. Ce que dit une journée terminée ---- -->
+<section class="screen sub" id="journee-passee">
+  <div class="txt">
+    <h3>Ce que l'écran dit d'une journée terminée</h3>
+    <p>Sur une journée passée, la matrice ne change pas. Deux choses autour d'elle, si.</p>
+
+    <h4>Le bloc du haut devient un bilan</h4>
+    <p>« À rappeler maintenant » n'a de sens que pendant la journée : un silence de trois heures jeudi dernier ne se rattrape plus. À sa place, le même emplacement répond à la question d'une réunion :</p>
+    <ul>
+      <li>Qui <strong>n'a rien enregistré</strong> ce jour-là. Au-delà de trois personnes, la liste devient un compte suivi des noms — un dimanche affichait sinon toute l'équipe, ligne par ligne.</li>
+      <li>Les <strong>alertes</strong> de la journée, par type : visite trop courte, photo loin du client, photos éloignées l'une de l'autre.</li>
+      <li>La <strong>meilleure heure</strong>, avec ce qu'elle a produit. Elle n'apparaît que si la journée a un vrai volume derrière elle : sacrer « 14 h » un dimanche où une seule porte a été frappée ne dit rien.</li>
+      <li>Le <strong>creux</strong> : la plus longue tranche d'au moins deux heures pendant laquelle personne, nulle part, n'a rien enregistré.</li>
+    </ul>
+
+    <h4>Chaque ligne se compare à elle-même</h4>
+    <p>Sous le nombre de passages, un petit écart : <strong>+3</strong>, <strong>−2</strong> ou <strong>=</strong>. C'est la différence avec la <strong>journée ordinaire de cette personne</strong>, calculée sur les quatorze jours précédents et <strong>sur les jours qu'elle a réellement travaillés</strong> — quelqu'un d'absent lundi n'est pas pénalisé toute la semaine. Passez la souris dessus pour voir la moyenne et le nombre de jours qui la composent.</p>
+    <p>C'est ce qui transforme l'écran en outil de revue : sans repère, un manager discute d'un chiffre ; avec, il discute d'un <strong>écart</strong>.</p>
+
+    <div class="callout warn">
+      <span class="lbl">Pourquoi pas sur la journée en cours</span>
+      <p>L'écart n'apparaît que sur une journée <strong>terminée</strong>. Comparer onze heures de travail à des moyennes de journées entières mettrait tout le monde en négatif chaque matin, ce qui ne voudrait rien dire.</p>
+    </div>
+    <div class="callout tip">
+      <span class="lbl">À utiliser en entretien</span>
+      <p>Touchez un nom : le détail (12c) s'ouvre avec les passages, les photos et les <strong>temps de trajet</strong> de cette journée-là. C'est exactement le support d'un entretien — on regarde ensemble, on ne récite pas des totaux.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/30-journee-passee.png" alt="Une journée passée : l'horodatage indique journée complète, le bloc du haut est un bilan, et chaque ligne porte son écart à la moyenne de la personne" />
+    <figcaption>Jeudi 13 août rouvert : le bilan a remplacé les alertes, et chaque ligne porte son écart aux quatorze jours précédents.</figcaption>
   </figure>
 </section>
 
