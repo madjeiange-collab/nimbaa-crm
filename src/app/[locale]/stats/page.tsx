@@ -4,6 +4,8 @@ import { Link } from '@/i18n/navigation';
 import { directionsUrl, pointInAnyPolygon } from '@/lib/geo';
 import { requireUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
+import { loadJournalRows } from '@/lib/checkin/journal';
+import { CheckInJournal } from '@/components/dashboard/checkin-journal';
 import { AppHeader } from '@/components/shared/app-header';
 import { StatTile } from '@/components/charts/stat-tile';
 import { Funnel } from '@/components/charts/funnel';
@@ -37,10 +39,18 @@ export default async function StatsPage({
 
   // Technicians get an installation-focused statistics view.
   if (user.role === 'technician') {
+    const db = await createClient();
+    const myRows = await loadJournalRows(db, {
+      sinceIso: new Date(Date.now() - 14 * 864e5).toISOString(),
+      repId: user.id,
+    });
     return (
       <>
         <AppHeader title={tHome('techStats')} />
         <TechnicianStats userId={user.id} />
+        <div className="mx-auto max-w-3xl px-4 pb-4">
+          <CheckInJournal rows={myRows} showPerson={false} />
+        </div>
       </>
     );
   }
@@ -117,6 +127,12 @@ export default async function StatsPage({
         .select('id, name, is_won, is_lost, is_active')
         .order('sort_order'),
     ]);
+
+  // Own check-in / check-out passages (a manager inspecting a rep sees theirs).
+  const journalRows = await loadJournalRows(supabase, {
+    sinceIso: d14.toISOString(),
+    repId: targetId,
+  });
 
   // Personal goal wins over the global app setting, then the default.
   const { data: goalSetting } = await supabase
@@ -516,6 +532,9 @@ export default async function StatsPage({
             <CoverageMap polygons={polygons} knocks={coverageKnocks} installs={coverageInstalls} turfNames={turfNames} />
           </CardContent>
         </Card>
+
+        {/* Own check-in / check-out journal — the record backing your hours */}
+        <CheckInJournal rows={journalRows} showPerson={false} />
       </main>
     </>
   );

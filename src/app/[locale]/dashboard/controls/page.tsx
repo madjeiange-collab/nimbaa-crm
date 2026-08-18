@@ -7,13 +7,17 @@ import { DISPOSITION_BY_KEY, type KnockDisposition } from '@/lib/visits/disposit
 import { AppHeader } from '@/components/shared/app-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatTile } from '@/components/charts/stat-tile';
+import { CheckInJournal } from '@/components/dashboard/checkin-journal';
+import {
+  loadJournalRows,
+  PAIR_DISTANCE_M,
+  CONTACT_DISTANCE_M,
+  MIN_ENGAGED_VISIT_MIN,
+  MIN_INSTALL_MIN,
+  CLOCK_DRIFT_MIN,
+} from '@/lib/checkin/journal';
 
 const WINDOW_DAYS = 14;
-const PAIR_DISTANCE_M = 150; // arrival vs completion photo
-const CONTACT_DISTANCE_M = 250; // photo vs the customer's pin
-const MIN_ENGAGED_VISIT_MIN = 3;
-const MIN_INSTALL_MIN = 10;
-const CLOCK_DRIFT_MIN = 10;
 
 interface PhotoRow {
   visit_id: string | null;
@@ -54,8 +58,13 @@ export default async function ControlsPage({
   const supabase = await createClient();
   const since = new Date(Date.now() - WINDOW_DAYS * 864e5).toISOString();
 
-  const [{ data: visitRows, error: vErr }, { data: photoRows }, { data: userRows }, { data: installRows }] =
-    await Promise.all([
+  const [
+    { data: visitRows, error: vErr },
+    { data: photoRows },
+    { data: userRows },
+    { data: installRows },
+    journalRows,
+  ] = await Promise.all([
       supabase
         .from('visits')
         .select(
@@ -76,6 +85,7 @@ export default async function ControlsPage({
         .select('id, installer_id, started_at, completed_at, title, contact_id, contacts(name)')
         .gte('completed_at', since)
         .limit(1000),
+      loadJournalRows(supabase, { sinceIso: since, limit: 150 }),
     ]);
 
   const nameOf = new Map(
@@ -246,6 +256,32 @@ export default async function ControlsPage({
   const fmtHours = (min: number) =>
     min >= 60 ? `${Math.floor(min / 60)} h ${String(Math.round(min % 60)).padStart(2, '0')}` : `${min} min`;
 
+  // Team-wide client-time ratio: minutes on site over the field span of each
+  // person-day (first check-in → last check-out). Shown against each day in
+  // the journal so a number has something to be compared with.
+  const personDays = new Map<string, { onSite: number; first: number; last: number }>();
+  for (const v of [...timedVisits, ...timedInstallTrips]) {
+    const inMs = new Date(v.started_at as string).getTime();
+    const outMs = new Date(v.visited_at).getTime();
+    const key = `${v.rep_id}|${(v.started_at as string).slice(0, 10)}`;
+    const row = personDays.get(key) ?? { onSite: 0, first: inMs, last: outMs };
+    row.onSite += (outMs - inMs) / 60_000;
+    row.first = Math.min(row.first, inMs);
+    row.last = Math.max(row.last, outMs);
+    personDays.set(key, row);
+  }
+  let onSiteTotal = 0;
+  let fieldTotal = 0;
+  for (const r of personDays.values()) {
+    onSiteTotal += r.onSite;
+    fieldTotal += (r.last - r.first) / 60_000;
+  }
+  const teamRatio = fieldTotal > 0 ? Math.round((onSiteTotal / fieldTotal) * 100) : null;
+
+  const journalPeople = [...new Map(journalRows.map((r) => [r.personId, r.personName])).entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const counts = {
     pairFar: flagged.filter((f) => f.flags.includes('pairFar')).length,
     tooShort: flagged.filter((f) => f.flags.includes('tooShort')).length,
@@ -341,6 +377,9 @@ export default async function ControlsPage({
             )}
           </CardContent>
         </Card>
+
+        {/* Every passage, day by day */}
+        <CheckInJournal rows={journalRows} people={journalPeople} teamRatio={teamRatio} />
 
         {/* Flag summary */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
