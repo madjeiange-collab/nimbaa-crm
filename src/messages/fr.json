@@ -1045,10 +1045,11 @@
     "loggedNothing": "n’a rien enregistré",
     "alerts": "{n, plural, one {# alerte} other {# alertes}}",
     "peakHour": "Meilleure heure",
-    "peakHourValue": "{hour}h · {n} passages · {won, plural, =0 {aucune vente} one {# vente} other {# ventes}}",
+    "peakHourValue": "{hour}h · {n, plural, one {# passage} other {# passages}} · {won, plural, =0 {aucune vente} one {# vente} other {# ventes}}",
     "quiet": "Creux",
     "quietValue": "{from}h à {to}h, aucun passage sur toute l’équipe",
     "legendBaseline": "+3 / −2 · écart à la moyenne de la personne sur 14 jours",
-    "baselineTip": "moyenne {n} passages sur {days} journées travaillées"
+    "baselineTip": "moyenne {n} passages sur {days} journées travaillées",
+    "loggedNothingMany": "{n, plural, one {# personne n’a} other {# personnes n’ont}} rien enregistré"
   }
 }

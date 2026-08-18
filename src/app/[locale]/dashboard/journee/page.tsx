@@ -35,6 +35,10 @@ const EXPECTED_START_HOUR = 9;
 const BASELINE_DAYS = 14;
 /** A single empty hour is lunch. Two in a row is worth naming. */
 const QUIET_RUN = 2;
+/** Below this, "best hour" would crown the one hour somebody knocked once. */
+const MIN_PEAK_PASSAGES = 10;
+/** More names than this and the list stops being read — it becomes a count. */
+const MAX_NAMES = 3;
 
 export const dynamic = 'force-dynamic';
 
@@ -189,8 +193,10 @@ export default async function JourneePage({
     const d = (r.kind === 'install' ? r.installStatus : r.disposition) ?? '';
     if (r.kind === 'install' ? d === 'done' : d === 'sold') cell.won++;
   }
+  const dayTotal = perHour.reduce((n, c) => n + c.n, 0);
   const peakIdx = perHour.reduce((best, c, i) => (c.n > perHour[best].n ? i : best), 0);
-  const peak = perHour[peakIdx].n > 0 ? { hour: FIRST_HOUR + peakIdx, ...perHour[peakIdx] } : null;
+  const peak =
+    dayTotal >= MIN_PEAK_PASSAGES ? { hour: FIRST_HOUR + peakIdx, ...perHour[peakIdx] } : null;
 
   // The longest stretch of nothing, bounded by the first and last passage —
   // dead hours before anyone started are not a gap in the day.
@@ -305,12 +311,24 @@ export default async function JourneePage({
           <Card>
             <CardContent className="space-y-1.5 pt-4">
               <p className="text-sm font-semibold">{t('dayReview')}</p>
-              {notLogged.map((u) => (
-                <p key={u.id} className="text-sm">
-                  <span className="font-medium">{u.full_name ?? u.username}</span>
-                  <span className="text-muted-foreground"> — {t('loggedNothing')}</span>
+              {notLogged.length > MAX_NAMES ? (
+                <p className="text-sm">
+                  <span className="font-medium">
+                    {t('loggedNothingMany', { n: notLogged.length })}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {' — '}
+                    {notLogged.map((u) => u.full_name ?? u.username).join(', ')}
+                  </span>
                 </p>
-              ))}
+              ) : (
+                notLogged.map((u) => (
+                  <p key={u.id} className="text-sm">
+                    <span className="font-medium">{u.full_name ?? u.username}</span>
+                    <span className="text-muted-foreground"> — {t('loggedNothing')}</span>
+                  </p>
+                ))
+              )}
               {flagTotal > 0 && (
                 <p className="text-sm">
                   <span className="font-medium">{t('alerts', { n: flagTotal })}</span>

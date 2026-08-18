@@ -1045,10 +1045,11 @@
     "loggedNothing": "logged nothing",
     "alerts": "{n, plural, one {# alert} other {# alerts}}",
     "peakHour": "Best hour",
-    "peakHourValue": "{hour}h · {n} passages · {won, plural, =0 {no sales} one {# sale} other {# sales}}",
+    "peakHourValue": "{hour}h · {n, plural, one {# passage} other {# passages}} · {won, plural, =0 {no sales} one {# sale} other {# sales}}",
     "quiet": "Quiet stretch",
     "quietValue": "{from}h to {to}h, nothing from anyone",
     "legendBaseline": "+3 / −2 · gap to the person’s own 14-day average",
-    "baselineTip": "average {n} passages over {days} days worked"
+    "baselineTip": "average {n} passages over {days} days worked",
+    "loggedNothingMany": "{n, plural, one {# person} other {# people}} logged nothing"
   }
 }
