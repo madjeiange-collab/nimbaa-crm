@@ -321,7 +321,7 @@
   <div class="kicker">Guide de l'équipe terrain · Abidjan</div>
   <h1>Manuel Nimbaa CRM</h1>
   <p class="sub">Comment utiliser l'application au quotidien : visites porte-à-porte, clients et affaires, installations, statistiques, assistant IA et commissions — pour les commerciaux, techniciens, managers et administrateurs.</p>
-  <p class="meta">Application : <code>nimbaa-crm.vercel.app</code> · Version du 17 août 2026 · Interface disponible en Français et Anglais</p>
+  <p class="meta">Application : <code>nimbaa-crm.vercel.app</code> · Version du 18 août 2026 · Interface disponible en Français et Anglais</p>
 
   <nav class="toc" aria-label="Sommaire">
     <a href="#demarrage"><span class="n">1</span>Démarrage &amp; connexion</a>
@@ -334,7 +334,7 @@
     <a href="#classement"><span class="n">8</span>Classement &amp; badges</a>
     <a href="#stats"><span class="n">9</span>Statistiques &amp; mes commissions</a>
     <a href="#assistant"><span class="n">10</span>Assistant Nimbaa (IA)</a>
-    <a href="#manager"><span class="n">11</span>Espace manager</a>
+    <a href="#manager"><span class="n">11</span>Espace manager &amp; contrôles</a>
     <a href="#commissions"><span class="n">12</span>Commissions : règles &amp; paiement</a>
     <a href="#admin"><span class="n">13</span>Administration</a>
     <a href="#horsligne"><span class="n">14</span>Mode hors ligne</a>
@@ -413,15 +413,31 @@
     <div class="roles"><span class="chip com">Commercial</span></div>
     <p>C'est le geste central du porte-à-porte. Depuis l'accueil, touchez <span class="btn-ref">Enregistrer une visite</span> :</p>
     <ol>
-      <li><strong>Photo + GPS.</strong> Touchez <span class="btn-ref">Prendre la photo (GPS)</span> — une photo géolocalisée est <strong>obligatoire</strong> pour chaque visite. L'adresse détectée s'affiche sous le bouton.</li>
+      <li><strong>Photo d'arrivée.</strong> En arrivant, touchez la case verte <span class="btn-ref">ARRIVÉE</span>. La photo est horodatée et géolocalisée automatiquement ; l'adresse détectée s'affiche plus bas.</li>
       <li><strong>Résultat.</strong> Choisissez l'issue de la visite : <em>Pas de réponse</em>, <em>Absent</em>, <em>Refus</em>, <em>Intéressé</em>, <em>Rendez-vous</em> ou <em>Vendu</em>.</li>
       <li><strong>Contact (optionnel).</strong> <span class="btn-ref">Lier à un contact existant</span> rattache la visite à une fiche déjà créée. Sans lien, si le résultat est <em>Vendu</em>, <em>Rendez-vous</em> ou <em>Intéressé</em>, l'application crée automatiquement le contact et l'affaire.</li>
       <li><strong>Notes.</strong> Tapez ou touchez <span class="btn-ref">🎤 Dicter</span> pour dicter vos notes à la voix.</li>
+      <li><strong>Photo de fin.</strong> Au moment de repartir, touchez la case orange <span class="btn-ref">FIN</span>. C'est elle qui referme la visite.</li>
       <li><span class="btn-ref">Enregistrer</span>.</li>
     </ol>
+
+    <h3>Les trois emplacements photo</h3>
+    <p>La carte <strong>Photo + GPS</strong> présente trois zones distinctes, pour que rien ne soit ambigu :</p>
+    <div class="tablewrap"><table>
+      <tr><th>Zone</th><th>Quand</th><th>Obligatoire ?</th></tr>
+      <tr><td><strong>ARRIVÉE</strong></td><td>En arrivant devant le client</td><td>Oui</td></tr>
+      <tr><td><strong>FIN</strong></td><td>Au moment de repartir</td><td>Oui</td></tr>
+      <tr><td><strong>Autres photos</strong></td><td>À tout moment — devanture, compteur, dégâts, document signé…</td><td>Non</td></tr>
+    </table></div>
+    <p>La case <strong>FIN</strong> reste <strong>verrouillée</strong> (cadenas) tant que la photo d'arrivée n'est pas prise : on ne peut pas repartir avant d'être arrivé. La pastille en haut à droite indique où vous en êtes : <em>Arrivée + fin</em> → <em>Photo de fin manquante</em> → <em>Complet</em>. Tant que la paire n'est pas complète, le bouton <span class="btn-ref">Enregistrer</span> reste inactif.</p>
+
+    <div class="callout tip">
+      <span class="lbl">Pourquoi deux photos</span>
+      <p>L'écart entre les deux photos mesure le <strong>temps réellement passé chez le client</strong>. C'est ce qui permet de valoriser le travail de terrain — et ce qui rend les chiffres incontestables. Une seule photo ne prouve qu'un instant ; la paire prouve une présence.</p>
+    </div>
     <div class="callout tip">
       <span class="lbl">Pas de réseau ? Continuez.</span>
-      <p>Sans connexion, la visite est <strong>mise en file d'attente sur le téléphone</strong> et envoyée automatiquement dès le retour du réseau. Voir la section 14.</p>
+      <p>Sans connexion, la visite (les deux photos comprises) est <strong>mise en file d'attente sur le téléphone</strong> et envoyée automatiquement dès le retour du réseau. Voir la section 14.</p>
     </div>
     <div class="callout warn">
       <span class="lbl">Portes à ne pas frapper</span>
@@ -429,8 +445,8 @@
     </div>
   </div>
   <figure class="phone">
-    <img src="/manuel/03-visit-new.png" alt="Formulaire de visite : photo GPS obligatoire, six boutons de résultat, notes avec dictée" />
-    <figcaption>La visite : photo géolocalisée, résultat en un geste, dictée des notes.</figcaption>
+    <img src="/manuel/03-visit-new.png" alt="Formulaire de visite : zones ARRIVÉE et FIN côte à côte, FIN verrouillée, zone Autres photos, boutons de résultat" />
+    <figcaption>Trois zones photo : <strong>Arrivée</strong> (verte, à prendre en premier), <strong>Fin</strong> (verrouillée jusque-là) et <strong>Autres photos</strong> pour la documentation.</figcaption>
   </figure>
 </section>
 
@@ -526,20 +542,22 @@
     <div class="roles"><span class="chip tec">Technicien</span><span class="chip man">Manager</span></div>
     <p>Quand une vente est conclue, une installation est planifiée chez le client. Le technicien utilise <span class="btn-ref">Enregistrer une installation</span> :</p>
     <ol>
-      <li>Choisir le <strong>client</strong> et l'affaire concernée.</li>
-      <li>Renseigner le statut : <em>planifiée</em>, <em>en cours</em>, <em>terminée</em> (ou <em>revisite</em> si un second passage est nécessaire).</li>
-      <li>Ajouter des <strong>photos</strong> de la pose et des notes (dictée vocale disponible).</li>
-      <li>Enregistrer — hors ligne si besoin, l'envoi se fera automatiquement.</li>
+      <li><strong>Photo d'arrivée</strong> en arrivant sur le chantier (case verte <span class="btn-ref">ARRIVÉE</span>).</li>
+      <li>Cocher les étapes du <strong>protocole</strong> au fur et à mesure et saisir le <strong>matériel posé</strong> avec ses numéros de série.</li>
+      <li>Photographier le travail dans <strong>Autres photos</strong> : matériel posé, câblage, anomalie — c'est votre dossier de preuve.</li>
+      <li>Renseigner le statut : <em>en cours</em>, <em>terminée</em>, ou <em>revisite</em> (avec la date du prochain passage).</li>
+      <li><strong>Photo de fin</strong> en quittant le chantier (case orange <span class="btn-ref">FIN</span>), puis <span class="btn-ref">Enregistrer</span> — hors ligne si besoin, l'envoi se fera automatiquement.</li>
     </ol>
+    <p>Comme pour les visites, la paire <strong>arrivée + fin</strong> est demandée à <strong>chaque passage</strong>, pas seulement au dernier : c'est ce qui mesure la durée réelle sur le chantier, passage par passage.</p>
     <div class="callout tip">
       <span class="lbl">Commission technicien</span>
-      <p>Marquer une installation <strong>terminée</strong> déclenche la commission du technicien (taux propre à chaque produit). Elle apparaît immédiatement dans « Mes commissions ».</p>
+      <p>Marquer une installation <strong>terminée</strong> déclenche la commission du technicien (taux propre à chaque produit). Elle apparaît immédiatement dans « Mes commissions ». La date de fin retenue est celle de la <strong>photo de fin</strong>.</p>
     </div>
     <p>Les managers suivent l'ensemble dans l'Espace manager : pipeline d'installations, photos à contrôler, taux de complétion par technicien.</p>
   </div>
   <figure class="phone">
-    <img src="/manuel/07-install-new.png" alt="Formulaire d'installation : choix du client, statut, photos et notes" />
-    <figcaption>Enregistrer une installation : client, statut, photos.</figcaption>
+    <img src="/manuel/07-install-new.png" alt="Formulaire d'installation : zones ARRIVÉE et FIN, autres photos pour le matériel posé, protocole et matériel" />
+    <figcaption>Le chantier : mêmes trois zones photo, protocole à cocher et matériel avec numéros de série.</figcaption>
   </figure>
 </section>
 
@@ -609,11 +627,12 @@
   <div class="txt">
     <h2>11 · Espace manager</h2>
     <div class="roles"><span class="chip man">Manager</span><span class="chip adm">Admin</span></div>
-    <p>Le tableau de bord d'équipe : activité du jour, chiffres par commercial et technicien, objectifs, montants en FCFA. De là, quatre outils :</p>
+    <p>Le tableau de bord d'équipe : activité du jour, chiffres par commercial et technicien, objectifs, montants en FCFA. De là, cinq outils :</p>
     <ul>
       <li><strong>Pipeline</strong> — toutes les affaires par étape, avec type d'activité et tags sur chaque carte, filtres et export CSV.</li>
       <li><strong>Audit photos</strong> — contrôle des photos de visites et d'installations.</li>
       <li><strong>Pipeline installations</strong> — suivi des poses en attente, en cours, terminées.</li>
+      <li><strong>Contrôles anti-fraude</strong> — temps passé et vérifications automatiques (ci-dessous).</li>
       <li><strong>Commissions</strong> — le panneau de paie (section 12).</li>
     </ul>
     <p>Les listes se filtrent par <strong>secteur</strong>, <strong>type d'activité</strong>, <strong>tag</strong> et <strong>personne</strong> — les mêmes filtres que sur les statistiques.</p>
@@ -621,6 +640,41 @@
   <figure class="phone">
     <img src="/manuel/11-dashboard.png" alt="Espace manager : chiffres d'équipe et accès au pipeline, à l'audit photos et aux commissions" />
     <figcaption>Espace manager : l'équipe en un coup d'œil.</figcaption>
+  </figure>
+</section>
+
+<!-- ---- 11b. Contrôles anti-fraude ---- -->
+<section class="screen sub" id="controles">
+  <div class="txt">
+    <h3>Contrôles anti-fraude &amp; temps passé</h3>
+    <p>Les photos d'arrivée et de fin ne servent pas qu'à prouver le passage : elles alimentent cette page, qui couvre les <strong>14 derniers jours</strong>.</p>
+
+    <h4>Le temps réellement passé chez le client</h4>
+    <ul>
+      <li>Trois moyennes en haut : <strong>par visite</strong>, <strong>par visite engagée</strong> (Intéressé / RDV / Vendu) et <strong>par passage sur chantier</strong>.</li>
+      <li>Un tableau <strong>par personne</strong> : nombre de visites, moyenne par visite, nombre de passages, moyenne par passage, et le <strong>total d'heures</strong> passées chez les clients.</li>
+    </ul>
+    <p>Ces durées se mesurent toujours entre la photo d'arrivée et la photo de fin — jamais entre la création et la clôture d'un chantier, qui peut rester ouvert plusieurs jours entre deux passages.</p>
+
+    <h4>Les vérifications automatiques</h4>
+    <div class="tablewrap"><table>
+      <tr><th>Contrôle</th><th>Ce qu'il signale</th></tr>
+      <tr><td><strong>Photos arrivée/fin éloignées</strong></td><td>Les deux photos ont été prises à plus de 150 m l'une de l'autre.</td></tr>
+      <tr><td><strong>Visites trop courtes</strong></td><td>Une visite engagée bouclée en moins de 3 minutes.</td></tr>
+      <tr><td><strong>Photo loin du client</strong></td><td>La photo est à plus de 250 m de l'adresse enregistrée du client.</td></tr>
+      <tr><td><strong>Décalage horloge</strong></td><td>Plus de 10 min d'écart entre l'heure du téléphone et l'arrivée au serveur.</td></tr>
+      <tr><td><strong>Photos réutilisées</strong></td><td>La même image (empreinte visuelle identique) apparaît sur plusieurs visites.</td></tr>
+      <tr><td><strong>Installations trop rapides</strong></td><td>Un chantier déclaré terminé en moins de 10 minutes.</td></tr>
+    </table></div>
+
+    <div class="callout warn">
+      <span class="lbl">À lire comme un signal, pas comme une preuve</span>
+      <p>Ces alertes méritent une <strong>question</strong>, pas une sanction automatique. Un décalage d'horloge vient souvent d'une visite enregistrée hors ligne et synchronisée plus tard ; une photo éloignée peut venir d'un GPS imprécis en centre-ville. Parlez-en à la personne avant de conclure.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/18-controls.png" alt="Page Contrôles anti-fraude : moyennes de durée, temps par personne et six compteurs de vérification à zéro" />
+    <figcaption>Contrôles anti-fraude : durées moyennes, temps par personne, et six vérifications automatiques.</figcaption>
   </figure>
 </section>
 
@@ -705,7 +759,7 @@
 </section>
 
 <footer>
-  <p><strong>Nimbaa CRM</strong> · Manuel d'utilisation · 17 août 2026. Captures d'écran réalisées sur l'application de production (données de démonstration). Pour toute question, utilisez l'Assistant Nimbaa ou contactez votre manager.</p>
+  <p><strong>Nimbaa CRM</strong> · Manuel d'utilisation · 18 août 2026. Captures d'écran réalisées sur l'application de production (données de démonstration). Pour toute question, utilisez l'Assistant Nimbaa ou contactez votre manager.</p>
 </footer>
 
 </div>
