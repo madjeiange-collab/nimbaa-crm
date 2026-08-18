@@ -27,6 +27,15 @@ import { loadMyTasks } from '@/lib/tasks/queries';
 import { GenerateRecapButton } from '@/components/leaderboard/generate-recap-button';
 import { RecapCard } from '@/components/leaderboard/recap-card';
 import type { InstallPoint, TurfKnock } from '@/components/map/turf-map';
+import type { UserRole } from '@/types/database';
+
+/** Green commercial, blue technical — the pairing used across the app. */
+const ROLE_BADGE: Record<UserRole, string> = {
+  rep: 'bg-primary/10 text-primary',
+  technician: 'bg-blue-100 text-blue-800',
+  manager: 'bg-amber-100 text-amber-900',
+  admin: 'bg-secondary text-secondary-foreground',
+};
 
 function HomeCard({
   href,
@@ -142,6 +151,7 @@ export default async function HomePage({
   const t = await getTranslations('home');
   const tBoard = await getTranslations('leaderboard');
   const tTasks = await getTranslations('tasks');
+  const tRoles = await getTranslations('roles');
 
   const isManager = user.role === 'manager' || user.role === 'admin';
   const isAdmin = user.role === 'admin';
@@ -285,8 +295,15 @@ export default async function HomePage({
     <>
       <AppHeader title={t('greeting', { name: displayName })} />
       <main className="mx-auto max-w-6xl p-4">
-        {/* Language toggle — the rest of the app follows the chosen locale */}
-        <div className="mb-3 flex justify-end">
+        {/* Who you are signed in as, opposite the language toggle. Green is
+            commercial and blue is technical, the same pairing the Visite /
+            Intervention buttons use throughout the app. */}
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${ROLE_BADGE[user.role]}`}
+          >
+            {tRoles(user.role)}
+          </span>
           <LocaleSwitch />
         </div>
         <div className="grid gap-4 lg:grid-cols-[300px_1fr]">

@@ -82,9 +82,10 @@
     "passwordChangeError": "Could not change password"
   },
   "roles": {
-    "rep": "Rep",
+    "rep": "Sales rep",
     "manager": "Manager",
-    "admin": "Administrator"
+    "admin": "Administrator",
+    "technician": "Technician"
   },
   "home": {
     "greeting": "Hello, {name}",

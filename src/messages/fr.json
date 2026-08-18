@@ -84,7 +84,8 @@
   "roles": {
     "rep": "Commercial",
     "manager": "Manager",
-    "admin": "Administrateur"
+    "admin": "Administrateur",
+    "technician": "Technicien"
   },
   "home": {
     "greeting": "Bonjour, {name}",
