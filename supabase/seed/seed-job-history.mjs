@@ -178,7 +178,10 @@ async function task(job, { owner, dueAt, title, details }) {
     contact_id: job?.contact_id ?? null,
     deal_id: job?.deal_id ?? null,
     installation_id: job?.id ?? null,
-    kind: job ? 'revisit' : 'rdv',
+    // A task hanging off a job is a return trip; one on a bare contact is a
+    // rendez-vous. The RDV callers pass a job-shaped object with id: null, so
+    // this has to test the id, not the object.
+    kind: job?.id ? 'revisit' : 'rdv',
     title,
     details: details ?? null,
     due_at: dueAt.toISOString(),
