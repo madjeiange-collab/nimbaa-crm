@@ -4,6 +4,7 @@ import type { AppUser } from '@/lib/auth/session';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { pointInAnyPolygon } from '@/lib/geo';
 import { computeBoards, getPointConfig, startOfWeekIso } from '@/lib/leaderboard/score';
+import { summarizeCheckins } from '@/lib/checkin/summary';
 
 /**
  * Assistant tools. Every executor runs on the LOGGED-IN user's Supabase
@@ -190,6 +191,21 @@ export const TOOL_DEFINITIONS: OpenAI.Responses.Tool[] = [
     name: 'commission_stats',
     description:
       "Commissions : acquises, payées, en attente et expirées sur la période, séparées ventes (commerciaux) / installations (techniciens), avec comparaison à la période précédente équivalente (jour vs veille, semaine vs semaine dernière à date, mois vs mois dernier à date). Managers/admins voient tout le monde (+ détail par personne) ; commerciaux et techniciens uniquement leurs propres commissions. Utiliser pour 'mes commissions', 'combien de commissions ce mois', 'commissions à payer', 'évolution des commissions'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', enum: ['today', 'week', 'month'], description: 'Période' },
+      },
+      required: ['period'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'checkin_stats',
+    description:
+      "Temps réellement passé chez les clients, mesuré entre la photo d'arrivée (check-in) et la photo de fin (check-out) : durées moyennes par visite / visite engagée / chantier, temps total, taux de temps client, premier check-in et dernier check-out de chacun, paires incomplètes et alertes de cohérence. Utiliser pour 'combien de temps passé chez les clients', 'qui commence le plus tôt', 'temps par visite', 'check-in', 'qui ne prend pas la photo de fin', 'anomalies'.",
     parameters: {
       type: 'object',
       properties: {
@@ -1426,6 +1442,21 @@ async function commissionStats(db: Db, user: AppUser, args: { period: string }) 
   return result;
 }
 
+/**
+ * Time on site. Role-scoped like the rest: a manager sees the team and the
+ * per-person breakdown, a field user only their own passages.
+ */
+async function checkinStats(db: Db, user: AppUser, args: { period: string }) {
+  const isManager = isManagerRole(user);
+  const since = periodStart(args.period, new Date());
+  const res = await summarizeCheckins(db, {
+    sinceIso: since.toISOString(),
+    repId: isManager ? null : user.id,
+    withPerPerson: isManager,
+  });
+  return { periode: args.period, scope: isManager ? 'équipe' : 'moi', ...res };
+}
+
 async function businessTypeStats(db: Db, user: AppUser, args: { period: string }) {
   const isManager = isManagerRole(user);
   const since = periodStart(args.period, new Date());
@@ -1533,6 +1564,8 @@ export async function executeTool(
         return await businessTypeStats(db, user, args as { period: string });
       case 'commission_stats':
         return await commissionStats(db, user, args as { period: string });
+      case 'checkin_stats':
+        return await checkinStats(db, user, args as { period: string });
       case 'stale_deals':
         return await staleDeals(db, user, args as { min_days: number });
       case 'neglected_contacts':

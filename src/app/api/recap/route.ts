@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { AI_MODELS } from '@/lib/ai/config';
 import { computeBoards, getPointConfig } from '@/lib/leaderboard/score';
 import { runCommissionSweep } from '@/lib/commissions/core';
+import { summarizeCheckins } from '@/lib/checkin/summary';
 
 export const maxDuration = 60;
 
@@ -363,6 +364,14 @@ export async function GET(request: Request) {
   }
   const bestDay = [...salesByDay.entries()].sort((a, b) => b[1] - a[1])[0] ?? null;
 
+  // Time on site for the recapped day, per person — same measurement the
+  // Check-In and -Out page shows, so the brief and the page never disagree.
+  const checkins = await summarizeCheckins(admin, {
+    sinceIso: recapStart.toISOString(),
+    untilIso: recapEnd.toISOString(),
+    withPerPerson: true,
+  }).catch(() => null);
+
   const managerFacts = {
     periode,
     objectif_visites_par_jour: dailyGoal,
@@ -510,6 +519,8 @@ export async function GET(request: Request) {
         ? { date: bestDay[0], ventes: bestDay[1] }
         : null,
     },
+    // Time actually spent with customers, from the check-in / check-out pair.
+    temps_chez_les_clients: checkins,
     points_attention: {
       visites_suspectes_aujourd_hui: (flaggedToday ?? []).length,
       affaires_ouvertes_sans_activite_7j: staleCount ?? 0,
@@ -562,6 +573,7 @@ export async function GET(request: Request) {
           "4b) si ventes_par_type_activite contient des types, ajoute « Par type d'activité : » — ventes et CA par type (semaine, puis mois si différent) et signale le créneau le plus porteur (ex. « les maquis tirent la semaine ») ; omets si tout est non classé. " +
           '5) « À pousser : » les 3 à 5 affaires chaudes les plus intéressantes (client, valeur, étape, jours sans activité, commercial). ' +
           '6) « Aujourd\'hui : » ou « Demain : » (selon periode.journee_a_venir) les RDV (heure, client, commercial) et les revisites d\'installation prévues. ' +
+          "6b) si temps_chez_les_clients contient des passages, ajoute « Temps chez les clients : » — durée moyenne par visite et par chantier, puis les personnes qui sortent du lot (le plus / le moins de temps sur place, premier check-in et dernier check-out) ; signale les paires incomplètes (photo de fin manquante, donc durée inconnue) comme un rappel de procédure, pas comme une faute, et les alertes de cohérence s'il y en a. Omets si aucun passage n'est mesuré. " +
           "7) « Cap fin de mois : » projection ventes/CA au rythme actuel vs le mois dernier, et la meilleure journée du mois ; termine par « À surveiller : » visites suspectes, affaires dormantes, secteurs sans activité et personnes non connectées, avec une recommandation concrète chacun. " +
           "Omets toute section vide. Ton direct de chef d'équipe, sans flatterie. Tirets simples, pas de markdown lourd." +
           (weeklyEdition
@@ -679,6 +691,7 @@ export async function GET(request: Request) {
       '« À pousser : » tes 2-3 affaires ouvertes les plus intéressantes (mentionne le type d\'activité et les tags s\'ils sont renseignés) ; ' +
       '« Aujourd\'hui : » ou « Demain : » tes RDV / chantiers prévus ; ' +
       '« Classement : » ton rang, tes points, et l\'écart avec la personne devant toi (motive sans écraser). ' +
+      "Si mon_temps_chez_les_clients est renseigné, ajoute « Temps chez tes clients : » — le temps total passé sur place et la durée moyenne par passage, valorisés comme une preuve de ton travail de terrain ; s'il y a des paires incomplètes, rappelle simplement de prendre la photo de fin en partant (sans en faire une faute). " +
       'Pas de markdown lourd, tirets simples, 1-2 emojis max.' +
       (weeklyEdition
         ? " ÉDITION HEBDO : ta semaine vient de se terminer — commence par « 📅 Ma semaine en bref : » (2 lignes) : ton bilan de la semaine écoulée (ma_semaine_vs_precedente_a_date couvre la semaine complète) et UN objectif concret pour la semaine qui commence."
@@ -797,9 +810,16 @@ export async function GET(request: Request) {
       };
     };
 
+    // Each person's own time on site, taken from the same per-person block the
+    // manager brief uses — no extra query, and the two can never disagree.
+    const myCheckin = (name: string) =>
+      (checkins && 'par_personne' in checkins
+        ? (checkins.par_personne as { nom: string }[] | undefined)?.find((p) => p.nom === name)
+        : null) ?? null;
+
     const personTargets = [
-      ...activeReps.map((r) => ({ id: r.id, facts: buildRepFacts(r) })),
-      ...activeTechs.map((t) => ({ id: t.id, facts: buildTechFacts(t) })),
+      ...activeReps.map((r) => ({ id: r.id, facts: { ...buildRepFacts(r), mon_temps_chez_les_clients: myCheckin(r.name) } })),
+      ...activeTechs.map((t) => ({ id: t.id, facts: { ...buildTechFacts(t), mon_temps_chez_les_clients: myCheckin(t.name) } })),
     ];
 
     // Generate in small parallel batches on the budget model; one failure

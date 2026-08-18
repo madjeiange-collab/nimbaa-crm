@@ -141,31 +141,7 @@ export async function buildJournalRows(
     const ph = byVisit.get(v.id) ?? [];
     const arrival = ph.find((p) => p.kind === 'arrival');
     const completion = ph.find((p) => p.kind === 'completion');
-    const flags: JournalFlag[] = [];
-
-    let pairMeters: number | null = null;
-    if (arrival?.lat != null && arrival.lng != null && completion?.lat != null && completion.lng != null) {
-      pairMeters = Math.round(haversineMeters(arrival.lat, arrival.lng, completion.lat, completion.lng));
-      if (pairMeters > PAIR_DISTANCE_M) flags.push('pairFar');
-    }
-
-    const durationMin = v.started_at ? Math.round(minutesBetween(v.started_at, v.visited_at)) : null;
-    const isInstall = v.visit_type === 'installation';
-    const engaged =
-      !isInstall &&
-      !!(v.disposition && DISPOSITION_BY_KEY[v.disposition as KnockDisposition]?.createsContact);
-    if (engaged && durationMin != null && durationMin < MIN_ENGAGED_VISIT_MIN) flags.push('tooShort');
-
-    let contactMeters: number | null = null;
-    const fix = arrival ?? completion;
-    if (v.contacts?.lat != null && v.contacts.lng != null && fix?.lat != null && fix.lng != null) {
-      contactMeters = Math.round(haversineMeters(fix.lat, fix.lng, v.contacts.lat, v.contacts.lng));
-      if (contactMeters > CONTACT_DISTANCE_M) flags.push('farFromContact');
-    }
-
-    if (ph.length > 0 && minutesBetween(v.visited_at, v.created_at) > CLOCK_DRIFT_MIN) {
-      flags.push('clockDrift');
-    }
+    const { durationMin, pairMeters, contactMeters, flags, isInstall } = visitFlags(v, ph);
 
     return {
       id: v.id,
@@ -186,4 +162,53 @@ export async function buildJournalRows(
       flags,
     };
   });
+}
+
+/** A photo row as the checks need it — every caller selects at least this. */
+export interface CheckinPhoto {
+  kind: string | null;
+  lat: number | null;
+  lng: number | null;
+}
+
+/**
+ * The single place the checks are defined: duration, the two distances and
+ * which flags a passage raises. The journal, the Check-In page and the AI all
+ * read from here, so a threshold can never mean two things at once.
+ */
+export function visitFlags(
+  v: Pick<JournalVisit, 'visit_type' | 'disposition' | 'visited_at' | 'started_at' | 'created_at' | 'contacts'>,
+  photos: CheckinPhoto[],
+) {
+  const arrival = photos.find((p) => p.kind === 'arrival');
+  const completion = photos.find((p) => p.kind === 'completion');
+  const flags: JournalFlag[] = [];
+
+  let pairMeters: number | null = null;
+  if (arrival?.lat != null && arrival.lng != null && completion?.lat != null && completion.lng != null) {
+    pairMeters = Math.round(haversineMeters(arrival.lat, arrival.lng, completion.lat, completion.lng));
+    if (pairMeters > PAIR_DISTANCE_M) flags.push('pairFar');
+  }
+
+  const durationMin = v.started_at ? Math.round(minutesBetween(v.started_at, v.visited_at)) : null;
+  const isInstall = v.visit_type === 'installation';
+  const engaged =
+    !isInstall &&
+    !!(v.disposition && DISPOSITION_BY_KEY[v.disposition as KnockDisposition]?.createsContact);
+  if (engaged && durationMin != null && durationMin < MIN_ENGAGED_VISIT_MIN) flags.push('tooShort');
+
+  let contactMeters: number | null = null;
+  const fix = arrival ?? completion;
+  if (v.contacts?.lat != null && v.contacts.lng != null && fix?.lat != null && fix.lng != null) {
+    contactMeters = Math.round(haversineMeters(fix.lat, fix.lng, v.contacts.lat, v.contacts.lng));
+    if (contactMeters > CONTACT_DISTANCE_M) flags.push('farFromContact');
+  }
+
+  // Only for passages carrying forensics — legacy rows are backdated and would
+  // otherwise all look like drift.
+  if (photos.length > 0 && minutesBetween(v.visited_at, v.created_at) > CLOCK_DRIFT_MIN) {
+    flags.push('clockDrift');
+  }
+
+  return { durationMin, pairMeters, contactMeters, flags, isInstall, engaged };
 }
