@@ -95,6 +95,17 @@ const STATUS_BADGE: Record<DealStatus, string> = {
 };
 
 /**
+ * The same colour as the badge, run down the edge of the card. A fiche can
+ * carry several affaires at once; the stripe says which is live, which is won
+ * and which is dead without reading a word.
+ */
+const STATUS_EDGE: Record<DealStatus, string> = {
+  open: 'border-l-brand-amber',
+  won: 'border-l-brand-green',
+  lost: 'border-l-destructive',
+};
+
+/**
  * Inline "new interlocutor" mini-form: creates the person on the business and
  * hands the new id back so the caller can link it to a deal right away.
  */
@@ -293,7 +304,9 @@ function DealRow({
   }
 
   return (
-    <div className="space-y-2.5 rounded-lg border p-3">
+    <div
+      className={`space-y-2.5 rounded-lg border border-l-4 bg-card p-3 shadow-sm ${STATUS_EDGE[deal.status]}`}
+    >
       <div className="flex items-center gap-2">
         <Input
           value={title}
@@ -574,6 +587,11 @@ export function DealsSection({
         <p className="flex items-center gap-1.5 text-sm font-semibold">
           <Briefcase className="h-4 w-4 text-primary" />
           {t('title')}
+          {deals.length > 0 && (
+            <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+              {deals.length}
+            </span>
+          )}
         </p>
 
         {deals.length === 0 ? (
@@ -596,9 +614,14 @@ export function DealsSection({
           </div>
         )}
 
-        {/* New affaire — name it here, pick the product on the card once created */}
-        <div className="space-y-2 rounded-lg border border-dashed p-3">
-          <p className="text-xs font-medium text-muted-foreground">{t('newAffaire')}</p>
+        {/* New affaire — deliberately unlike the cards above: dashed and
+            recessed, the same "nothing here yet" language as the photo slots,
+            so a form is never mistaken for a record. */}
+        <div className="space-y-2 rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/40 p-3">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <Plus className="h-3.5 w-3.5" />
+            {t('newAffaire')}
+          </p>
           <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={t('productPlaceholder')} />
           <div className="space-y-1">
             <Label className="text-xs">{t('businessType')}</Label>
