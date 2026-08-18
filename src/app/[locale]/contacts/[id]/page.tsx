@@ -276,8 +276,12 @@ export default async function ContactDetailPage({
       equipmentCount: (i.equipment ?? []).length,
     })),
   }));
-  const canInstall =
-    user.role === 'technician' || user.role === 'manager' || user.role === 'admin';
+  // Anyone in the field may open an intervention. A commercial who finds a
+  // fault standing in the shop should not have to route it through a
+  // technician to get it on the books, any more than a technician should need
+  // a commercial to raise one. The database never restricted this either —
+  // installations RLS is "any authenticated user".
+  const canInstall = true;
 
   return (
     <>

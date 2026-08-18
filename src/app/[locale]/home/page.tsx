@@ -312,14 +312,15 @@ export default async function HomePage({
               />
             )}
 
-            {(isTechnician || isManager) && (
-              <HomeCard
-                href="/installs"
-                icon={Wrench}
-                title={t('logInstall')}
-                hint={t('logInstallHint')}
-              />
-            )}
+            {/* And commercials open interventions too — the mirror of the card
+                above. Whoever is standing in front of the fault records it,
+                instead of handing it to the other trade first. */}
+            <HomeCard
+              href="/installs"
+              icon={Wrench}
+              title={t('logInstall')}
+              hint={t('logInstallHint')}
+            />
 
             {user.can_do_d2d && (
               <HomeCard href="/turf" icon={MapIcon} title={t('myTurf')} hint={t('myTurfHint')} />
