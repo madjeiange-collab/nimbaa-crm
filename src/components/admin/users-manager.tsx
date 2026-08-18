@@ -187,7 +187,20 @@ export function UsersManager({
               </div>
             )}
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowCreate(false)} disabled={isPending}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Cancel discards: reopening the form must start clean.
+                  setShowCreate(false);
+                  setCUsername('');
+                  setCFullName('');
+                  setCPassword('');
+                  setCRole('rep');
+                  setCB2b(false);
+                  setCD2d(true);
+                }}
+                disabled={isPending}
+              >
                 {t('cancel')}
               </Button>
               <Button onClick={submitCreate} disabled={isPending}>

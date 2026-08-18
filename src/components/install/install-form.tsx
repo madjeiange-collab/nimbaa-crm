@@ -14,8 +14,10 @@ import {
   X,
   AlertTriangle,
 } from 'lucide-react';
+import { useRouter } from '@/i18n/navigation';
 import { useDictation } from '@/hooks/use-dictation';
 import { useGeolocation } from '@/hooks/use-geolocation';
+import { markUnsaved } from '@/lib/ui/unsaved';
 import { reverseGeocode } from '@/lib/geo/reverse';
 import { processCheckInPhoto } from '@/lib/image/capture';
 import { dHash, type PhotoMeta } from '@/lib/image/phash';
@@ -72,6 +74,7 @@ export function InstallForm({
   const t = useTranslations('installation');
   const tVisit = useTranslations('visit'); // shared dictation labels
   const geo = useGeolocation(true);
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [checklist, setChecklist] = useState<ChecklistItem[]>(
@@ -115,6 +118,29 @@ export function InstallForm({
   }, [hasFix, geo.lat, geo.lng]);
 
   const doneCount = checklist.filter((c) => c.done).length;
+
+  // Everything here lives in the browser until saved — the photos above all.
+  const filledEquipment = (rows: EquipmentItem[]) =>
+    rows.filter((e) => e.label?.trim() || e.serial?.trim()).length;
+  const started =
+    photos.length > 0 ||
+    notes.trim() !== '' ||
+    doneCount !== (initialChecklist ?? []).filter((c) => c.done).length ||
+    filledEquipment(equipment) !== filledEquipment(initialEquipment ?? []);
+
+  useEffect(() => {
+    markUnsaved(started ? t('cancelConfirm') : null);
+    return () => markUnsaved(null);
+  }, [started, t]);
+
+  /** Leave the job screen, warning when work would be lost. */
+  function onCancel() {
+    if (started && !window.confirm(t('cancelConfirm'))) return;
+    markUnsaved(null);
+    photos.forEach((p) => URL.revokeObjectURL(p.url));
+    if (window.history.length > 1) router.back();
+    else router.push('/home');
+  }
 
   // EVERY trip closes with an end-of-work photo on top of the arrival one:
   // it measures the time actually spent on site (and stamps completed_at
@@ -577,10 +603,19 @@ export function InstallForm({
 
       {/* Sticky save bar */}
       <div className="fixed inset-x-0 bottom-0 z-10 border-t bg-background/95 p-3 backdrop-blur">
-        <div className="mx-auto max-w-lg">
+        <div className="mx-auto flex max-w-lg gap-2">
+          <Button
+            variant="outline"
+            size="xl"
+            className="flex-1"
+            onClick={onCancel}
+            disabled={isPending}
+          >
+            {t('cancel')}
+          </Button>
           <Button
             size="xl"
-            className="w-full"
+            className="flex-[2]"
             onClick={onSave}
             disabled={!canSave || isPending}
           >

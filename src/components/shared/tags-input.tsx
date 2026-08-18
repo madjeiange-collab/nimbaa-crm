@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
@@ -19,6 +20,7 @@ export function TagsInput({
   placeholder: string;
   max?: number;
 }) {
+  const tCommon = useTranslations('common');
   const [draft, setDraft] = useState('');
 
   function addDraft() {
@@ -42,7 +44,7 @@ export function TagsInput({
               {t}
               <button
                 type="button"
-                aria-label={`× ${t}`}
+                aria-label={tCommon('removeTag', { tag: t })}
                 onClick={() => onCommit(tags.filter((x) => x !== t))}
                 className="hover:text-destructive"
               >

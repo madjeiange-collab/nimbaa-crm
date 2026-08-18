@@ -176,7 +176,14 @@ export function PeopleSection({
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setAdding(false)}
+                onClick={() => {
+                  setAdding(false);
+                  setName('');
+                  setRole(DEFAULT_ROLE);
+                  setPhone('');
+                  setEmail('');
+                  setError(false);
+                }}
                 disabled={isPending}
               >
                 {t('cancel')}

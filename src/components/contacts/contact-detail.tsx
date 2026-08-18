@@ -187,22 +187,38 @@ export function ContactDetail({
                   ))}
                 </select>
               </div>
-              <Button
-                className="w-full"
-                disabled={isPending}
-                onClick={() =>
-                  run(async () => {
-                    await updateContact(contact.id, {
-                      name: name.trim() || null,
-                      phone: phone.trim() || null,
-                      priority,
-                    });
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  disabled={isPending}
+                  onClick={() => {
+                    // Discard: put the fields back to what is stored.
+                    setName(contact.name ?? '');
+                    setPhone(contact.phone ?? '');
+                    setPriority(contact.priority);
                     setEditing(false);
-                  })
-                }
-              >
-                {t('save')}
-              </Button>
+                  }}
+                >
+                  {tCommon('cancel')}
+                </Button>
+                <Button
+                  className="flex-[2]"
+                  disabled={isPending}
+                  onClick={() =>
+                    run(async () => {
+                      await updateContact(contact.id, {
+                        name: name.trim() || null,
+                        phone: phone.trim() || null,
+                        priority,
+                      });
+                      setEditing(false);
+                    })
+                  }
+                >
+                  {t('save')}
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-1 text-sm">

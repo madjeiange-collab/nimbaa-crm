@@ -29,6 +29,7 @@ import { proposeDnkEntry } from '@/lib/dnk/actions';
 import { enqueueVisit } from '@/lib/offline/queue';
 import { processCheckInPhoto } from '@/lib/image/capture';
 import { dHash, type PhotoMeta } from '@/lib/image/phash';
+import { markUnsaved } from '@/lib/ui/unsaved';
 import { uploadVisitPhoto } from '@/lib/visits/upload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -186,19 +187,25 @@ export function LogVisitForm({
     !processing &&
     (!needsAppointment || !!appointmentDate);
 
-  /**
-   * "Annuler" abandons the visit and leaves the screen. On an untouched form
-   * that used to clear empty fields and look broken; with work in progress it
-   * asks first, because the photos only live in this component.
-   */
+  // Work in progress lives only in this component (the photos are blobs), so
+  // every way off the screen — Annuler, the header's back/home/logo, a reload
+  // — has to warn first.
+  const started =
+    photos.length > 0 ||
+    disposition != null ||
+    notes.trim() !== '' ||
+    contactName.trim() !== '' ||
+    appointmentDate !== '';
+
+  useEffect(() => {
+    markUnsaved(started ? t('cancelConfirm') : null);
+    return () => markUnsaved(null);
+  }, [started, t]);
+
+  /** "Annuler" abandons the visit and leaves the screen. */
   function onCancel() {
-    const started =
-      photos.length > 0 ||
-      disposition != null ||
-      notes.trim() !== '' ||
-      contactName.trim() !== '' ||
-      appointmentDate !== '';
     if (started && !window.confirm(t('cancelConfirm'))) return;
+    markUnsaved(null);
     reset();
     setResult(null);
     if (window.history.length > 1) router.back();

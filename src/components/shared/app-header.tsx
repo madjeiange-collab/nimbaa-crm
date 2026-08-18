@@ -5,7 +5,7 @@ import { avatarPublicUrl } from '@/lib/avatar';
 import { LogoutButton } from './logout-button';
 import { BrandLogo } from './brand-logo';
 import { Avatar } from './avatar';
-import { BackButton, HomeButton } from './back-button';
+import { BackButton, HomeButton, GuardedHomeLink } from './back-button';
 import { OfflineIndicator } from './offline-indicator';
 
 /** Sticky top bar for authenticated screens. */
@@ -18,9 +18,9 @@ export async function AppHeader({ title, subtitle }: { title: string; subtitle?:
         <div className="flex min-w-0 items-center gap-1">
           <BackButton />
           <HomeButton />
-          <Link href="/home" aria-label="Nimbaa — Accueil" className="shrink-0 pl-1">
+          <GuardedHomeLink aria-label="Nimbaa — Accueil" className="shrink-0 pl-1">
             <BrandLogo variant="inline" />
-          </Link>
+          </GuardedHomeLink>
           <div className="min-w-0 border-l pl-3">
             <p className="truncate text-sm font-semibold leading-tight">{title}</p>
             {subtitle && (

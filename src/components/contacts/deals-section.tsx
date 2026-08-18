@@ -160,7 +160,19 @@ function QuickAddPerson({
         >
           {tP('save')}
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={isPending}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setOpen(false);
+            setName('');
+            setRole(DEFAULT_ROLE);
+            setPhone('');
+            setError(false);
+          }}
+          disabled={isPending}
+        >
           {tP('cancel')}
         </Button>
       </div>

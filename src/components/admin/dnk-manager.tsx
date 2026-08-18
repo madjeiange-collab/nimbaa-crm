@@ -86,7 +86,17 @@ export function DnkManager({ entries }: { entries: DnkRow[] }) {
               placeholder={t('reasonPlaceholder')}
             />
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setPending(null)} disabled={isPending}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Discard the draft too — otherwise the next point picked on
+                  // the map inherits this address and reason.
+                  setPending(null);
+                  setAddress('');
+                  setReason('');
+                }}
+                disabled={isPending}
+              >
                 <X className="mr-1 h-4 w-4" />
                 {t('cancel')}
               </Button>
