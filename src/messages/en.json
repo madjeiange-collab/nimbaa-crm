@@ -962,5 +962,18 @@
     "noData": "No data.",
     "rep": "Rep",
     "unknownRep": "—"
+  },
+  "address": {
+    "placeholder": "Search a place, or use the buttons below…",
+    "useHere": "Use my position",
+    "useHereNamed": "My position: {place}",
+    "noFix": "GPS position unavailable",
+    "pickOnMap": "Pick on the map",
+    "closeMap": "Close the map",
+    "mapHint": "Tap the map or drag the pin to place the address.",
+    "naming": "Looking up the address…",
+    "atMyPosition": "My position",
+    "pinned": "Pin dropped on the map",
+    "located": "Position saved · {lat}, {lng}"
   }
 }

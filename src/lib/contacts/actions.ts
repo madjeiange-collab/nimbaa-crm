@@ -93,6 +93,9 @@ export async function createContact(input: {
   phone?: string | null;
   address?: string | null;
   priority?: PriorityLevel;
+  /** From the address picker: GPS, a search hit, or a dropped pin. */
+  lat?: number | null;
+  lng?: number | null;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const name = input.name.trim();
   if (!name) return { ok: false, error: 'name_required' };
@@ -116,6 +119,8 @@ export async function createContact(input: {
       name,
       phone: input.phone?.trim() || null,
       address: input.address?.trim() || null,
+      lat: input.lat ?? null,
+      lng: input.lng ?? null,
       lifecycle: 'lead',
       source: 'manual',
       priority: input.priority ?? 'medium',

@@ -962,5 +962,18 @@
     "noData": "Pas de données.",
     "rep": "Commercial",
     "unknownRep": "—"
+  },
+  "address": {
+    "placeholder": "Cherchez un lieu, ou utilisez les boutons ci-dessous…",
+    "useHere": "Utiliser ma position",
+    "useHereNamed": "Ma position : {place}",
+    "noFix": "Position GPS indisponible",
+    "pickOnMap": "Choisir sur la carte",
+    "closeMap": "Fermer la carte",
+    "mapHint": "Touchez la carte ou faites glisser le repère pour placer l’adresse.",
+    "naming": "Recherche de l’adresse…",
+    "atMyPosition": "Ma position",
+    "pinned": "Point placé sur la carte",
+    "located": "Position enregistrée · {lat}, {lng}"
   }
 }

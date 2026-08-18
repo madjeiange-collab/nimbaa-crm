@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { createContact } from '@/lib/contacts/actions';
 import { PhoneInput } from '@/components/shared/phone-input';
+import { AddressPicker } from '@/components/shared/address-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +26,8 @@ export function NewContactForm() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const canSave = name.trim() !== '' && !isPending;
@@ -33,7 +36,7 @@ export function NewContactForm() {
     if (!canSave) return;
     setError(null);
     startTransition(async () => {
-      const res = await createContact({ name, phone, address });
+      const res = await createContact({ name, phone, address, lat, lng });
       if (!res.ok) {
         setError(t('newError'));
         return;
@@ -64,11 +67,15 @@ export function NewContactForm() {
 
         <div className="space-y-2">
           <Label htmlFor="nc-address">{t('newAddress')}</Label>
-          <Input
-            id="nc-address"
+          <AddressPicker
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder={t('newAddressPlaceholder')}
+            lat={lat}
+            lng={lng}
+            onChange={(a, la, ln) => {
+              setAddress(a);
+              setLat(la);
+              setLng(ln);
+            }}
           />
         </div>
 
