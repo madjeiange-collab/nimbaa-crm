@@ -50,16 +50,16 @@ export async function loadJournalRows(
     sinceIso,
     repId,
     limit = 150,
-  }: { sinceIso: string; repId?: string | null; limit?: number },
+  }: { sinceIso: string | null; repId?: string | null; limit?: number },
 ): Promise<JournalRow[]> {
   let q = supabase
     .from('visits')
     .select(
       'id, rep_id, contact_id, visit_type, disposition, visited_at, started_at, created_at, lat, lng, contacts(name, lat, lng)',
     )
-    .gte('visited_at', sinceIso)
     .order('visited_at', { ascending: false })
     .limit(limit);
+  if (sinceIso) q = q.gte('visited_at', sinceIso); // null = every passage on record
   if (repId) q = q.eq('rep_id', repId);
 
   const [{ data: visitRows, error }, { data: userRows }] = await Promise.all([

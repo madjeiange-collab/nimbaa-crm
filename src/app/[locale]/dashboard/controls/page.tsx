@@ -8,6 +8,11 @@ import { AppHeader } from '@/components/shared/app-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatTile } from '@/components/charts/stat-tile';
 import { CheckInJournal } from '@/components/dashboard/checkin-journal';
+import { PeriodFilter } from '@/components/dashboard/period-filter';
+import { asPeriod, periodSince } from '@/lib/checkin/period';
+
+/** Rows listed in the journal; the aggregates above it cover the full window. */
+const JOURNAL_CAP = 150;
 import {
   loadJournalRows,
   PAIR_DISTANCE_M,
@@ -17,7 +22,6 @@ import {
   CLOCK_DRIFT_MIN,
 } from '@/lib/checkin/journal';
 
-const WINDOW_DAYS = 14;
 
 interface PhotoRow {
   visit_id: string | null;
@@ -47,8 +51,10 @@ const minutesBetween = (a: string, b: string) =>
 
 export default async function ControlsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ p?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -56,7 +62,29 @@ export default async function ControlsPage({
   const t = await getTranslations('dashboard');
 
   const supabase = await createClient();
-  const since = new Date(Date.now() - WINDOW_DAYS * 864e5).toISOString();
+  const period = asPeriod((await searchParams).p);
+  const since = periodSince(period);
+
+  // "Tout" drops the lower bound entirely, so each query is built then
+  // conditionally narrowed rather than always calling .gte().
+  const visitsQ = supabase
+    .from('visits')
+    .select(
+      'id, rep_id, contact_id, visit_type, disposition, visited_at, started_at, created_at, lat, lng, contacts(name, lat, lng)',
+    )
+    .order('visited_at', { ascending: false })
+    .limit(3000);
+  // Only photos carrying forensics (0024+) — legacy rows have no captured_at.
+  const photosQ = supabase
+    .from('visit_photos')
+    .select('visit_id, kind, lat, lng, captured_at, phash')
+    .not('captured_at', 'is', null)
+    .limit(6000);
+  const installsQ = supabase
+    .from('installations')
+    .select('id, installer_id, started_at, completed_at, title, contact_id, contacts(name)')
+    .not('completed_at', 'is', null)
+    .limit(1000);
 
   const [
     { data: visitRows, error: vErr },
@@ -65,28 +93,12 @@ export default async function ControlsPage({
     { data: installRows },
     journalRows,
   ] = await Promise.all([
-      supabase
-        .from('visits')
-        .select(
-          'id, rep_id, contact_id, visit_type, disposition, visited_at, started_at, created_at, lat, lng, contacts(name, lat, lng)',
-        )
-        .gte('visited_at', since)
-        .order('visited_at', { ascending: false })
-        .limit(3000),
-      // Only photos carrying forensics (0024+) — legacy rows have no captured_at.
-      supabase
-        .from('visit_photos')
-        .select('visit_id, kind, lat, lng, captured_at, phash')
-        .gte('captured_at', since)
-        .limit(6000),
-      supabase.from('users').select('id, full_name, username'),
-      supabase
-        .from('installations')
-        .select('id, installer_id, started_at, completed_at, title, contact_id, contacts(name)')
-        .gte('completed_at', since)
-        .limit(1000),
-      loadJournalRows(supabase, { sinceIso: since, limit: 150 }),
-    ]);
+    since ? visitsQ.gte('visited_at', since) : visitsQ,
+    since ? photosQ.gte('captured_at', since) : photosQ,
+    supabase.from('users').select('id, full_name, username'),
+    since ? installsQ.gte('completed_at', since) : installsQ,
+    loadJournalRows(supabase, { sinceIso: since, limit: JOURNAL_CAP }),
+  ]);
 
   const nameOf = new Map(
     ((userRows ?? []) as { id: string; full_name: string | null; username: string | null }[]).map(
@@ -316,8 +328,9 @@ export default async function ControlsPage({
     <>
       <AppHeader title={t('controlsTitle')} />
       <main className="mx-auto max-w-4xl space-y-4 p-4">
+        <PeriodFilter active={period} />
         <p className="text-sm text-muted-foreground">
-          {t('controlsHint', { days: WINDOW_DAYS })}
+          {t('controlsHint', { period: t(`period_${period}` as never).toLowerCase() })}
         </p>
         {vErr && (
           <Card>
@@ -388,7 +401,12 @@ export default async function ControlsPage({
         </Card>
 
         {/* Every passage, day by day */}
-        <CheckInJournal rows={journalRows} people={journalPeople} teamRatios={teamRatios} />
+        <CheckInJournal
+          rows={journalRows}
+          people={journalPeople}
+          teamRatios={teamRatios}
+          cap={JOURNAL_CAP}
+        />
 
         {/* Flag summary */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

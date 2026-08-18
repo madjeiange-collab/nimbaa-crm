@@ -17,6 +17,7 @@ import { directionsUrl, pointInAnyPolygon } from '@/lib/geo';
 import { requireUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { loadJournalRows } from '@/lib/checkin/journal';
+import { asPeriod, periodSince } from '@/lib/checkin/period';
 import { CheckInJournal } from '@/components/dashboard/checkin-journal';
 import { AppHeader } from '@/components/shared/app-header';
 import { StatTile } from '@/components/charts/stat-tile';
@@ -40,7 +41,7 @@ export default async function StatsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ terr?: string; type?: string; tag?: string; rep?: string }>;
+  searchParams: Promise<{ terr?: string; type?: string; tag?: string; rep?: string; p?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -52,8 +53,9 @@ export default async function StatsPage({
   // Technicians get an installation-focused statistics view.
   if (user.role === 'technician') {
     const db = await createClient();
+    const techPeriod = asPeriod((await searchParams).p);
     const myRows = await loadJournalRows(db, {
-      sinceIso: new Date(Date.now() - 14 * 864e5).toISOString(),
+      sinceIso: periodSince(techPeriod),
       repId: user.id,
     });
     return (
@@ -61,7 +63,12 @@ export default async function StatsPage({
         <AppHeader title={tHome('techStats')} />
         <TechnicianStats userId={user.id} />
         <div className="mx-auto max-w-3xl px-4 pb-4">
-          <CheckInJournal rows={myRows} showPerson={false} title={tDash('myJournalTitle')} />
+          <CheckInJournal
+            rows={myRows}
+            showPerson={false}
+            title={tDash('myJournalTitle')}
+            period={techPeriod}
+          />
         </div>
       </>
     );
@@ -144,8 +151,9 @@ export default async function StatsPage({
   const isManagerViewer = user.role === 'manager' || user.role === 'admin';
   const inspectingSomeone = !!target && target.id !== user.id;
   const showJournal = !isManagerViewer || inspectingSomeone;
+  const journalPeriod = asPeriod(spEarly.p);
   const journalRows = showJournal
-    ? await loadJournalRows(supabase, { sinceIso: d14.toISOString(), repId: targetId })
+    ? await loadJournalRows(supabase, { sinceIso: periodSince(journalPeriod), repId: targetId })
     : [];
 
   // Personal goal wins over the global app setting, then the default.
@@ -563,6 +571,7 @@ export default async function StatsPage({
           <CheckInJournal
             rows={journalRows}
             showPerson={false}
+            period={journalPeriod}
             title={
               inspectingSomeone
                 ? tDash('jPersonTitle', { name: target?.full_name ?? target?.username ?? '—' })

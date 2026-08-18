@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl';
 import { Download, LogIn, LogOut } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Card, CardContent } from '@/components/ui/card';
+import { PeriodFilter } from '@/components/dashboard/period-filter';
+import type { Period } from '@/lib/checkin/period';
 import type { JournalRow } from '@/lib/checkin/journal';
 
 const FLAG_STYLE: Record<string, string> = {
@@ -60,11 +62,17 @@ export function CheckInJournal({
   showPerson = true,
   teamRatios = null,
   title,
+  period,
+  cap,
 }: {
   rows: JournalRow[];
   people?: { id: string; name: string }[];
+  /** Row ceiling used when loading, so a truncated list can say so. */
+  cap?: number;
   /** Overrides the card heading — the personal view says whose passages these are. */
   title?: string;
+  /** Render the window picker inside the card (pages without one of their own). */
+  period?: Period;
   /** Team view shows who did what; the personal view already knows. */
   showPerson?: boolean;
   /** Client-time averages per kind of work — a day is compared with its own. */
@@ -74,20 +82,21 @@ export function CheckInJournal({
   const tDisp = useTranslations('dispositions');
 
   const [person, setPerson] = useState('');
-  const [days, setDays] = useState('14');
   const [kind, setKind] = useState('');
   const [onlyFlagged, setOnlyFlagged] = useState(false);
 
-  const filtered = useMemo(() => {
-    const cutoff = Date.now() - Number(days) * 864e5;
-    return rows.filter(
-      (r) =>
-        (!person || r.personId === person) &&
-        (!kind || r.kind === kind) &&
-        (!onlyFlagged || r.flags.length > 0) &&
-        new Date(r.outAt).getTime() >= cutoff,
-    );
-  }, [rows, person, days, kind, onlyFlagged]);
+  // The window itself is chosen above the page (?p=), which re-queries — these
+  // filters only narrow what came back.
+  const filtered = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          (!person || r.personId === person) &&
+          (!kind || r.kind === kind) &&
+          (!onlyFlagged || r.flags.length > 0),
+      ),
+    [rows, person, kind, onlyFlagged],
+  );
 
   const groups = useMemo<DayGroup[]>(() => {
     const map = new Map<string, JournalRow[]>();
@@ -202,6 +211,8 @@ export function CheckInJournal({
           </button>
         </div>
 
+        {period && <PeriodFilter active={period} />}
+
         <div className="flex flex-wrap gap-2">
           {showPerson && people.length > 0 && (
             <select value={person} onChange={(e) => setPerson(e.target.value)} className={selectCls}>
@@ -213,10 +224,6 @@ export function CheckInJournal({
               ))}
             </select>
           )}
-          <select value={days} onChange={(e) => setDays(e.target.value)} className={selectCls}>
-            <option value="7">{t('jDays', { n: 7 })}</option>
-            <option value="14">{t('jDays', { n: 14 })}</option>
-          </select>
           <select value={kind} onChange={(e) => setKind(e.target.value)} className={selectCls}>
             <option value="">{t('jAllKinds')}</option>
             <option value="visit">{t('jVisit')}</option>
@@ -231,6 +238,11 @@ export function CheckInJournal({
             {t('jOnlyFlagged')}
           </label>
         </div>
+
+        {/* Never let a truncated list read as a complete one. */}
+        {cap != null && rows.length >= cap && (
+          <p className="text-xs text-muted-foreground">{t('jCapped', { n: cap })}</p>
+        )}
 
         {groups.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('jEmpty')}</p>
