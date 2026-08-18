@@ -33,9 +33,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
+import { PhotoSlots } from '@/components/shared/photo-slots';
 
 const DNK_RADIUS_M = 20;
-const MAX_PHOTOS = 5;
+const MAX_EXTRA_PHOTOS = 3; // on top of the arrival + end pair
 
 interface Photo {
   blob: Blob;
@@ -241,16 +242,21 @@ export function LogVisitForm({
           capturedAt: capturedAt.toISOString(),
           phash,
         };
-        // At the cap, evict the newest 'extra' rather than dropping an
-        // arrival/completion photo the save depends on.
-        let base = prev;
-        if (prev.length >= MAX_PHOTOS) {
-          const idx = prev.map((p) => p.meta.kind).lastIndexOf('extra');
-          if (idx < 0) return prev;
-          URL.revokeObjectURL(prev[idx].url);
-          base = prev.filter((_, i) => i !== idx);
+        const shot = { blob, url: URL.createObjectURL(blob), meta };
+        // Arrival / end are single slots: a re-take replaces what's there.
+        if (kind !== 'extra') {
+          const existing = prev.findIndex((p) => p.meta.kind === kind);
+          if (existing >= 0) {
+            URL.revokeObjectURL(prev[existing].url);
+            return prev.map((p, i) => (i === existing ? shot : p));
+          }
+          return [...prev, shot];
         }
-        return [...base, { blob, url: URL.createObjectURL(blob), meta }];
+        if (prev.filter((p) => p.meta.kind === 'extra').length >= MAX_EXTRA_PHOTOS) {
+          URL.revokeObjectURL(shot.url);
+          return prev;
+        }
+        return [...prev, shot];
       });
     } catch {
       setResult({ kind: 'error', text: t('photoError') });
@@ -513,80 +519,34 @@ export function LogVisitForm({
             }`}
           >
             {hasCompletion
-              ? t('photoCount', { n: photos.length })
+              ? t('photoPairDone')
               : hasArrival
                 ? t('photoEndMissing')
                 : t('photoPairRequired')}
           </span>
         </div>
 
-        {photos.length === 0 ? (
-          // Primary one-tap action: camera + GPS together
-          <button
-            type="button"
-            onClick={() => startCheckIn()}
-            disabled={processing || dnkBlocked}
-            className="flex min-h-[120px] w-full flex-col items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground shadow-sm disabled:opacity-50"
-          >
-            <Camera className="h-8 w-8" />
-            <span className="text-base font-semibold">
-              {processing ? t('processingPhoto') : t('capture')}
-            </span>
-          </button>
-        ) : (
-          <div className="grid grid-cols-3 gap-2">
-            {photos.map((p, i) => (
-              <div key={i} className="relative aspect-square overflow-hidden rounded-lg border">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.url} alt="" className="h-full w-full object-cover" />
-                {p.meta.kind !== 'extra' && (
-                  <span
-                    className={`absolute bottom-1 left-1 rounded px-1.5 py-0.5 text-[10px] font-semibold text-white ${
-                      p.meta.kind === 'arrival' ? 'bg-primary/90' : 'bg-brand-amber/95 text-black'
-                    }`}
-                  >
-                    {p.meta.kind === 'arrival' ? t('photoArrival') : t('photoCompletion')}
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => removePhoto(i)}
-                  aria-label={t('removePhoto')}
-                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
-            {photos.length < MAX_PHOTOS && (
-              <button
-                type="button"
-                onClick={() => startCheckIn()}
-                disabled={processing}
-                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-input text-muted-foreground disabled:opacity-50"
-              >
-                <Camera className="h-6 w-6" />
-                <span className="px-1 text-center text-xs font-medium">
-                  {processing ? t('processingPhoto') : t('addPhoto')}
-                </span>
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Every visit closes with an end photo — that pair is the time on site */}
-        {photos.length > 0 && needsCompletion && (
-          <button
-            type="button"
-            onClick={() => startCheckIn('completion')}
-            disabled={processing}
-            className="flex min-h-touch w-full items-center justify-center gap-2 rounded-lg bg-brand-amber font-semibold text-black shadow-sm disabled:opacity-50"
-          >
-            <Camera className="h-5 w-5" />
-            {processing ? t('processingPhoto') : t('captureCompletion')}
-          </button>
-        )}
-        {photos.length > 0 && hasCompletion && (
+        <PhotoSlots
+          photos={photos.map((p) => ({ url: p.url, kind: p.meta.kind }))}
+          onCapture={startCheckIn}
+          onRemove={removePhoto}
+          processing={processing}
+          disabled={dnkBlocked}
+          maxExtra={MAX_EXTRA_PHOTOS}
+          labels={{
+            arrival: t('photoArrival'),
+            completion: t('photoCompletion'),
+            arrivalEmpty: t('slotArrivalEmpty'),
+            completionEmpty: t('slotCompletionEmpty'),
+            completionLocked: t('slotCompletionLocked'),
+            extraTitle: t('slotExtraTitle'),
+            extraHint: t('slotExtraHint'),
+            add: t('addPhoto'),
+            remove: t('removePhoto'),
+            processing: t('processingPhoto'),
+          }}
+        />
+        {hasCompletion && (
           <p className="text-xs font-medium text-knock-green">✓ {t('completionDone')}</p>
         )}
 
