@@ -795,6 +795,7 @@
     "avgVisitDuration": "Avg engaged-visit duration",
     "avgInstallDuration": "Avg time on the job site",
     "timePerPerson": "Time spent at the customer, by person",
+    "timePeopleCount": "{n, plural, one {# person} other {# people}}",
     "timeNoData": "No durations recorded in this period. Durations are measured between the arrival photo and the end photo.",
     "timeCol_person": "Person",
     "timeCol_visits": "Visits",

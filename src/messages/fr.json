@@ -795,6 +795,7 @@
     "avgVisitDuration": "Durée moyenne visite engagée",
     "avgInstallDuration": "Durée moyenne sur chantier",
     "timePerPerson": "Temps passé chez le client, par personne",
+    "timePeopleCount": "{n, plural, one {# personne} other {# personnes}}",
     "timeNoData": "Aucune durée enregistrée sur la période. Les durées sont mesurées entre la photo d'arrivée et la photo de fin.",
     "timeCol_person": "Personne",
     "timeCol_visits": "Visites",

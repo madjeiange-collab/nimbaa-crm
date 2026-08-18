@@ -423,20 +423,42 @@ export default async function ControlsPage({
         {/* Time on site, person by person */}
         <Card>
           <CardContent className="space-y-2 pt-4">
-            <p className="text-sm font-semibold">{t('timePerPerson')}</p>
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-sm font-semibold">{t('timePerPerson')}</p>
+              {timeRows.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {t('timePeopleCount', { n: timeRows.length })}
+                </span>
+              )}
+            </div>
             {timeRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t('timeNoData')}</p>
             ) : (
-              <div className="overflow-x-auto">
+              /* Caps at roughly nine rows then scrolls inside itself, so a
+                 50-person team cannot push the journal off the screen. The
+                 header stays put while the body scrolls. */
+              <div className="max-h-[24rem] overflow-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                      <th className="py-1 pr-3 font-medium">{t('timeCol_person')}</th>
-                      <th className="py-1 pr-3 text-right font-medium">{t('timeCol_visits')}</th>
-                      <th className="py-1 pr-3 text-right font-medium">{t('timeCol_avgVisit')}</th>
-                      <th className="py-1 pr-3 text-right font-medium">{t('timeCol_installs')}</th>
-                      <th className="py-1 pr-3 text-right font-medium">{t('timeCol_avgInstall')}</th>
-                      <th className="py-1 text-right font-medium">{t('timeCol_total')}</th>
+                      <th className="sticky top-0 z-10 bg-card py-1 pr-3 font-medium">
+                        {t('timeCol_person')}
+                      </th>
+                      <th className="sticky top-0 z-10 bg-card py-1 pr-3 text-right font-medium">
+                        {t('timeCol_visits')}
+                      </th>
+                      <th className="sticky top-0 z-10 bg-card py-1 pr-3 text-right font-medium">
+                        {t('timeCol_avgVisit')}
+                      </th>
+                      <th className="sticky top-0 z-10 bg-card py-1 pr-3 text-right font-medium">
+                        {t('timeCol_installs')}
+                      </th>
+                      <th className="sticky top-0 z-10 bg-card py-1 pr-3 text-right font-medium">
+                        {t('timeCol_avgInstall')}
+                      </th>
+                      <th className="sticky top-0 z-10 bg-card py-1 text-right font-medium">
+                        {t('timeCol_total')}
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
