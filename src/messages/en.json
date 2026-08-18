@@ -410,7 +410,8 @@
     "wonPeriodLabel": "Won",
     "wonAll": "All",
     "wonWeek": "This week",
-    "wonMonth": "This month"
+    "wonMonth": "This month",
+    "deleteConfirm": "Delete this deal? Its jobs and their trips will be deleted with it."
   },
   "installation": {
     "title": "Installation",

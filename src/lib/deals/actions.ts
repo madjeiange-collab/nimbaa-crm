@@ -203,11 +203,39 @@ export async function updateDeal(
   return { ok: true };
 }
 
-/** Delete a deal (and its installations via cascade). */
+/**
+ * Delete a deal (and its installations via cascade).
+ *
+ * Guarded in the same terms as the RLS policy (0029) so a refusal comes back
+ * as a message rather than as a delete that silently removes nothing: an open
+ * affaire with no subscription is anyone's to clear up, anything else is a
+ * manager's call.
+ */
 export async function deleteDeal(dealId: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { data: deal } = await supabase.from('deals').select('contact_id').eq('id', dealId).maybeSingle();
+  const { data: deal } = await supabase
+    .from('deals')
+    .select('contact_id, status')
+    .eq('id', dealId)
+    .maybeSingle();
   if (!deal) return { ok: false, error: 'not_found' };
+
+  const { data: me } = await supabase.auth.getUser();
+  const { data: role } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', me.user?.id ?? '')
+    .maybeSingle();
+  const isManager = role?.role === 'manager' || role?.role === 'admin';
+  if (!isManager) {
+    const { count: subs } = await supabase
+      .from('subscriptions')
+      .select('*', { count: 'exact', head: true })
+      .eq('deal_id', dealId);
+    if (deal.status !== 'open' || (subs ?? 0) > 0) {
+      return { ok: false, error: 'forbidden' };
+    }
+  }
 
   const { error } = await supabase.from('deals').delete().eq('id', dealId);
   if (error) return { ok: false, error: 'save_failed' };

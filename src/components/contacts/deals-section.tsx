@@ -305,15 +305,24 @@ function DealRow({
         <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[deal.status]}`}>
           {t(`status_${deal.status}` as never)}
         </span>
-        <button
-          type="button"
-          aria-label={t('delete')}
-          disabled={isPending}
-          onClick={() => run(() => deleteDeal(deal.id))}
-          className="shrink-0 text-muted-foreground hover:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        {/* Mirrors the RLS policy (0029): an open affaire that has produced
+            nothing is anyone's to clear up; once it is won, lost, or carries a
+            subscription, deleting it takes the chantiers and their trips with
+            it, so it becomes a manager's call. */}
+        {(isManager || (deal.status === 'open' && !deal.subscription)) && (
+          <button
+            type="button"
+            aria-label={t('delete')}
+            disabled={isPending}
+            onClick={() => {
+              if (!window.confirm(t('deleteConfirm'))) return;
+              run(() => deleteDeal(deal.id));
+            }}
+            className="shrink-0 text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2">

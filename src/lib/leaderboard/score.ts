@@ -165,9 +165,11 @@ export async function computeBoards(
           i.completed_at >= sinceIso &&
           (!untilIso || i.completed_at < untilIso),
       ).length;
-      const revisits = mine.filter(
-        (i) => i.status === 'needs_revisit' || (i.status === 'done' && i.next_visit_date),
-      ).length;
+      // Only jobs still owed a return trip. Counting finished ones that had
+      // been scheduled for a return used to pay 20 + 5 for a job that needed a
+      // second visit, against 20 for one fixed on the first — a bonus for the
+      // worse outcome. A return trip is work in hand, not an achievement.
+      const revisits = mine.filter((i) => i.status === 'needs_revisit').length;
       const open = mine.filter((i) =>
         ['pending', 'scheduled', 'in_progress', 'needs_revisit'].includes(i.status),
       ).length;

@@ -410,7 +410,8 @@
     "wonPeriodLabel": "Gagné",
     "wonAll": "Tout",
     "wonWeek": "Cette semaine",
-    "wonMonth": "Ce mois"
+    "wonMonth": "Ce mois",
+    "deleteConfirm": "Supprimer cette affaire ? Les chantiers et leurs passages seront supprimés avec elle."
   },
   "installation": {
     "title": "Installation",
