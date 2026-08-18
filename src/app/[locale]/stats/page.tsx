@@ -1,5 +1,17 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
-import { ArrowUp, ArrowDown, Minus, CalendarClock, Clock, AlertTriangle, RotateCcw, Navigation, KanbanSquare, Images } from 'lucide-react';
+import {
+  ArrowUp,
+  ArrowDown,
+  Minus,
+  CalendarClock,
+  Clock,
+  BadgeDollarSign,
+  AlertTriangle,
+  RotateCcw,
+  Navigation,
+  KanbanSquare,
+  Images,
+} from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { directionsUrl, pointInAnyPolygon } from '@/lib/geo';
 import { requireUser } from '@/lib/auth/session';
@@ -338,14 +350,22 @@ export default async function StatsPage({
               <span className="text-sm font-medium">{tDash('photos')}</span>
             </Card>
           </Link>
-          {/* Check-In and -Out reports on the whole team, so managers only. */}
+          {/* Team-wide tools — managers and admins only. */}
           {(user.role === 'manager' || user.role === 'admin') && (
-            <Link href="/dashboard/controls" className="col-span-2 block">
-              <Card className="flex flex-col items-center gap-1.5 p-4 transition-colors hover:bg-accent">
-                <Clock className="h-5 w-5 text-primary" />
-                <span className="text-sm font-medium">{tDash('controls')}</span>
-              </Card>
-            </Link>
+            <>
+              <Link href="/dashboard/controls" className="block">
+                <Card className="flex flex-col items-center gap-1.5 p-4 transition-colors hover:bg-accent">
+                  <Clock className="h-5 w-5 text-primary" />
+                  <span className="text-sm font-medium">{tDash('controls')}</span>
+                </Card>
+              </Link>
+              <Link href="/dashboard/commissions" className="block">
+                <Card className="flex flex-col items-center gap-1.5 p-4 transition-colors hover:bg-accent">
+                  <BadgeDollarSign className="h-5 w-5 text-primary" />
+                  <span className="text-sm font-medium">{tDash('commissions')}</span>
+                </Card>
+              </Link>
+            </>
           )}
         </div>
 

@@ -130,7 +130,7 @@ export default async function DashboardPage({
             installations={installData.installations}
             technicians={installData.technicians}
             territories={installData.territories}
-            canSeeControls
+            canSeeManagerTools
           />
         }
       />

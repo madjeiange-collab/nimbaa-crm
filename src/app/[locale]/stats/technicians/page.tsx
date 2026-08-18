@@ -27,7 +27,7 @@ export default async function TechniciansStatsPage({
           installations={data.installations}
           technicians={data.technicians}
           territories={data.territories}
-          canSeeControls
+          canSeeManagerTools
         />
       </main>
     </>
