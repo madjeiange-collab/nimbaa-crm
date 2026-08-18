@@ -326,8 +326,8 @@
 <header class="masthead">
   <div class="kicker">Guide de l'équipe terrain · Abidjan</div>
   <h1>Manuel Nimbaa CRM</h1>
-  <p class="sub">Comment utiliser l'application au quotidien : visites porte-à-porte, clients et affaires, installations, statistiques, assistant IA et commissions — pour les commerciaux, techniciens, managers et administrateurs.</p>
-  <p class="meta">Application : <code>nimbaa-crm.vercel.app</code> · Version du 18 août 2026 · Interface disponible en Français et Anglais</p>
+  <p class="sub">Comment utiliser l'application au quotidien : visites porte-à-porte, clients et affaires, installations et interventions, suivi à faire, statistiques, assistant IA et commissions — pour les commerciaux, techniciens, managers et administrateurs.</p>
+  <p class="meta">Application : <code>nimbaa-crm.vercel.app</code> · Édition du 18 août 2026 · Interface disponible en Français et Anglais</p>
 
   <nav class="toc" aria-label="Sommaire">
     <a href="#demarrage"><span class="n">1</span>Démarrage &amp; connexion</a>
@@ -336,14 +336,15 @@
     <a href="#visite"><span class="n">4</span>Enregistrer une visite</a>
     <a href="#contacts"><span class="n">5</span>Clients, prospects &amp; conversion</a>
     <a href="#secteur"><span class="n">6</span>Mon secteur (carte)</a>
-    <a href="#installation"><span class="n">7</span>Installations (technicien)</a>
-    <a href="#classement"><span class="n">8</span>Classement &amp; badges</a>
-    <a href="#stats"><span class="n">9</span>Statistiques &amp; mes commissions</a>
-    <a href="#assistant"><span class="n">10</span>Assistant Nimbaa (IA)</a>
-    <a href="#manager"><span class="n">11</span>Espace manager &amp; contrôles</a>
-    <a href="#commissions"><span class="n">12</span>Commissions : règles &amp; paiement</a>
-    <a href="#admin"><span class="n">13</span>Administration</a>
-    <a href="#horsligne"><span class="n">14</span>Mode hors ligne</a>
+    <a href="#installation"><span class="n">7</span>Installations &amp; interventions</a>
+    <a href="#taches"><span class="n">8</span>Suivi à faire (tâches)</a>
+    <a href="#classement"><span class="n">9</span>Classement &amp; badges</a>
+    <a href="#stats"><span class="n">10</span>Statistiques &amp; mes commissions</a>
+    <a href="#assistant"><span class="n">11</span>Assistant Nimbaa (IA)</a>
+    <a href="#manager"><span class="n">12</span>Espace manager &amp; contrôles</a>
+    <a href="#commissions"><span class="n">13</span>Commissions : règles &amp; paiement</a>
+    <a href="#admin"><span class="n">14</span>Administration</a>
+    <a href="#horsligne"><span class="n">15</span>Mode hors ligne</a>
   </nav>
 </header>
 
@@ -378,7 +379,8 @@
       <tr><th>Tuile</th><th>À quoi ça sert</th></tr>
       <tr><td><strong>Mes clients &amp; prospects</strong></td><td>Liste et fiches de vos leads et clients</td></tr>
       <tr><td><strong>Enregistrer une visite</strong></td><td>Noter le résultat d'une porte frappée (photo + GPS)</td></tr>
-      <tr><td><strong>Enregistrer une installation</strong></td><td>Suivi des poses chez le client (technicien)</td></tr>
+      <tr><td><strong>Enregistrer une installation</strong></td><td>Chantiers en cours et <strong>nouvelles interventions</strong> — SAV, garantie, entretien. Visible par tous depuis août 2026.</td></tr>
+      <tr><td><strong>À faire</strong></td><td>Vos rendez-vous et retours de chantier en attente, avec le bouton <strong>Commencer</strong> (section 8)</td></tr>
       <tr><td><strong>Mon secteur</strong></td><td>Carte de vos portes frappées et de vos secteurs</td></tr>
       <tr><td><strong>Assistant Nimbaa</strong></td><td>Poser une question en langage naturel (IA)</td></tr>
       <tr><td><strong>Classement</strong></td><td>Points, badges et séries de la semaine</td></tr>
@@ -400,8 +402,8 @@
     <h2>3 · Rôles et accès</h2>
     <div class="tablewrap"><table>
       <tr><th>Rôle</th><th>Ce qu'il voit et fait</th></tr>
-      <tr><td><span class="chip com">Commercial</span></td><td>Visites, ses contacts et affaires, son secteur, classement, ses statistiques et <strong>ses propres commissions</strong>.</td></tr>
-      <tr><td><span class="chip tec">Technicien</span></td><td>Installations (planifier, terminer, photos), ses statistiques et <strong>ses propres commissions</strong> d'installation.</td></tr>
+      <tr><td><span class="chip com">Commercial</span></td><td>Visites, ses contacts et affaires, son secteur, classement, ses statistiques et <strong>ses propres commissions</strong>. Peut aussi <strong>ouvrir une intervention</strong> (SAV, garantie, entretien) sans passer par un technicien.</td></tr>
+      <tr><td><span class="chip tec">Technicien</span></td><td>Installations et interventions (ouvrir, terminer, photos), ses statistiques et <strong>ses propres commissions</strong> d'installation. Peut aussi <strong>enregistrer une visite</strong> chez un client sans passer par un commercial.</td></tr>
       <tr><td><span class="chip man">Manager</span></td><td>Tout ce qui précède + <strong>Espace manager</strong> : chiffres de toute l'équipe, pipeline, montants en FCFA, paiement des commissions, résiliation d'abonnements.</td></tr>
       <tr><td><span class="chip adm">Admin</span></td><td>Tout + <strong>Administration</strong> : produits, utilisateurs, territoires, imports, réglages du récap.</td></tr>
     </table></div>
@@ -422,7 +424,7 @@
       <li><strong>Photo d'arrivée.</strong> En arrivant, touchez la case verte <span class="btn-ref">ARRIVÉE</span>. La photo est horodatée et géolocalisée automatiquement ; l'adresse détectée s'affiche plus bas.</li>
       <li><strong>Résultat.</strong> Choisissez l'issue de la visite : <em>Pas de réponse</em>, <em>Absent</em>, <em>Refus</em>, <em>Intéressé</em>, <em>Rendez-vous</em> ou <em>Vendu</em>.</li>
       <li><strong>Contact (optionnel).</strong> <span class="btn-ref">Lier à un contact existant</span> rattache la visite à une fiche déjà créée. Sans lien, si le résultat est <em>Vendu</em>, <em>Rendez-vous</em> ou <em>Intéressé</em>, l'application crée automatiquement le contact et l'affaire.</li>
-      <li><strong>Notes.</strong> Tapez ou touchez <span class="btn-ref">🎤 Dicter</span> pour dicter vos notes à la voix.</li>
+      <li><strong>Notes.</strong> Tapez, ou touchez <span class="btn-ref">🎤 Dicter</span> et parlez : <strong>les mots s'écrivent pendant que vous parlez</strong> (voir juste après).</li>
       <li><strong>Photo de fin.</strong> Au moment de repartir, touchez la case orange <span class="btn-ref">FIN</span>. C'est elle qui referme la visite.</li>
       <li><span class="btn-ref">Enregistrer</span>.</li>
     </ol>
@@ -443,7 +445,7 @@
     </div>
     <div class="callout tip">
       <span class="lbl">Pas de réseau ? Continuez.</span>
-      <p>Sans connexion, la visite (les deux photos comprises) est <strong>mise en file d'attente sur le téléphone</strong> et envoyée automatiquement dès le retour du réseau. Voir la section 14.</p>
+      <p>Sans connexion, la visite (les deux photos comprises) est <strong>mise en file d'attente sur le téléphone</strong> et envoyée automatiquement dès le retour du réseau. Voir la section 15.</p>
     </div>
     <div class="callout warn">
       <span class="lbl">Portes à ne pas frapper</span>
@@ -453,6 +455,29 @@
   <figure class="phone">
     <img src="/manuel/03-visit-new.png" alt="Formulaire de visite : zones ARRIVÉE et FIN côte à côte, FIN verrouillée, zone Autres photos, boutons de résultat" />
     <figcaption>Trois zones photo : <strong>Arrivée</strong> (verte, à prendre en premier), <strong>Fin</strong> (verrouillée jusque-là) et <strong>Autres photos</strong> pour la documentation.</figcaption>
+  </figure>
+</section>
+
+<!-- ---- 4b. Dicter ses notes ---- -->
+<section class="screen sub" id="dictee">
+  <div class="txt">
+    <h3>Dicter ses notes</h3>
+    <p>Sur le pas d'une porte, taper une note au clavier coûte du temps et de l'attention. Le bouton <span class="btn-ref">🎤 Dicter</span> — présent sur les notes de visite, les notes de chantier et dans l'assistant — écrit à votre place.</p>
+    <ol>
+      <li>Touchez <span class="btn-ref">🎤 Dicter</span>. Le bouton devient <span class="btn-ref">Arrêter</span>, en rouge.</li>
+      <li><strong>Parlez normalement.</strong> Les mots s'inscrivent dans le champ <em>au fur et à mesure</em>, suivis de « … » : c'est le signe que la phrase n'est pas encore définitive.</li>
+      <li>Touchez <span class="btn-ref">Arrêter</span>. Le brouillon est alors remplacé par la <strong>transcription définitive</strong>, mieux orthographiée.</li>
+    </ol>
+    <p>Ce remplacement n'est pas un défaut, c'est le but : l'affichage en direct vous confirme que le téléphone vous entend, et la version finale est celle qui connaît le vocabulaire du métier — <em>FCFA</em>, <em>RDV</em>, <em>Cocody</em>, <em>Yopougon</em>, les noms de quartiers et de forfaits. Une dictée dite « trois lignes » ressort en « 3 lignes ».</p>
+    <p>Pendant la dictée, le champ ne se tape pas au clavier : la voix le pilote. Dès que vous arrêtez, il redevient modifiable et vous pouvez corriger ou compléter.</p>
+    <div class="callout tip">
+      <span class="lbl">Si les mots n'apparaissent pas en direct</span>
+      <p>Certains téléphones ne prêtent leur micro qu'à un seul usage à la fois. Dans ce cas l'affichage en direct est simplement absent — <strong>la note, elle, arrive normalement</strong> quand vous touchez <span class="btn-ref">Arrêter</span>. Rien n'est perdu.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/24-dictation.png" alt="Champ Notes pendant une dictée : le texte s'écrit suivi de points de suspension, le bouton affiche Arrêter en rouge" />
+    <figcaption>Pendant la dictée : le texte s'écrit tout seul, les « … » indiquent qu'il n'est pas encore définitif.</figcaption>
   </figure>
 </section>
 
@@ -467,7 +492,7 @@
       <li><strong>Interlocuteurs</strong> — les personnes chez le client (rôle par défaut : <em>Gérant</em>), reliables aux affaires.</li>
       <li><strong>Affaires (deals)</strong> — le produit proposé, l'étape du pipeline, le <strong>type d'activité</strong> (Maquis, Restaurant, Glacier, Chawarma, Supérette…) et des <strong>tags</strong> libres pour catégoriser. C'est ici que se joue le passage de prospect à client — voir juste après.</li>
       <li><strong>Abonnement</strong> — sur un client gagné : le forfait actif, sa date de début et son statut. Le manager peut y déclarer une <strong>résiliation</strong>.</li>
-      <li><strong>Historique</strong> — visites, photos et installations liées.</li>
+      <li><strong>Historique</strong> — les passages commerciaux <em>et</em> techniques dans une seule liste, avec photos, durées et résultat (voir 5d).</li>
     </ul>
     <div class="callout tip">
       <span class="lbl">Astuce</span>
@@ -503,7 +528,7 @@
     <ul>
       <li>Le contact devient <strong>Client</strong> et sa date de conversion est enregistrée.</li>
       <li>Une <strong>installation</strong> est planifiée si « Installation requise » était coché.</li>
-      <li>L'<strong>abonnement</strong> démarre et la <strong>commission</strong> est créée — la 1<sup>re</sup> mensualité est acquise immédiatement (section 12).</li>
+      <li>L'<strong>abonnement</strong> démarre et la <strong>commission</strong> est créée — la 1<sup>re</sup> mensualité est acquise immédiatement (section 13).</li>
       <li>Le chiffre d'affaires du contact et les statistiques sont recalculés.</li>
     </ul>
 
@@ -520,6 +545,48 @@
   <figure class="phone">
     <img src="/manuel/16-deal-stage.png" alt="Section Affaires d'un prospect : sélecteur Produit, menu Étape sur Intéressé, case Installation requise" />
     <figcaption>La section <strong>Affaires</strong> d'un prospect. Le menu <strong>Étape</strong> — ici sur « Intéressé » — est le seul geste qui transforme le prospect en client.</figcaption>
+  </figure>
+</section>
+
+<!-- ---- 5c. Agir depuis la fiche ---- -->
+<section class="screen sub" id="agir">
+  <div class="txt">
+    <h3>Agir depuis la fiche client</h3>
+    <p>Le bloc <strong>Ajouter une activité</strong> réunit tout ce qu'on peut faire chez ce client. Il se lit en deux rangées, et la distinction compte :</p>
+    <div class="tablewrap"><table>
+      <tr><th>Rangée</th><th>Boutons</th><th>Ce qui se passe</th></tr>
+      <tr><td><strong>Se déplacer</strong></td><td><span class="btn-ref">Visite</span> (vert) · <span class="btn-ref">Intervention</span> (bleu)</td><td>Ouvre un formulaire de terrain, avec photos et GPS. Vous quittez la fiche.</td></tr>
+      <tr><td><strong>Noter</strong></td><td><span class="btn-ref">Appel</span> · <span class="btn-ref">WhatsApp</span> · <span class="btn-ref">Note</span></td><td>Choisit le type de la note que vous écrivez juste en dessous, puis <span class="btn-ref">Ajouter</span>. Vous restez sur la fiche.</td></tr>
+    </table></div>
+    <p>Les deux couleurs de la première rangée se retrouvent partout dans l'application : le <strong>vert</strong> est le commercial, le <strong>bleu</strong> est le technique. C'est le même bleu que les statuts de chantier.</p>
+    <div class="callout tip">
+      <span class="lbl">Qui peut faire quoi</span>
+      <p>Les deux boutons sont ouverts à <strong>tout le monde</strong>. Un commercial qui constate une panne ouvre l'intervention lui-même ; un technicien qui passe chez un client enregistre la visite lui-même. Celui qui est devant le client est celui qui saisit.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/20-composer.png" alt="Bloc Ajouter une activité : Visite en vert et Intervention en bleu sur la première rangée, Appel WhatsApp Note en dessous" />
+    <figcaption>Première rangée : se déplacer (<strong>Visite</strong> en vert, <strong>Intervention</strong> en bleu). Deuxième rangée : noter sans bouger.</figcaption>
+  </figure>
+</section>
+
+<!-- ---- 5d. L'historique ---- -->
+<section class="screen sub" id="historique">
+  <div class="txt">
+    <h3>L'historique : commercial et technique dans la même liste</h3>
+    <p>Sous la fiche, l'<strong>Historique</strong> rassemble tout ce qui s'est passé chez ce client, du plus récent au plus ancien. Une <strong>barre de couleur</strong> à gauche indique d'où vient chaque ligne :</p>
+    <div class="tablewrap"><table>
+      <tr><th>Barre à gauche</th><th>Ce que la ligne raconte</th></tr>
+      <tr><td><strong>Verte</strong></td><td>Un <strong>passage commercial</strong> — <em>Visite · Vendu</em>, <em>Visite · Intéressé · ⏱ 29 min</em></td></tr>
+      <tr><td><strong>Bleue</strong></td><td>Un <strong>passage technique</strong> — <em>Intervention · Terminée · ⏱ 65 min</em>, <em>Intervention · Retour requis · ⏱ 80 min</em></td></tr>
+      <tr><td><em>aucune</em></td><td>Une <strong>note saisie à distance</strong> — <em>Appel</em>, <em>WhatsApp</em>, <em>Note</em></td></tr>
+    </table></div>
+    <p>Chaque ligne porte qui est passé, quand, combien de temps, ce qui a été conclu, et les photos du passage. On lit ainsi l'histoire complète d'un client — une vente, puis trois retours de chantier, puis un entretien — sans changer d'écran.</p>
+    <p class="meta-note">Les passages enregistrés avant août 2026 affichent leur durée mais pas toujours leur résultat technique : cette information n'était pas encore portée par le passage lui-même.</p>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/21-history-streams.png" alt="Historique d'un client : lignes à barre verte pour les visites et à barre bleue pour les interventions, avec durée et résultat" />
+    <figcaption>Vert = commercial, bleu = technique. La même liste raconte les deux métiers.</figcaption>
   </figure>
 </section>
 
@@ -544,8 +611,8 @@
 <!-- ============ 7. INSTALLATION ============ -->
 <section class="screen" id="installation">
   <div class="txt">
-    <h2>7 · Installations</h2>
-    <div class="roles"><span class="chip tec">Technicien</span><span class="chip man">Manager</span></div>
+    <h2>7 · Installations &amp; interventions</h2>
+    <div class="roles"><span class="chip com">Commercial</span><span class="chip tec">Technicien</span><span class="chip man">Manager</span></div>
     <p>Quand une vente est conclue, une installation est planifiée chez le client. Le technicien utilise <span class="btn-ref">Enregistrer une installation</span> :</p>
     <ol>
       <li><strong>Photo d'arrivée</strong> en arrivant sur le chantier (case verte <span class="btn-ref">ARRIVÉE</span>).</li>
@@ -567,10 +634,116 @@
   </figure>
 </section>
 
-<!-- ============ 8. CLASSEMENT ============ -->
+<!-- ---- 7b. Ouvrir une intervention ---- -->
+<section class="screen sub" id="intervention">
+  <div class="txt">
+    <h3>Ouvrir une intervention (SAV, garantie, entretien)</h3>
+    <p>Une <strong>intervention</strong> est un déplacement technique <strong>sans vente</strong> : un appareil en panne, une pièce sous garantie, un entretien programmé. Elle n'a pas besoin d'une affaire pour exister.</p>
+
+    <h4>Depuis où</h4>
+    <ul>
+      <li><strong>Fiche client</strong> → bouton bleu <span class="btn-ref">Intervention</span>, à côté de <span class="btn-ref">Visite</span>. C'est le chemin le plus court quand vous êtes déjà sur le client.</li>
+      <li><strong>Accueil</strong> → <span class="btn-ref">Enregistrer une installation</span> → <span class="btn-ref">Nouvelle intervention (SAV, garantie…)</span>, quand vous partez de la liste des chantiers.</li>
+    </ul>
+
+    <h4>Un seul écran, un seul enregistrement</h4>
+    <p>Tout tient sur la même page : on ne crée plus le dossier d'un côté et le passage de l'autre.</p>
+    <ol>
+      <li><strong>Client.</strong> Cherchez-le dans la liste (les clients apparaissent en premier).</li>
+      <li><strong>Type d'intervention</strong> : <span class="btn-ref">SAV</span>, <span class="btn-ref">Garantie</span> ou <span class="btn-ref">Entretien</span>.</li>
+      <li><strong>Motif</strong> — ce que le client signale, dans ses mots : « onduleur qui coupe le soir ».</li>
+      <li><strong>Photo d'arrivée</strong> (case verte <span class="btn-ref">ARRIVÉE</span>), comme pour n'importe quel passage.</li>
+      <li>Cochez le <strong>protocole</strong>, notez le <strong>matériel</strong>, ajoutez des photos de documentation si besoin.</li>
+      <li><strong>Résultat</strong> : <em>en cours</em>, <em>terminée</em>, ou <em>retour requis</em> avec la date du prochain passage.</li>
+      <li><strong>Photo de fin</strong> (case orange <span class="btn-ref">FIN</span>), puis <span class="btn-ref">Enregistrer l'installation</span>.</li>
+    </ol>
+    <p>Cet unique enregistrement crée <strong>le chantier et son premier passage en même temps</strong>. Un SAV réglé sur place s'ouvre et se referme donc en une seule fois.</p>
+
+    <div class="callout warn">
+      <span class="lbl">Ce n'est pas une vente</span>
+      <p>Une intervention <strong>n'entre pas dans le pipeline commercial</strong> et ne génère <strong>aucune commission de vente</strong>. L'application le rappelle sous le motif. Si le déplacement débouche sur une vente, enregistrez en plus une <strong>visite</strong> avec le résultat <em>Vendu</em>.</p>
+    </div>
+    <div class="callout tip">
+      <span class="lbl">Quand est-ce en deux temps ?</span>
+      <p>Uniquement lorsqu'il s'agit vraiment de deux moments : une <strong>revisite planifiée</strong> se prépare un jour où personne n'est chez le client. Elle passe alors par une <strong>tâche</strong> (section 8), et le passage sera enregistré le jour venu.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/07-install-new.png" alt="Formulaire d'intervention : recherche client, type SAV Garantie Entretien, motif, puis zones photo ARRIVÉE et FIN" />
+    <figcaption>Un seul écran : client, type, motif, puis les mêmes zones photo et le même protocole que tout autre passage.</figcaption>
+  </figure>
+</section>
+
+<!-- ---- 7c. L'historique du chantier ---- -->
+<section class="screen sub" id="chantier-historique">
+  <div class="txt">
+    <h3>L'historique du chantier</h3>
+    <p>Un chantier n'est pas un état, c'est une <strong>suite de passages</strong>. Sur la fiche client, chaque chantier affiche donc son propre historique, sous le titre <strong>Historique du chantier</strong>.</p>
+    <p>L'en-tête résume l'essentiel en une ligne :</p>
+    <p class="path">3 passages · 2 retours · 3 h 25 sur place</p>
+    <p>Puis chaque passage est numéroté dans l'ordre, avec :</p>
+    <ul>
+      <li>la <strong>date et l'heure</strong>, et la <strong>durée</strong> réellement passée sur place ;</li>
+      <li>le <strong>résultat</strong> de ce passage-là — <em>Retour requis</em>, <em>Terminée</em> ;</li>
+      <li>le <strong>technicien</strong> et l'avancement du protocole (<em>4/6 étapes</em>) ;</li>
+      <li>la <strong>note</strong> laissée : « Onduleur non conforme, pièce commandée » ;</li>
+      <li>les <strong>deux photos</strong> du passage, arrivée et fin.</li>
+    </ul>
+    <div class="callout tip">
+      <span class="lbl">La question à laquelle ça répond</span>
+      <p>« Combien de fois est-on retourné chez ce client, et pourquoi ? » — la réponse se lit d'un coup d'œil, avec les preuves photo de chaque passage. C'est aussi ce qui permet de distinguer un chantier long d'un chantier repris plusieurs fois.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/22-job-history.png" alt="Historique du chantier : en-tête 3 passages 2 retours 3h25, puis chaque passage numéroté avec durée, statut, technicien et note" />
+    <figcaption>Trois passages, deux retours, 3 h 25 sur place — et le détail de chacun.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 8. TÂCHES ============ -->
+<section class="screen" id="taches">
+  <div class="txt">
+    <h2>8 · Suivi à faire (tâches)</h2>
+    <div class="roles"><span class="chip com">Commercial</span><span class="chip tec">Technicien</span><span class="chip man">Manager</span></div>
+    <p>Un rendez-vous promis ou un retour de chantier annoncé ne vit plus dans une tête ou un carnet : il devient une <strong>tâche</strong> — datée, attribuée à quelqu'un, et à clore.</p>
+
+    <h4>Où les voir</h4>
+    <ul>
+      <li><strong>Accueil → À faire</strong> : <em>vos</em> tâches, la plus urgente en haut.</li>
+      <li><strong>Fiche client → Suivi à faire</strong> : celles qui concernent ce client, quel qu'en soit le propriétaire.</li>
+    </ul>
+
+    <h4>D'où elles viennent</h4>
+    <div class="tablewrap"><table>
+      <tr><th>Ce que vous faites</th><th>Tâche créée</th><th><span class="btn-ref">Commencer</span> ouvre…</th></tr>
+      <tr><td>Une visite avec le résultat <em>Rendez-vous</em></td><td><strong>Rendez-vous</strong></td><td>le formulaire de visite, client déjà rempli</td></tr>
+      <tr><td>Un chantier laissé en <em>Retour requis</em></td><td><strong>Retour chantier</strong></td><td>le chantier concerné, prêt pour le nouveau passage</td></tr>
+      <tr><td>Une panne signalée par téléphone</td><td><strong>Suivi</strong></td><td>le formulaire d'intervention</td></tr>
+    </table></div>
+    <p>Vous n'avez donc jamais à retrouver le bon écran vous-même : le bouton <span class="btn-ref">▷ Commencer</span> vous y emmène directement, avec ce qui est déjà connu pré-rempli. Une fois le passage enregistré, la tâche se referme toute seule ; <span class="btn-ref">Fait</span> permet aussi de la clore à la main.</p>
+
+    <h4>Lire la liste</h4>
+    <ul>
+      <li>La date d'échéance s'affiche en <strong>rouge</strong> et précédée de « En retard » quand elle est dépassée.</li>
+      <li>Le nom du client est un lien vers sa fiche.</li>
+      <li>Le détail rappelle ce qui a été promis : « Devis promis la semaine dernière — relancer. »</li>
+    </ul>
+
+    <div class="callout tip">
+      <span class="lbl">Une tâche appartient au client, pas à une personne</span>
+      <p>Toute l'équipe voit et peut clore les tâches d'un client. Si un collègue passe avant vous, il clôt la tâche — le travail n'est pas fait deux fois, et rien ne reste en attente parce que quelqu'un était absent.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/23-tasks.png" alt="Liste À faire : deux rendez-vous avec bouton Commencer, l'un marqué En retard en rouge" />
+    <figcaption>« À faire » : ce qui est promis, à qui, pour quand — et le bouton qui ouvre le bon écran.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 9. CLASSEMENT ============ -->
 <section class="screen" id="classement">
   <div class="txt">
-    <h2>8 · Classement &amp; badges</h2>
+    <h2>9 · Classement &amp; badges</h2>
     <div class="roles"><span class="chip com">Commercial</span><span class="chip tec">Technicien</span><span class="chip man">Manager</span></div>
     <p>Le classement de la semaine attribue des <strong>points</strong> pour chaque action (visite, rendez-vous, vente, installation terminée — barème réglable par l'admin). S'y ajoutent :</p>
     <ul>
@@ -586,10 +759,10 @@
   </figure>
 </section>
 
-<!-- ============ 9. STATS ============ -->
+<!-- ============ 10. STATS ============ -->
 <section class="screen" id="stats">
   <div class="txt">
-    <h2>9 · Statistiques &amp; mes commissions</h2>
+    <h2>10 · Statistiques &amp; mes commissions</h2>
     <div class="roles"><span class="chip com">Commercial</span><span class="chip tec">Technicien</span><span class="chip man">Manager</span></div>
     <p><span class="btn-ref">Statistiques commerciales</span> montre vos chiffres : visites, taux de conversion, ventes, entonnoir par affaire, pipeline et audit photo. Les listes se filtrent par <strong>secteur</strong>, <strong>type d'activité</strong>, <strong>tag</strong> — et, pour les managers, par <strong>commercial</strong>.</p>
     <h3>Mes commissions</h3>
@@ -601,7 +774,7 @@
       <li>Chaque ligne affiche le détail : client, produit, mensualité, et le calcul <em>base × taux = montant</em>.</li>
     </ul>
     <h3>Mes passages</h3>
-    <p>Tout en bas de la page, le <strong>journal de vos passages</strong> : chaque visite des 14 derniers jours avec l'heure d'arrivée, l'heure de départ, la durée et vos deux photos. C'est votre relevé personnel — celui qui atteste du temps que vous passez chez les clients. Le détail de sa lecture est décrit en section 11.</p>
+    <p>Tout en bas de la page, le <strong>journal de vos passages</strong> : chaque visite des 14 derniers jours avec l'heure d'arrivée, l'heure de départ, la durée et vos deux photos. C'est votre relevé personnel — celui qui atteste du temps que vous passez chez les clients. Le détail de sa lecture est décrit en section 12.</p>
     <p>La page <span class="btn-ref">Statistiques techniciens</span> suit la même logique pour les installations, avec le même journal en bas de page.</p>
   </div>
   <figure class="phone">
@@ -610,17 +783,19 @@
   </figure>
 </section>
 
-<!-- ============ 10. ASSISTANT ============ -->
+<!-- ============ 11. ASSISTANT ============ -->
 <section class="screen" id="assistant">
   <div class="txt">
-    <h2>10 · Assistant Nimbaa (IA)</h2>
+    <h2>11 · Assistant Nimbaa (IA)</h2>
     <div class="roles"><span class="chip com">Commercial</span><span class="chip tec">Technicien</span><span class="chip man">Manager</span><span class="chip adm">Admin</span></div>
-    <p>Posez vos questions en français, à l'écrit ou <strong>à la voix</strong> ; la réponse s'affiche en direct. L'assistant connaît vos clients, visites, ventes, installations, objectifs — et vos <strong>commissions</strong>. Exemples :</p>
+    <p>Posez vos questions en français, à l'écrit ou <strong>à la voix</strong> ; la réponse s'affiche en direct. L'assistant connaît vos clients, visites, ventes, installations et interventions, vos <strong>tâches en attente</strong>, vos objectifs — et vos <strong>commissions</strong>. Il lit aussi le <strong>temps passé chez les clients</strong> (section 12), donc il sait répondre sur les durées et les passages. Exemples :</p>
     <ul>
       <li>« Quels clients dois-je relancer cette semaine ? »</li>
       <li>« Combien de ventes hier par type d'activité ? »</li>
       <li>« Mes commissions ce mois-ci, comparées au mois dernier ? »</li>
       <li>« Rédige un message WhatsApp de relance pour la Supérette Le Panier. »</li>
+      <li>« Combien de temps ai-je passé chez les clients cette semaine ? »</li>
+      <li>« Qu'est-ce que j'ai en retard ? »</li>
     </ul>
     <p>Les périodes <em>aujourd'hui / cette semaine / ce mois</em> sont comprises, avec la <strong>comparaison</strong> à la période précédente. Chacun n'obtient que ce que son rôle permet : un commercial interroge <strong>ses</strong> chiffres ; un manager, ceux de <strong>toute l'équipe</strong>, personne par personne.</p>
   </div>
@@ -630,10 +805,10 @@
   </figure>
 </section>
 
-<!-- ============ 11. MANAGER ============ -->
+<!-- ============ 12. MANAGER ============ -->
 <section class="screen" id="manager">
   <div class="txt">
-    <h2>11 · Espace manager</h2>
+    <h2>12 · Espace manager</h2>
     <div class="roles"><span class="chip man">Manager</span><span class="chip adm">Admin</span></div>
     <p>Le tableau de bord d'équipe : activité du jour, chiffres par commercial et technicien, objectifs, montants en FCFA. De là, cinq outils :</p>
     <ul>
@@ -641,7 +816,7 @@
       <li><strong>Audit photos</strong> — contrôle des photos de visites et d'installations.</li>
       <li><strong>Pipeline installations</strong> — suivi des poses en attente, en cours, terminées.</li>
       <li><strong>Check-In and -Out</strong> — temps passé chez le client et vérifications automatiques (ci-dessous).</li>
-      <li><strong>Commissions</strong> — le panneau de paie (section 12).</li>
+      <li><strong>Commissions</strong> — le panneau de paie (section 13).</li>
     </ul>
     <p>Les listes se filtrent par <strong>secteur</strong>, <strong>type d'activité</strong>, <strong>tag</strong> et <strong>personne</strong> — les mêmes filtres que sur les statistiques.</p>
   </div>
@@ -655,7 +830,15 @@
 <section class="screen sub" id="controles">
   <div class="txt">
     <h3>Check-In and -Out</h3>
-    <p>Les photos d'arrivée (<em>check-in</em>) et de fin (<em>check-out</em>) ne servent pas qu'à prouver le passage : elles alimentent cette page, qui couvre les <strong>14 derniers jours</strong>. On y accède depuis l'<strong>Espace manager</strong> (onglets Commerciaux et Techniciens) ainsi que depuis les <strong>Statistiques commerciales</strong> et <strong>Statistiques techniciens</strong>.</p>
+    <p>Les photos d'arrivée (<em>check-in</em>) et de fin (<em>check-out</em>) ne servent pas qu'à prouver le passage : elles alimentent cette page. On y accède depuis l'<strong>Espace manager</strong> (onglets Commerciaux et Techniciens) ainsi que depuis les <strong>Statistiques commerciales</strong> et <strong>Statistiques techniciens</strong>.</p>
+
+    <h4>Choisir la période</h4>
+    <p>En haut de la page, six fenêtres au choix — <span class="btn-ref">Aujourd'hui</span>, <span class="btn-ref">7 jours</span>, <span class="btn-ref">14 jours</span>, <span class="btn-ref">30 jours</span>, <span class="btn-ref">12 mois</span>, <span class="btn-ref">Tout</span>. Tout ce qui suit sur la page (moyennes, tableau par personne, vérifications, journal) se recalcule sur la fenêtre choisie.</p>
+
+    <h4>Filtrer l'équipe</h4>
+    <p>Les mêmes filtres que partout ailleurs : <strong>secteur</strong>, <strong>type d'activité</strong>, <strong>tag</strong> et <strong>personne</strong>. Ils servent à comparer ce qui est comparable — un secteur dense contre un secteur étalé, un type de commerce contre un autre — plutôt qu'à mettre deux personnes côte à côte sans contexte.</p>
+
+    <p>Quand l'équipe s'agrandit, le tableau <strong>par personne</strong> défile à l'intérieur de son cadre : il ne repousse plus le reste de la page hors de vue.</p>
 
     <h4>Le temps réellement passé chez le client</h4>
     <ul>
@@ -720,10 +903,10 @@
   </figure>
 </section>
 
-<!-- ============ 12. COMMISSIONS ============ -->
+<!-- ============ 13. COMMISSIONS ============ -->
 <section class="screen" id="commissions">
   <div class="txt">
-    <h2>12 · Commissions : règles &amp; paiement</h2>
+    <h2>13 · Commissions : règles &amp; paiement</h2>
     <div class="roles"><span class="chip man">Manager</span><span class="chip adm">Admin</span></div>
     <h3>Comment une commission naît</h3>
     <ul>
@@ -753,10 +936,10 @@
   </figure>
 </section>
 
-<!-- ============ 13. ADMIN ============ -->
+<!-- ============ 14. ADMIN ============ -->
 <section class="screen" id="admin">
   <div class="txt">
-    <h2>13 · Administration</h2>
+    <h2>14 · Administration</h2>
     <div class="roles"><span class="chip adm">Admin</span></div>
     <p>Le hub Administration configure toute l'application :</p>
     <div class="tablewrap"><table>
@@ -782,10 +965,10 @@
   </figure>
 </section>
 
-<!-- ============ 14. HORS LIGNE ============ -->
+<!-- ============ 15. HORS LIGNE ============ -->
 <section class="screen" id="horsligne">
   <div class="txt">
-    <h2>14 · Mode hors ligne</h2>
+    <h2>15 · Mode hors ligne</h2>
     <div class="roles"><span class="chip com">Commercial</span><span class="chip tec">Technicien</span></div>
     <p>Le terrain n'attend pas le réseau :</p>
     <ul>

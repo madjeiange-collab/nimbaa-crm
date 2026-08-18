@@ -5,7 +5,7 @@
  *    of that page (then the home page) so the app still boots offline.
  * Cross-origin requests (Supabase, map tiles) are left untouched.
  */
-const STATIC_CACHE = 'nimbaa-static-v1';
+const STATIC_CACHE = 'nimbaa-static-v2'; // v2: manual screenshots re-shot under the same names
 const PAGE_CACHE = 'nimbaa-pages-v1';
 
 self.addEventListener('install', () => {
