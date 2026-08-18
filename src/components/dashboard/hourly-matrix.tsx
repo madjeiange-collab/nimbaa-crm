@@ -11,9 +11,13 @@ import {
   LAST_HOUR,
   hm,
   totalsOf,
+  type Baseline,
   type HourCell,
   type HourlyRow,
 } from '@/lib/checkin/hourly';
+
+/** Person + trade, the key the matrix rows and the baseline share. */
+const keyOf = (r: Pick<HourlyRow, 'personId' | 'kind'>) => `${r.personId}:${r.kind}`;
 
 const HOURS = Array.from({ length: LAST_HOUR - FIRST_HOUR + 1 }, (_, i) => FIRST_HOUR + i);
 
@@ -43,7 +47,7 @@ const OUTCOME_FILL: Record<string, string> = {
 };
 
 /** Reads the grid back to you, in the grid's own colours. */
-function Legend() {
+function Legend({ isPast }: { isPast: boolean }) {
   const t = useTranslations('hourly');
   const items: { cls: string; label: string }[] = [
     { cls: OUTCOME_FILL.sold, label: t('legendWon') },
@@ -65,6 +69,7 @@ function Legend() {
         {t('legendBar')}
       </span>
       <span>{t('legendMarks')}</span>
+      {isPast && <span>{t('legendBaseline')}</span>}
     </div>
   );
 }
@@ -112,6 +117,29 @@ function Cell({ cell, kind }: { cell: HourCell; kind: 'visit' | 'install' }) {
         className="relative h-[3px] rounded bg-foreground/25"
         style={{ width: `${Math.max(8, barPct)}%` }}
       />
+    </span>
+  );
+}
+
+/**
+ * How this day compares with the person's own ordinary day.
+ *
+ * Above average is green; below average and exactly average are both plain.
+ * Red is the colour of a refusal everywhere else in the app, and a quiet day
+ * is not a refusal — the signed number already says which way it went.
+ */
+function BaselineMark({ total, base }: { total: number; base: Baseline | undefined }) {
+  const t = useTranslations('hourly');
+  if (!base) return null;
+  const delta = Math.round(total - base.passages);
+  return (
+    <span
+      title={t('baselineTip', { n: Math.round(base.passages * 10) / 10, days: base.days })}
+      className={`block text-[10px] leading-none ${
+        delta > 0 ? 'text-knock-green' : 'text-muted-foreground'
+      }`}
+    >
+      {delta > 0 ? `+${delta}` : delta < 0 ? `\u2212${Math.abs(delta)}` : '='}
     </span>
   );
 }
@@ -262,6 +290,7 @@ function Section({
   goals,
   pipeline,
   showMoney,
+  baseline,
   open,
   onToggle,
 }: {
@@ -272,6 +301,7 @@ function Section({
   goals: Record<string, number>;
   pipeline: Record<string, number>;
   showMoney: boolean;
+  baseline: Record<string, Baseline>;
   open: string | null;
   onToggle: (id: string) => void;
 }) {
@@ -307,7 +337,10 @@ function Section({
                 <Cell cell={c} kind={r.kind} />
               </td>
             ))}
-            <td className="border-l px-1.5 text-center text-sm font-medium">{r.total}</td>
+            <td className="border-l px-1.5 text-center">
+              <span className="block text-sm font-medium leading-tight">{r.total}</span>
+              <BaselineMark total={r.total} base={baseline[keyOf(r)]} />
+            </td>
             <td className="px-1.5 text-center text-sm text-muted-foreground">{hm(r.minutes)}</td>
             <td className="px-1.5 text-center text-sm">{r.avgMin != null ? `${r.avgMin} min` : '—'}</td>
             <td className="border-l px-1.5 text-center text-sm">{r.won || '—'}</td>
@@ -374,6 +407,8 @@ export function HourlyMatrix({
   goals,
   pipeline,
   showMoney,
+  baseline,
+  isPast,
 }: {
   commercial: HourlyRow[];
   technical: HourlyRow[];
@@ -382,13 +417,20 @@ export function HourlyMatrix({
   goals: Record<string, number>;
   pipeline: Record<string, number>;
   showMoney: boolean;
+  /** Per person and trade — empty on a running day, which has nothing to compare. */
+  baseline: Record<string, Baseline>;
+  isPast: boolean;
 }) {
   const t = useTranslations('hourly');
   const [open, setOpen] = useState<string | null>(null);
   const toggle = (id: string) => setOpen((cur) => (cur === id ? null : id));
 
   if (commercial.length === 0 && technical.length === 0) {
-    return <p className="text-sm text-muted-foreground">{t('nothingToday')}</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        {isPast ? t('noPassages') : t('nothingToday')}
+      </p>
+    );
   }
 
   return (
@@ -425,6 +467,7 @@ export function HourlyMatrix({
             goals={goals}
             pipeline={pipeline}
             showMoney={showMoney}
+            baseline={baseline}
             open={open}
             onToggle={toggle}
           />
@@ -436,13 +479,14 @@ export function HourlyMatrix({
             goals={goals}
             pipeline={pipeline}
             showMoney={showMoney}
+            baseline={baseline}
             open={open}
             onToggle={toggle}
           />
         </tbody>
       </table>
       </div>
-      <Legend />
+      <Legend isPast={isPast} />
     </div>
   );
 }

@@ -207,3 +207,72 @@ export function hm(min: number | null): string {
   const m = min % 60;
   return h > 0 ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`;
 }
+
+/** A person's ordinary day, for comparison against the one on screen. */
+export interface Baseline {
+  /** Passages on an average day they worked. */
+  passages: number;
+  avgMin: number | null;
+  /** Days actually worked — below a few, the average says nothing. */
+  days: number;
+}
+
+/**
+ * The shape the baseline needs. Deliberately smaller than JournalRow: it spans
+ * a fortnight rather than a day, so it carries no photos and signs no URLs.
+ */
+export interface BaselineVisit {
+  rep_id: string;
+  visit_type: string;
+  visited_at: string;
+  started_at: string | null;
+}
+
+/** Below this, one good or bad day would set the "average" on its own. */
+export const MIN_BASELINE_DAYS = 3;
+
+/**
+ * Each person's ordinary day, over the fortnight before the one on screen.
+ *
+ * Averaged over the days they worked, not over the calendar: someone away on
+ * Monday should not look below their own average for the rest of the week.
+ * Keyed by person AND trade like the matrix rows, so a commercial's doors and
+ * their chantiers are never averaged into one figure.
+ */
+export function buildBaseline(visits: BaselineVisit[]): Record<string, Baseline> {
+  const byKey = new Map<string, Map<string, { n: number; min: number }>>();
+
+  for (const v of visits) {
+    const kind = v.visit_type === 'installation' ? 'install' : 'visit';
+    const key = `${v.rep_id}:${kind}`;
+    let days = byKey.get(key);
+    if (!days) byKey.set(key, (days = new Map()));
+
+    const day = v.visited_at.slice(0, 10); // Abidjan = UTC
+    const cur = days.get(day) ?? { n: 0, min: 0 };
+    cur.n++;
+    if (v.started_at) {
+      cur.min += Math.round(
+        (new Date(v.visited_at).getTime() - new Date(v.started_at).getTime()) / 60_000,
+      );
+    }
+    days.set(day, cur);
+  }
+
+  const out: Record<string, Baseline> = {};
+  for (const [key, days] of byKey) {
+    if (days.size < MIN_BASELINE_DAYS) continue;
+    let n = 0;
+    let min = 0;
+    for (const d of days.values()) {
+      n += d.n;
+      min += d.min;
+    }
+    out[key] = {
+      passages: n / days.size,
+      avgMin: n > 0 ? Math.round(min / n) : null,
+      days: days.size,
+    };
+  }
+  return out;
+}

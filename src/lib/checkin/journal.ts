@@ -66,9 +66,16 @@ export async function loadJournalRows(
   supabase: ServerClient,
   {
     sinceIso,
+    untilIso,
     repId,
     limit = 150,
-  }: { sinceIso: string | null; repId?: string | null; limit?: number },
+  }: {
+    sinceIso: string | null;
+    /** Upper bound, so a caller can ask for one finished day, not "since". */
+    untilIso?: string | null;
+    repId?: string | null;
+    limit?: number;
+  },
 ): Promise<JournalRow[]> {
   let q = supabase
     .from('visits')
@@ -78,6 +85,7 @@ export async function loadJournalRows(
     .order('visited_at', { ascending: false })
     .limit(limit);
   if (sinceIso) q = q.gte('visited_at', sinceIso); // null = every passage on record
+  if (untilIso) q = q.lte('visited_at', untilIso);
   if (repId) q = q.eq('rep_id', repId);
 
   const [{ data: visitRows, error }, { data: userRows }] = await Promise.all([
