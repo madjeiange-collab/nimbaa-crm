@@ -24,7 +24,14 @@ const clock = (iso: string) =>
     timeZone: 'Africa/Abidjan',
   }).format(new Date(iso));
 
-/** Outcome → the colour it contributes to a cell's fill. */
+/**
+ * Outcome → the colour it contributes to a cell's fill.
+ *
+ * "En cours" is blue, not a paler primary: --primary and --knock-green are both
+ * hue 96, so a chantier still running and one finished were the same green and
+ * the legend could not tell them apart. Blue is already the technical colour
+ * across the app — the Intervention button, the install status badges.
+ */
 const OUTCOME_FILL: Record<string, string> = {
   sold: 'bg-knock-green/25',
   done: 'bg-knock-green/25',
@@ -32,7 +39,7 @@ const OUTCOME_FILL: Record<string, string> = {
   appointment_set: 'bg-brand-amber/30',
   needs_revisit: 'bg-brand-amber/30',
   refused: 'bg-destructive/20',
-  in_progress: 'bg-primary/15',
+  in_progress: 'bg-blue-200/70',
 };
 
 /** Reads the grid back to you, in the grid's own colours. */
