@@ -35,11 +35,29 @@ function toLabel(a: NominatimAddress | undefined, displayName: string | undefine
   return null;
 }
 
+/**
+ * Which provider answers. Google runs through our own /api/geocode so the
+ * billable key stays on the server; OSM is called straight from the browser,
+ * which spreads the load across handsets rather than pointing Nominatim at one
+ * Vercel IP. Unset means OSM — the app works with no key at all.
+ */
+const VIA_SERVER = process.env.NEXT_PUBLIC_GEOCODE_PROVIDER === 'google';
+
 export async function reverseGeocode(
   lat: number,
   lng: number,
   signal?: AbortSignal,
 ): Promise<string | null> {
+  if (VIA_SERVER) {
+    try {
+      const res = await fetch(`/api/geocode?mode=reverse&lat=${lat}&lng=${lng}`, { signal });
+      if (!res.ok) return null;
+      const { label } = (await res.json()) as { label: string | null };
+      return label ?? null;
+    } catch {
+      return null;
+    }
+  }
   try {
     const url = `${BASE}?lat=${lat}&lon=${lng}&format=jsonv2&zoom=18&addressdetails=1&accept-language=fr`;
     const timeout = new AbortController();

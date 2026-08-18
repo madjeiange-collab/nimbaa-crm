@@ -37,12 +37,24 @@ function shorten(displayName: string): string {
   return parts.slice(0, 3).join(', ');
 }
 
+const VIA_SERVER = process.env.NEXT_PUBLIC_GEOCODE_PROVIDER === 'google';
+
 export async function searchPlaces(
   query: string,
   signal?: AbortSignal,
 ): Promise<PlaceHit[]> {
   const q = query.trim();
   if (q.length < 3) return [];
+  if (VIA_SERVER) {
+    try {
+      const res = await fetch(`/api/geocode?mode=search&q=${encodeURIComponent(q)}`, { signal });
+      if (!res.ok) return [];
+      const { hits } = (await res.json()) as { hits: PlaceHit[] };
+      return hits ?? [];
+    } catch {
+      return [];
+    }
+  }
   try {
     const url =
       `${BASE}?q=${encodeURIComponent(q)}&format=jsonv2&addressdetails=1` +
