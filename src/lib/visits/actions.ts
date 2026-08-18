@@ -6,6 +6,7 @@ import { DISPOSITION_BY_KEY, type KnockDisposition } from '@/lib/visits/disposit
 import { ensurePendingInstallation } from '@/lib/installations/seed';
 import { ensureCommissionForWonDeal } from '@/lib/commissions/core';
 import { recomputeContactRollup } from '@/lib/deals/rollup';
+import { ensureTaskForAppointment } from '@/lib/tasks/actions';
 
 export interface VisitPhotoMeta {
   kind: 'arrival' | 'completion' | 'extra';
@@ -250,6 +251,23 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
 
     if (dealId) await supabase.from('visits').update({ deal_id: dealId }).eq('id', visit.id);
     await recomputeContactRollup(supabase, contactId);
+  }
+
+  // A rendez-vous becomes a real follow-up someone owns and closes, not just a
+  // date on the visit. Best-effort: never break the save.
+  if (input.appointmentDate && meta?.needsAppointment) {
+    const { data: contact } = contactId
+      ? await supabase.from('contacts').select('name').eq('id', contactId).maybeSingle()
+      : { data: null };
+    await ensureTaskForAppointment(supabase, {
+      visitId: visit.id,
+      contactId,
+      dealId,
+      assignedTo: user.id,
+      dueAt: input.appointmentDate,
+      title: `Rendez-vous — ${contact?.name ?? input.contactName ?? 'client'}`,
+      details: input.notes?.trim() || null,
+    });
   }
 
   revalidatePath('/[locale]/turf', 'page');

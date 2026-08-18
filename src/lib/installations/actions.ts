@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { ensureTechCommissionForInstall } from '@/lib/commissions/core';
 import { createClient } from '@/lib/supabase/server';
+import { ensureTaskForRevisit } from '@/lib/tasks/actions';
 import type {
   ChecklistItem,
   EquipmentItem,
@@ -194,6 +195,40 @@ export async function saveInstallation(
   // A completed installation earns the technician their per-product rate.
   if (input.status === 'done') {
     await ensureTechCommissionForInstall(supabase, input.installationId, user.id);
+  }
+
+  // "Retour requis" becomes an owned, dated task carrying what is left to do —
+  // the unfinished protocol steps, plus whatever the technician noted.
+  if (input.status === 'needs_revisit') {
+    const { data: job } = await supabase
+      .from('installations')
+      .select('title, deal_id, contacts(name)')
+      .eq('id', input.installationId)
+      .maybeSingle();
+    const pending = (input.checklist ?? []).filter((c) => !c.done).map((c) => c.label);
+    const details = [
+      pending.length ? `Reste à faire : ${pending.join(', ')}` : null,
+      input.notes?.trim() || null,
+    ]
+      .filter(Boolean)
+      .join(' — ');
+    await ensureTaskForRevisit(supabase, {
+      installationId: input.installationId,
+      contactId: input.contactId,
+      dealId: (job as { deal_id?: string | null } | null)?.deal_id ?? null,
+      assignedTo: user.id,
+      dueAt: input.nextVisitDate ?? null,
+      title: `Retour chantier — ${(job as { contacts?: { name: string | null } | null } | null)?.contacts?.name ?? job?.title ?? 'client'}`,
+      details: details || null,
+    });
+  } else {
+    // Finished or back in progress: close any open return task for this job.
+    await supabase
+      .from('tasks')
+      .update({ status: 'done', completed_at: now, completed_by: user.id, updated_at: now })
+      .eq('installation_id', input.installationId)
+      .eq('status', 'open')
+      .eq('kind', 'revisit');
   }
 
   revalidateContact(input.contactId);

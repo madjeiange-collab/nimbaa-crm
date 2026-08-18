@@ -6,6 +6,8 @@ import { requireUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { AppHeader } from '@/components/shared/app-header';
 import { ContactDetail } from '@/components/contacts/contact-detail';
+import { TaskList } from '@/components/tasks/task-list';
+import { loadContactTasks } from '@/lib/tasks/queries';
 import type {
   TimelineItem,
   ContactFull,
@@ -23,8 +25,10 @@ export default async function ContactDetailPage({
   setRequestLocale(locale);
   const user = await requireUser();
   const t = await getTranslations('contacts');
+  const tTasks = await getTranslations('tasks');
 
   const supabase = await createClient();
+  const contactTasks = await loadContactTasks(supabase, id);
 
   const { data: contact } = await supabase
     .from('contacts')
@@ -279,6 +283,14 @@ export default async function ContactDetailPage({
           people={people}
           canInstall={canInstall}
           isManager={user.role === 'manager' || user.role === 'admin'}
+        />
+        {/* Follow-ups on this customer — everyone on the job sees the same list */}
+        <TaskList
+          tasks={contactTasks}
+          title={tTasks('contactTasks')}
+          showContact={false}
+          showAssignee
+          emptyHint={tTasks('noneOnContact')}
         />
       </main>
     </>

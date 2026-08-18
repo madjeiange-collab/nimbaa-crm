@@ -25,6 +25,19 @@
     "logoutUnsynced": "{count, plural, one {# visit is not synced yet} other {# visits are not synced yet}} — logging out now will delete them. Continue?",
     "goThere": "Directions"
   },
+  "tasks": {
+    "myTasks": "To do",
+    "contactTasks": "Follow-ups",
+    "noneOnContact": "No follow-up pending on this customer.",
+    "openCount": "{n, plural, =0 {nothing pending} one {# pending} other {# pending}}",
+    "overdue": "Overdue · {date}",
+    "complete": "Done",
+    "reopen": "Reopen",
+    "contact": "Customer",
+    "kind_rdv": "Appointment",
+    "kind_revisit": "Return trip",
+    "kind_manual": "Follow-up"
+  },
   "auth": {
     "loginTitle": "Sign in",
     "loginSubtitle": "Access your sales workspace",

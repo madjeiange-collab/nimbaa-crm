@@ -22,6 +22,8 @@ import { LocaleSwitch } from '@/components/shared/locale-switch';
 import { Avatar } from '@/components/shared/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { CoverageMap } from '@/components/charts/coverage-map';
+import { TaskList } from '@/components/tasks/task-list';
+import { loadMyTasks } from '@/lib/tasks/queries';
 import { GenerateRecapButton } from '@/components/leaderboard/generate-recap-button';
 import { RecapCard } from '@/components/leaderboard/recap-card';
 import type { InstallPoint, TurfKnock } from '@/components/map/turf-map';
@@ -139,6 +141,7 @@ export default async function HomePage({
   const user = await requireUser();
   const t = await getTranslations('home');
   const tBoard = await getTranslations('leaderboard');
+  const tTasks = await getTranslations('tasks');
 
   const isManager = user.role === 'manager' || user.role === 'admin';
   const isAdmin = user.role === 'admin';
@@ -190,7 +193,7 @@ export default async function HomePage({
         .limit(1)
         .maybeSingle();
 
-  const [{ reps, techs }, { data: turfs }, { data: knockRows }, { data: installRows }, { data: recap }, { data: detailRecap }] =
+  const [{ reps, techs }, { data: turfs }, { data: knockRows }, { data: installRows }, { data: recap }, { data: detailRecap }, myTasks] =
     await Promise.all([
       getPointConfig(admin).then((pts) => computeBoards(admin, monday.toISOString(), pts)),
       supabase.rpc('territories_geojson'), // RLS: rep → own turfs, manager → all
@@ -203,6 +206,7 @@ export default async function HomePage({
         .limit(1)
         .maybeSingle(),
       detailRecapQ,
+      loadMyTasks(supabase, user.id),
     ]);
 
   const shownRecap = (detailRecap as { day: string; content: string } | null) ?? recap;
@@ -389,8 +393,11 @@ export default async function HomePage({
             />
           </div>
 
-          {/* ---- Right: daily AI recap + this week's board + coverage map ---- */}
+          {/* ---- Right: my follow-ups, daily AI recap, board, coverage map ---- */}
           <div className="space-y-4">
+            {/* What I owe someone — above the recap, since it is actionable. */}
+            <TaskList tasks={myTasks} title={tTasks('myTasks')} />
+
             {(shownRecap || isManager) && (
               <RecapCard
                 title={

@@ -25,6 +25,19 @@
     "logoutUnsynced": "{count, plural, one {# visite n'est pas encore synchronisée} other {# visites ne sont pas encore synchronisées}} — se déconnecter maintenant les supprimera. Continuer ?",
     "goThere": "Y aller"
   },
+  "tasks": {
+    "myTasks": "À faire",
+    "contactTasks": "Suivi à faire",
+    "noneOnContact": "Aucun suivi en attente sur ce client.",
+    "openCount": "{n, plural, =0 {rien en attente} one {# en attente} other {# en attente}}",
+    "overdue": "En retard · {date}",
+    "complete": "Fait",
+    "reopen": "Rouvrir",
+    "contact": "Client",
+    "kind_rdv": "Rendez-vous",
+    "kind_revisit": "Retour chantier",
+    "kind_manual": "Suivi"
+  },
   "auth": {
     "loginTitle": "Connexion",
     "loginSubtitle": "Accédez à votre espace commercial",
