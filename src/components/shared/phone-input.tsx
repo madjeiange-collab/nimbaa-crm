@@ -110,7 +110,10 @@ export function PhoneInput({
         inputMode="tel"
         value={local}
         onChange={(e) => setLocal(e.target.value)}
-        placeholder={placeholder ?? '07 12 34 56 78'}
+        // A plausible-looking number reads as one already entered, especially
+        // on a phone where grey and black text are close. X's cannot be
+        // mistaken for data while still showing the expected length.
+        placeholder={placeholder ?? 'XX XX XX XX XX'}
         className="flex-1"
       />
     </div>

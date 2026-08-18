@@ -57,11 +57,11 @@ function ProductFields({
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
           <Label htmlFor={`${idPrefix}-price`}>{t('price')}</Label>
-          <Input id={`${idPrefix}-price`} value={price} inputMode="numeric" onChange={(e) => setPrice(e.target.value)} placeholder="15000" />
+          <Input id={`${idPrefix}-price`} value={price} inputMode="numeric" onChange={(e) => setPrice(e.target.value)} placeholder="ex. 15000" />
         </div>
         <div className="space-y-1">
           <Label htmlFor={`${idPrefix}-pct`}>{t('commissionPct')}</Label>
-          <Input id={`${idPrefix}-pct`} value={pct} inputMode="decimal" onChange={(e) => setPct(e.target.value)} placeholder="10" />
+          <Input id={`${idPrefix}-pct`} value={pct} inputMode="decimal" onChange={(e) => setPct(e.target.value)} placeholder="ex. 10" />
         </div>
       </div>
       <div className="space-y-1">
