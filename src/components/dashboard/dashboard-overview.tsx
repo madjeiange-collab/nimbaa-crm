@@ -242,6 +242,8 @@ export function DashboardOverview({
   const flRapid = fl.filter((f) => f.rapid_fire).length;
 
   const navCards = [
+    // First, because it is the one that answers "what is happening right now".
+    { href: '/dashboard/journee', icon: Clock, label: t('hourly') },
     { href: '/dashboard/pipeline', icon: KanbanSquare, label: t('pipeline') },
     { href: '/dashboard/photos', icon: Images, label: t('photos') },
     { href: '/dashboard/commissions', icon: BadgeDollarSign, label: t('commissions') },

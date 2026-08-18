@@ -116,7 +116,10 @@
     "manual": "User manual",
     "manualHint": "Illustrated guide to the app (in French)",
     "seeAll": "See all",
-    "coverageTitle": "Coverage map"
+    "coverageTitle": "Coverage map",
+    "todayStrip": "Day in progress",
+    "todayStripHint": "{active}/{total} on the road · {passages} passages",
+    "todayStripAlert": "{n} to call"
   },
   "people": {
     "title": "Contact persons",
@@ -969,7 +972,9 @@
     "coverageTitle": "Turf coverage",
     "noData": "No data.",
     "rep": "Rep",
-    "unknownRep": "—"
+    "unknownRep": "—",
+    "hourly": "Day in progress",
+    "hourlyHint": "Hourly tracking of reps and technicians"
   },
   "address": {
     "placeholder": "Search a place, or use the buttons below…",
@@ -983,5 +988,38 @@
     "atMyPosition": "My position",
     "pinned": "Pin dropped on the map",
     "located": "Position saved · {lat}, {lng}"
+  },
+  "hourly": {
+    "title": "Day in progress",
+    "backToDashboard": "Manager area",
+    "stamp": "{day} · at {time}",
+    "onTheRoad": "on the road",
+    "passagesWord": "passages",
+    "withClients": "with customers",
+    "engagement": "engagement",
+    "callNow": "Call now",
+    "notStarted": "nothing logged this morning",
+    "silentSince": "silent for {time}",
+    "call": "Call",
+    "person": "Person",
+    "passages": "Passages",
+    "duration": "Time",
+    "avg": "Avg.",
+    "won": "Sold",
+    "warm": "Interested / appt.",
+    "refused": "Refused",
+    "conversion": "Conversion",
+    "pipeline": "Pipeline",
+    "teamRow": "Total",
+    "sectionCommercial": "Sales reps — the cell is filled in proportion to the hour’s outcomes",
+    "sectionTechnical": "Technicians — sites visited · green finished · amber needs a return",
+    "nothingToday": "No passages logged today.",
+    "noPassages": "No passages on this day.",
+    "noContact": "Door with no contact",
+    "lastReceived": "last passage received at {time} · {client}",
+    "nothingYet": "nothing received today",
+    "goal": "goal {n}",
+    "travel": "{n} min travel",
+    "receivedNote": "Times are when the passage was RECEIVED. A visit logged offline arrives on sync: an empty hour can be a dead zone, not a pause."
   }
 }

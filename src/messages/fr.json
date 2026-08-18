@@ -116,7 +116,10 @@
     "manual": "Manuel d'utilisation",
     "manualHint": "Guide illustré de l'application",
     "seeAll": "Voir tout",
-    "coverageTitle": "Carte de couverture"
+    "coverageTitle": "Carte de couverture",
+    "todayStrip": "Journée en cours",
+    "todayStripHint": "{active}/{total} en tournée · {passages} passages",
+    "todayStripAlert": "{n} à rappeler"
   },
   "people": {
     "title": "Interlocuteurs",
@@ -969,7 +972,9 @@
     "coverageTitle": "Couverture du terrain",
     "noData": "Pas de données.",
     "rep": "Commercial",
-    "unknownRep": "—"
+    "unknownRep": "—",
+    "hourly": "Journée en cours",
+    "hourlyHint": "Suivi horaire des commerciaux et techniciens"
   },
   "address": {
     "placeholder": "Cherchez un lieu, ou utilisez les boutons ci-dessous…",
@@ -983,5 +988,38 @@
     "atMyPosition": "Ma position",
     "pinned": "Point placé sur la carte",
     "located": "Position enregistrée · {lat}, {lng}"
+  },
+  "hourly": {
+    "title": "Journée en cours",
+    "backToDashboard": "Espace manager",
+    "stamp": "{day} · à {time}",
+    "onTheRoad": "en tournée",
+    "passagesWord": "passages",
+    "withClients": "chez les clients",
+    "engagement": "engagement",
+    "callNow": "À rappeler maintenant",
+    "notStarted": "rien enregistré ce matin",
+    "silentSince": "silencieux depuis {time}",
+    "call": "Appeler",
+    "person": "Personne",
+    "passages": "Passages",
+    "duration": "Durée",
+    "avg": "Moy.",
+    "won": "Vendu",
+    "warm": "Int. / RDV",
+    "refused": "Refus",
+    "conversion": "Conversion",
+    "pipeline": "Pipeline",
+    "teamRow": "Total",
+    "sectionCommercial": "Commerciaux — la cellule est remplie à proportion des résultats de l’heure",
+    "sectionTechnical": "Techniciens — chantiers touchés · vert terminé · ambre retour requis",
+    "nothingToday": "Aucun passage enregistré aujourd’hui.",
+    "noPassages": "Aucun passage sur cette journée.",
+    "noContact": "Porte sans contact",
+    "lastReceived": "dernier passage reçu à {time} · {client}",
+    "nothingYet": "rien reçu aujourd’hui",
+    "goal": "objectif {n}",
+    "travel": "{n} min de trajet",
+    "receivedNote": "Les heures sont celles où le passage a été REÇU. Une visite enregistrée hors réseau arrive à la synchronisation : une heure vide peut être une zone sans couverture, pas une pause."
   }
 }

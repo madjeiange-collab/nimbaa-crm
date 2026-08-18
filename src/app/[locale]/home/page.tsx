@@ -27,6 +27,9 @@ import { loadMyTasks } from '@/lib/tasks/queries';
 import { GenerateRecapButton } from '@/components/leaderboard/generate-recap-button';
 import { RecapCard } from '@/components/leaderboard/recap-card';
 import type { InstallPoint, TurfKnock } from '@/components/map/turf-map';
+import { loadJournalRows } from '@/lib/checkin/journal';
+import { periodSince } from '@/lib/checkin/period';
+import { buildHourly, silentFor } from '@/lib/checkin/hourly';
 import type { UserRole } from '@/types/database';
 
 /** Green commercial, blue technical — the pairing used across the app. */
@@ -291,10 +294,63 @@ export default async function HomePage({
   ];
   if (isTechnician) miniBoards.reverse();
 
+  // The glance that decides whether to open the matrix: who is out, how much
+  // has come in, and whether anyone needs a call. Managers only.
+  let strip: { active: number; total: number; passages: number; toCall: number } | null = null;
+  if (isManager) {
+    const since = periodSince('day', new Date());
+    const [todayRows, { data: staff }] = await Promise.all([
+      loadJournalRows(supabase, { sinceIso: since, limit: 600 }),
+      supabase.from('users').select('id, role, is_active'),
+    ]);
+    const field = ((staff ?? []) as { id: string; role: string; is_active: boolean }[]).filter(
+      (u) => u.is_active && u.role !== 'manager' && u.role !== 'admin',
+    );
+    const { commercial, technical } = buildHourly(todayRows);
+    const rowsAll = [...commercial, ...technical];
+    const seen = new Set(rowsAll.map((r) => r.personId));
+    const nowMs = Date.now();
+    const silent = rowsAll.filter((r) => {
+      const m = silentFor(r, nowMs);
+      return m != null && m >= 120;
+    }).length;
+    const hourNow = Number(
+      new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', hour12: false, timeZone: 'Africa/Abidjan' })
+        .format(new Date()),
+    );
+    const notStarted = hourNow >= 9 ? field.filter((u) => !seen.has(u.id)).length : 0;
+    strip = {
+      active: seen.size,
+      total: field.length,
+      passages: rowsAll.reduce((n, r) => n + r.total, 0),
+      toCall: silent + notStarted,
+    };
+  }
+
   return (
     <>
       <AppHeader title={t('greeting', { name: displayName })} />
       <main className="mx-auto max-w-6xl p-4">
+        {strip && (
+          <Link href="/dashboard/journee" className="mb-3 block">
+            <Card className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm transition-colors hover:bg-accent">
+              <span className="font-medium">{t('todayStrip')}</span>
+              <span className="text-muted-foreground">
+                {t('todayStripHint', {
+                  active: strip.active,
+                  total: strip.total,
+                  passages: strip.passages,
+                })}
+              </span>
+              {strip.toCall > 0 && (
+                <span className="ml-auto rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                  {t('todayStripAlert', { n: strip.toCall })}
+                </span>
+              )}
+            </Card>
+          </Link>
+        )}
+
         {/* Who you are signed in as, opposite the language toggle. Green is
             commercial and blue is technical, the same pairing the Visite /
             Intervention buttons use throughout the app. */}
