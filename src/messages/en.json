@@ -810,7 +810,13 @@
     "quality": "Visit quality",
     "coverage": "My coverage",
     "progress3mo": "Progression (3 months)",
-    "daysAgo": "{n}d ago"
+    "daysAgo": "{n}d ago",
+    "myVisitsTitle": "My visits",
+    "myVisitsWeek": "Visits (7 d)",
+    "myVisitsMonth": "Visits (30 d)",
+    "myVisitsEngaged": "Engaged",
+    "myVisitsSold": "Sales",
+    "myVisitsRate": "{pct}% of visits engaged — interested, appointment or sold."
   },
   "dashboard": {
     "title": "Manager area",

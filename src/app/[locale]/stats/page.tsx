@@ -31,6 +31,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { dispositionCssColor } from '@/lib/visits/dispositions';
 import type { InstallPoint, TurfKnock } from '@/components/map/turf-map';
 import { TechnicianStats } from '@/components/stats/technician-stats';
+import { MyVisits } from '@/components/stats/my-visits';
 import { StatsFilters } from '@/components/stats/stats-filters';
 import { MyCommissions } from '@/components/stats/my-commissions';
 
@@ -62,7 +63,11 @@ export default async function StatsPage({
       <>
         <AppHeader title={tHome('techStats')} />
         <TechnicianStats userId={user.id} />
-        <div className="mx-auto max-w-3xl px-4 pb-4">
+        <div className="mx-auto max-w-3xl space-y-4 px-4 pb-4">
+          {/* The mirror of the chantier block on a commercial's page: a
+              technician who logs visits gets to see what came of them. It
+              hides itself when there are none. */}
+          <MyVisits userId={user.id} />
           <CheckInJournal
             rows={myRows}
             showPerson={false}

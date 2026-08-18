@@ -810,7 +810,13 @@
     "quality": "Qualité des visites",
     "coverage": "Ma couverture",
     "progress3mo": "Progression (3 mois)",
-    "daysAgo": "il y a {n} j"
+    "daysAgo": "il y a {n} j",
+    "myVisitsTitle": "Mes visites",
+    "myVisitsWeek": "Visites (7 j)",
+    "myVisitsMonth": "Visites (30 j)",
+    "myVisitsEngaged": "Engagées",
+    "myVisitsSold": "Ventes",
+    "myVisitsRate": "{pct} % de visites engagées — intéressé, rendez-vous ou vendu."
   },
   "dashboard": {
     "title": "Espace manager",
