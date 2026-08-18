@@ -189,6 +189,9 @@
     border-bottom: 1px solid var(--line);
   }
   section.screen.noshot { grid-template-columns: minmax(0, 1fr); }
+  /* A desktop capture cannot live in the 270px phone column: it comes out at
+     0.15 scale. These sections stack instead, and the image runs full width. */
+  section.screen.wideshot { grid-template-columns: minmax(0, 1fr); }
   /* Continuation of the section above: led by an h3, so less top air. */
   section.screen.sub { padding-top: 1.6rem; }
   section.screen.sub > .txt > h3:first-child { margin-top: 0; }
@@ -203,6 +206,11 @@
     top: 1rem;
   }
   section.screen.sub figure.phone { margin-top: 0.4rem; }
+  section.screen.wideshot figure.phone {
+    position: static;
+    margin: 1.4rem 0 0.4rem;
+  }
+  section.screen.wideshot figure.phone figcaption { font-size: 0.82rem; }
   @media (max-width: 720px) {
     figure.phone { position: static; margin-top: 0.4rem; }
   }
@@ -966,7 +974,7 @@
 </section>
 
 <!-- ---- 12b. Journée en cours ---- -->
-<section class="screen sub" id="journee">
+<section class="screen sub wideshot" id="journee">
   <div class="txt">
     <h3>Journée en cours — le suivi heure par heure</h3>
     <p>Les autres écrans racontent la journée <strong>après</strong> coup. Celui-ci la raconte pendant : une ligne par personne, une colonne par heure, de 6 h à 19 h. Il s'ouvre depuis l'<strong>Espace manager</strong>, et une ligne sur l'accueil du manager y mène directement.</p>
@@ -1011,7 +1019,7 @@
 </section>
 
 <!-- ---- 12c. Le détail d'une personne ---- -->
-<section class="screen sub" id="journee-detail">
+<section class="screen sub wideshot" id="journee-detail">
   <div class="txt">
     <h3>Ouvrir la journée d'une personne</h3>
     <p>Touchez un <strong>nom</strong> : sa ligne s'ouvre sous la matrice, sans la quitter. Une seule à la fois.</p>
@@ -1033,7 +1041,7 @@
 </section>
 
 <!-- ---- 12d. Choisir la journée ---- -->
-<section class="screen sub" id="journee-choix">
+<section class="screen sub wideshot" id="journee-choix">
   <div class="txt">
     <h3>Revoir une journée passée</h3>
     <p>Sous le titre, une barre de date. Elle sert deux usages : suivre la journée en cours, et <strong>rouvrir une journée terminée</strong> pour la revoir avec l'équipe.</p>
@@ -1062,7 +1070,7 @@
 </section>
 
 <!-- ---- 12e. Ce que dit une journée terminée ---- -->
-<section class="screen sub" id="journee-passee">
+<section class="screen sub wideshot" id="journee-passee">
   <div class="txt">
     <h3>Ce que l'écran dit d'une journée terminée</h3>
     <p>Sur une journée passée, la matrice ne change pas. Deux choses autour d'elle, si.</p>
