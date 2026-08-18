@@ -12,6 +12,9 @@
  *   E  one trip, retour requis     → OVERDUE task
  *   F  one trip, still in progress → no task
  *   + two rendez-vous tasks for a commercial (one of them overdue)
+ *   + four interventions that no sale produced (SAV planned, SAV resolved,
+ *     warranty that needed a return, maintenance to come) — no deal, so no
+ *     commission and nothing in the pipeline
  *
  * Every trip carries its own arrival/end photo pair metadata, the status the
  * technician concluded at that trip, and a snapshot of the protocol at that
@@ -36,17 +39,36 @@ const purgeOnly = process.argv.includes('--purge');
 const demoId = (n) => `0d000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const VISIT_IDS = Array.from({ length: 40 }, (_, i) => demoId(i + 1));
 const TASK_IDS = Array.from({ length: 20 }, (_, i) => demoId(500 + i));
+/** Interventions this seed CREATES (SAV etc.), as opposed to jobs it borrows. */
+const INTERVENTION_IDS = Array.from({ length: 10 }, (_, i) => demoId(900 + i));
 
 // ---------- purge ----------
 const { data: oldVisits } = await db.from('visits').select('id, installation_id').in('id', VISIT_IDS);
-const touchedJobs = [...new Set((oldVisits ?? []).map((v) => v.installation_id).filter(Boolean))];
+const borrowed = [
+  ...new Set(
+    (oldVisits ?? [])
+      .map((v) => v.installation_id)
+      .filter((id) => id && !INTERVENTION_IDS.includes(id)),
+  ),
+];
 await db.from('tasks').delete().in('id', TASK_IDS);
 await db.from('visit_photos').delete().in('visit_id', VISIT_IDS);
 await db.from('visits').delete().in('id', VISIT_IDS);
-if (touchedJobs.length > 0) {
-  await db.from('commission_entries').delete().in('installation_id', touchedJobs);
+// Interventions are ours to delete outright; borrowed jobs are only restored.
+await db.from('tasks').delete().in('installation_id', INTERVENTION_IDS);
+await db.from('commission_entries').delete().in('installation_id', INTERVENTION_IDS);
+const { data: killed } = await db
+  .from('installations')
+  .delete()
+  .in('id', INTERVENTION_IDS)
+  .select('id');
+if (borrowed.length > 0) {
+  await db.from('commission_entries').delete().in('installation_id', borrowed);
 }
-console.log(`purged ${(oldVisits ?? []).length} demo trips across ${touchedJobs.length} jobs`);
+console.log(
+  `purged ${(oldVisits ?? []).length} demo trips · ${borrowed.length} borrowed jobs · ${(killed ?? []).length} demo interventions`,
+);
+const touchedJobs = borrowed;
 
 // ---------- protocol template ----------
 const { data: stepRows } = await db
@@ -240,6 +262,103 @@ await db.from('installations').update({
   next_visit_date: null, notes: 'Pose avancée, test prévu au prochain passage.',
 }).eq('id', F.id);
 
+// ---------- interventions: jobs no sale produced ----------
+// These prove the after-sales path: raised by a technician, no deal, no
+// commission, and invisible to the pipeline.
+const { data: customerRows } = await db
+  .from('contacts')
+  .select('id, name, lat, lng')
+  .eq('lifecycle', 'customer')
+  .not('lat', 'is', null)
+  .limit(20);
+const customers = (customerRows ?? []).filter((c) => !jobs.slice(0, 6).some((j) => j.contact_id === c.id));
+
+let interventionCursor = 0;
+async function intervention({ customer, origin, title, reason, tech, status, scheduledDate, trips = [] }) {
+  const id = INTERVENTION_IDS[interventionCursor++];
+  const { error } = await db.from('installations').insert({
+    id,
+    contact_id: customer.id,
+    deal_id: null,
+    origin,
+    reason,
+    title,
+    status,
+    checklist: snapshot(0),
+    equipment: [],
+    installer_id: tech,
+    scheduled_date: scheduledDate ?? null,
+    created_by: tech,
+  });
+  if (error) throw error;
+  const job = { id, contact_id: customer.id, deal_id: null, title, contacts: customer };
+  for (const spec of trips) await trip(job, { tech, ...spec });
+  return job;
+}
+
+if (customers.length >= 4) {
+  // 1 · reported yesterday, technician goes in two days — sits in the queue
+  await intervention({
+    customer: customers[0],
+    origin: 'service',
+    title: 'SAV — climatiseur',
+    reason: 'Le climatiseur ne refroidit plus depuis deux jours.',
+    tech: techIds[0],
+    status: 'scheduled',
+    scheduledDate: new Date(Date.now() + 2 * DAY).toISOString().slice(0, 10),
+  });
+
+  // 2 · called in the morning, fixed the same afternoon
+  const fixed = await intervention({
+    customer: customers[1],
+    origin: 'service',
+    title: 'SAV — disjoncteur',
+    reason: 'Disjoncteur qui saute au démarrage du four.',
+    tech: techIds[1],
+    status: 'done',
+    trips: [
+      { inAt: at(4, 14, 10), minutes: 55, outcome: 'done', stepsDone: STEPS.length, note: 'Disjoncteur sous-dimensionné remplacé, test OK.' },
+    ],
+  });
+  await db.from('installations').update({
+    started_at: at(4, 14, 10).toISOString(),
+    completed_at: at(4, 15, 5).toISOString(),
+    checklist: snapshot(STEPS.length),
+    notes: 'Disjoncteur sous-dimensionné remplacé, test OK.',
+  }).eq('id', fixed.id);
+
+  // 3 · warranty return that itself needed a second trip
+  const warranty = await intervention({
+    customer: customers[2],
+    origin: 'warranty',
+    title: 'Garantie — onduleur',
+    reason: 'Onduleur HS après trois semaines, sous garantie.',
+    tech: techIds[0],
+    status: 'done',
+    trips: [
+      { inAt: at(10, 9, 0), minutes: 45, outcome: 'needs_revisit', stepsDone: 2, note: 'Onduleur à remplacer, pièce sous garantie commandée.' },
+      { inAt: at(6, 11, 30), minutes: 70, outcome: 'done', stepsDone: STEPS.length, note: 'Onduleur remplacé sous garantie, client satisfait.' },
+    ],
+  });
+  await db.from('installations').update({
+    started_at: at(10, 9, 0).toISOString(),
+    completed_at: at(6, 12, 40).toISOString(),
+    checklist: snapshot(STEPS.length),
+    notes: 'Onduleur remplacé sous garantie, client satisfait.',
+  }).eq('id', warranty.id);
+
+  // 4 · planned upkeep, still to do
+  await intervention({
+    customer: customers[3],
+    origin: 'maintenance',
+    title: 'Entretien semestriel',
+    reason: 'Nettoyage filtres et contrôle général.',
+    tech: techIds[1],
+    status: 'scheduled',
+    scheduledDate: new Date(Date.now() + 5 * DAY).toISOString().slice(0, 10),
+  });
+}
+
 // ---------- two rendez-vous for the commercial ----------
 const { data: leads } = await db
   .from('contacts')
@@ -270,3 +389,6 @@ if ((leads ?? []).length === 2) {
 
 console.log(`created ${visitCursor} trips across 6 jobs and ${taskCursor} open follow-ups`);
 console.log('A 1 passage · B 2 (1 retour) · C 3 (2 retours) · D 2 en cours · E retour en retard · F en cours');
+console.log(
+  `+ ${interventionCursor} interventions sans vente : SAV planifié · SAV résolu · garantie avec retour · entretien à venir`,
+);
