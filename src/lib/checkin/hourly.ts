@@ -48,14 +48,23 @@ export interface HourlyRow {
 
 const HOURS = LAST_HOUR - FIRST_HOUR + 1;
 
-const hourOf = (iso: string) =>
-  Number(
-    new Intl.DateTimeFormat('fr-FR', {
-      hour: '2-digit',
-      hour12: false,
-      timeZone: 'Africa/Abidjan',
-    }).format(new Date(iso)),
-  );
+/**
+ * Which Abidjan hour a timestamp falls in.
+ *
+ * Not fr-FR: it formats an hour-only value as "08 h", and Number("08 h") is
+ * NaN — which indexed every cell to undefined and left the whole grid empty
+ * while the row totals stayed correct. en-GB gives a bare "08"; the digit
+ * match makes it locale-proof anyway.
+ */
+export const abidjanHour = (iso: string): number => {
+  const s = new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    hour12: false,
+    timeZone: 'Africa/Abidjan',
+  }).format(new Date(iso));
+  const m = s.match(/\d{1,2}/);
+  return m ? Number(m[0]) : -1;
+};
 
 const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : null);
 
@@ -106,7 +115,7 @@ export function buildHourly(rows: JournalRow[]): {
       byPerson.set(key, row);
     }
 
-    const h = hourOf(r.outAt);
+    const h = abidjanHour(r.outAt);
     const cell = row.cells[h - FIRST_HOUR];
     const mins = r.durationMin ?? 0;
 

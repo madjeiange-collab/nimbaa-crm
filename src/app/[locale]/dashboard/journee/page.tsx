@@ -7,7 +7,7 @@ import { AppHeader } from '@/components/shared/app-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { loadJournalRows, type JournalRow } from '@/lib/checkin/journal';
 import { periodSince } from '@/lib/checkin/period';
-import { buildHourly, hm, totalsOf } from '@/lib/checkin/hourly';
+import { buildHourly, hm, totalsOf, abidjanHour } from '@/lib/checkin/hourly';
 import { HourlyMatrix } from '@/components/dashboard/hourly-matrix';
 
 /** Someone with nothing received for this long is worth a call, not a guess. */
@@ -75,10 +75,7 @@ export default async function JourneePage({
 
   // --- who needs a call, which is the only reason to open this at 11h ------
   const nowMs = now.getTime();
-  const hourNow = Number(
-    new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', hour12: false, timeZone: 'Africa/Abidjan' })
-      .format(now),
-  );
+  const hourNow = abidjanHour(now.toISOString());
   // buildHourly keys rows by person AND trade, so anyone who did both a visit
   // and a chantier today produces two rows. Counting rows gave "10/7 en
   // tournée" and listed the same person twice as silent.
