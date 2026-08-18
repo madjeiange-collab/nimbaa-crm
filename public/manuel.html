@@ -557,7 +557,7 @@
       <p>La <strong>corbeille</strong> d'une affaire ne s'affiche que tant qu'elle n'a rien produit : une affaire <em>ouverte</em> et sans abonnement se supprime librement. Dès qu'elle est gagnée, perdue ou porteuse d'un abonnement, seul un <strong>manager</strong> peut la supprimer — la suppression emporte aussi ses chantiers et leurs passages.</p>
     </div>
     <p><strong>Prospect perdu ?</strong> Choisissez l'étape <strong>Perdu</strong>. Si le contact n'a plus aucune affaire ouverte ni gagnée, il bascule dans l'onglet <em>Perdus</em> — sa fiche et son historique restent consultables.</p>
-  </div>
+
     <h4>Lire le bloc Affaires</h4>
     <p>Un client peut porter plusieurs affaires en même temps. Deux repères visuels évitent de les confondre :</p>
     <div class="tablewrap"><table>
@@ -945,15 +945,15 @@
   <div class="txt">
     <h2>12 · Espace manager</h2>
     <div class="roles"><span class="chip man">Manager</span><span class="chip adm">Admin</span></div>
-    <p>Le tableau de bord d'équipe : activité du jour, chiffres par commercial et technicien, objectifs, montants en FCFA. De là, cinq outils :</p>
+    <p>Le tableau de bord d'équipe : activité du jour, chiffres par commercial et technicien, objectifs, montants en FCFA. Une rangée de cinq outils la surmonte :</p>
     <ul>
+      <li><strong>Journée en cours</strong> — le suivi heure par heure de la journée qui se déroule (12b), et la relecture d'une journée passée pour une réunion d'équipe (12d).</li>
       <li><strong>Pipeline</strong> — toutes les affaires par étape, avec type d'activité et tags sur chaque carte, filtres et export CSV.</li>
       <li><strong>Audit photos</strong> — contrôle des photos de visites et d'installations.</li>
-      <li><strong>Pipeline installations</strong> — suivi des poses en attente, en cours, terminées.</li>
-      <li><strong>Journée en cours</strong> — le suivi heure par heure de la journée qui se déroule (12b), et la relecture d'une journée passée pour une réunion d'équipe (12d).</li>
-      <li><strong>Check-In and -Out</strong> — temps passé chez le client et vérifications automatiques (ci-dessous).</li>
       <li><strong>Commissions</strong> — le panneau de paie (section 13).</li>
+      <li><strong>Check-In and -Out</strong> — temps passé chez le client et vérifications automatiques (12f).</li>
     </ul>
+    <p class="meta-note">Le <strong>pipeline des installations</strong> et l'<strong>audit de leurs photos</strong> ne sont pas ici : ils s'ouvrent depuis <strong>Statistiques techniciens</strong>, où ils sont à côté des chiffres qu'ils détaillent.</p>
     <p>Les listes se filtrent par <strong>secteur</strong>, <strong>type d'activité</strong>, <strong>tag</strong> et <strong>personne</strong> — les mêmes filtres que sur les statistiques.</p>
   </div>
   <figure class="phone">
@@ -971,6 +971,7 @@
 
     <h4>À rappeler maintenant</h4>
     <p>En haut, avant la matrice, les seules lignes qui demandent une action : qui n'a <strong>rien enregistré</strong> ce matin, et qui est <strong>silencieux</strong> depuis plus de deux heures. La matrice dit la forme de la journée ; cette liste dit qui appeler.</p>
+    <p>Ce bloc n'existe que <strong>pendant</strong> la journée. Sur une journée terminée, le même emplacement porte un bilan (12e).</p>
 
     <h4>Lire une cellule</h4>
     <p>Chaque case porte trois informations à la fois :</p>
@@ -981,6 +982,7 @@
       <tr><td>La <strong>barre</strong> en bas</td><td>Les minutes réellement passées chez les clients dans l'heure. Une barre large avec peu de couleur = du temps donné sans résultat.</td></tr>
     </table></div>
     <p>Les petites marques précisent le compte : <strong>✓</strong> vendus, <strong>●</strong> engagés, <strong>✕</strong> refus, <strong>↻</strong> retours de chantier. Ainsi <em>4 · 1✓ 2● 1✕</em> se lit « quatre portes : une vente, deux intéressés, un refus ».</p>
+    <p>Sous le tableau, une <strong>légende</strong> reprend chaque couleur et chaque marque. Elle est écrite à partir des couleurs du tableau lui-même, donc elle ne peut pas dire autre chose que ce que vous voyez.</p>
 
     <h4>Les colonnes de droite</h4>
     <div class="tablewrap"><table>
@@ -1090,11 +1092,11 @@
   </figure>
 </section>
 
-<!-- ---- 11b. Check-In and -Out ---- -->
+<!-- ---- 12f. Check-In and -Out ---- -->
 <section class="screen sub" id="controles">
   <div class="txt">
     <h3>Check-In and -Out</h3>
-    <p class="meta-note">À ne pas confondre avec <strong>Journée en cours</strong> (12b) : celle-ci demande « la journée produit-elle quelque chose », celle-ci demande « la personne était-elle bien là, et combien de temps ».</p>
+    <p class="meta-note">À ne pas confondre avec <strong>Journée en cours</strong> (12b) : celle-là demande « la journée produit-elle quelque chose », celle-ci demande « la personne était-elle bien là, et combien de temps ».</p>
     <p>Les photos d'arrivée (<em>check-in</em>) et de fin (<em>check-out</em>) ne servent pas qu'à prouver le passage : elles alimentent cette page. On y accède depuis l'<strong>Espace manager</strong> (onglets Commerciaux et Techniciens) ainsi que depuis les <strong>Statistiques commerciales</strong> et <strong>Statistiques techniciens</strong>.</p>
 
     <h4>Choisir la période</h4>
@@ -1134,7 +1136,7 @@
   </figure>
 </section>
 
-<!-- ---- 11c. Journal des passages ---- -->
+<!-- ---- 12g. Journal des passages ---- -->
 <section class="screen sub" id="journal">
   <div class="txt">
     <h3>Le journal des passages</h3>
