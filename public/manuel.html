@@ -103,6 +103,12 @@
     max-width: 100%;
   }
   .path strong { color: var(--accent); }
+
+  .meta-note {
+    font-size: 0.82rem;
+    color: var(--muted);
+    font-style: italic;
+  }
   p { margin: 0.7rem 0; max-width: 68ch; }
   li { margin: 0.3rem 0; }
   ul, ol { padding-left: 1.3rem; max-width: 66ch; }
@@ -594,7 +600,9 @@
       <li><strong>Payées</strong> — déjà versées.</li>
       <li>Chaque ligne affiche le détail : client, produit, mensualité, et le calcul <em>base × taux = montant</em>.</li>
     </ul>
-    <p>La page <span class="btn-ref">Statistiques techniciens</span> suit la même logique pour les installations.</p>
+    <h3>Mes passages</h3>
+    <p>Tout en bas de la page, le <strong>journal de vos passages</strong> : chaque visite des 14 derniers jours avec l'heure d'arrivée, l'heure de départ, la durée et vos deux photos. C'est votre relevé personnel — celui qui atteste du temps que vous passez chez les clients. Le détail de sa lecture est décrit en section 11.</p>
+    <p>La page <span class="btn-ref">Statistiques techniciens</span> suit la même logique pour les installations, avec le même journal en bas de page.</p>
   </div>
   <figure class="phone">
     <img src="/manuel/09-stats.png" alt="Statistiques commerciales avec filtres par secteur, type et tag" />
@@ -675,6 +683,40 @@
   <figure class="phone">
     <img src="/manuel/18-controls.png" alt="Page Check-In and -Out : moyennes de durée, temps par personne et six compteurs de vérification à zéro" />
     <figcaption>Check-In and -Out : durées moyennes, temps par personne, et six vérifications automatiques.</figcaption>
+  </figure>
+</section>
+
+<!-- ---- 11c. Journal des passages ---- -->
+<section class="screen sub" id="journal">
+  <div class="txt">
+    <h3>Le journal des passages</h3>
+    <p>Sous les moyennes, le <strong>journal</strong> reprend chaque passage un par un, groupé par personne et par journée. C'est le détail derrière les chiffres — utile pour préparer un point hebdomadaire autant que pour lever un doute.</p>
+
+    <h4>L'en-tête de journée</h4>
+    <p>Une ligne résume la forme de la journée :</p>
+    <p class="path">Kofi Mensah · mardi 18 août — 08:12 → 14:42 · 6 passages · <strong>2 h 11 chez les clients sur 6 h 30 · 34 %</strong> (équipe 34 %)</p>
+    <p>Ce pourcentage — le <strong>temps client</strong> — est le chiffre à suivre : il distingue « faire de longues journées » de « passer du temps avec les clients », et se compare à la moyenne de l'équipe affichée juste à côté.</p>
+
+    <h4>Chaque ligne</h4>
+    <ul>
+      <li>Les <strong>deux photos</strong> en vignette (arrivée, fin) — touchez-les pour les agrandir.</li>
+      <li>L'heure d'arrivée, l'heure de départ et la <strong>durée</strong>.</li>
+      <li>Le <strong>client</strong> (lien vers sa fiche) ou « Porte sans contact », le type (Visite / Chantier) et le résultat.</li>
+      <li>L'écart entre les deux photos et la distance à l'adresse du client.</li>
+      <li>Les <strong>alertes</strong> éventuelles, en contexte.</li>
+      <li>Entre deux lignes, le <strong>temps de trajet</strong> jusqu'au client suivant.</li>
+    </ul>
+    <p>Le journal se filtre par personne, période, type et « seulement les alertes », et s'exporte en <strong>CSV</strong> — c'est le justificatif à joindre à un entretien ou à une paie.</p>
+
+    <div class="callout tip">
+      <span class="lbl">Chacun voit ses propres passages</span>
+      <p>Le même journal, limité à ses propres passages, apparaît en bas des <strong>Statistiques</strong> de chaque commercial et technicien. Personne n'est évalué sur des chiffres qu'il ne peut pas consulter lui-même.</p>
+    </div>
+    <p class="meta-note">Les heures sont toujours affichées à l'heure d'Abidjan, où que se trouve la personne qui consulte.</p>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/19-journal.png" alt="Journal des passages : en-tête de journée avec temps client, lignes de visite avec photos, durée et temps de trajet" />
+    <figcaption>Le journal : une journée complète, passage par passage, avec les temps de trajet intercalés.</figcaption>
   </figure>
 </section>
 
