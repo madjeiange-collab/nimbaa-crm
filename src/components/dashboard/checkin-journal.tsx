@@ -58,14 +58,14 @@ export function CheckInJournal({
   rows,
   people = [],
   showPerson = true,
-  teamRatio = null,
+  teamRatios = null,
 }: {
   rows: JournalRow[];
   people?: { id: string; name: string }[];
   /** Team view shows who did what; the personal view already knows. */
   showPerson?: boolean;
-  /** Team average of the client-time ratio, for comparison on each day. */
-  teamRatio?: number | null;
+  /** Client-time averages per kind of work — a day is compared with its own. */
+  teamRatios?: { visit: number | null; install: number | null } | null;
 }) {
   const t = useTranslations('dashboard');
   const tDisp = useTranslations('dispositions');
@@ -257,7 +257,13 @@ export function CheckInJournal({
                           })}
                         </span>{' '}
                         <span className="font-semibold text-primary">{g.ratio} %</span>
-                        {teamRatio != null && ` (${t('jTeamAvg', { pct: teamRatio })})`}
+                        {(() => {
+                          // Compare the day with its own kind of work.
+                          const installs = g.rows.filter((r) => r.kind === 'install').length;
+                          const ref =
+                            installs > g.rows.length / 2 ? teamRatios?.install : teamRatios?.visit;
+                          return ref != null ? ` (${t('jTeamAvg', { pct: ref })})` : null;
+                        })()}
                       </>
                     )}
                   </p>

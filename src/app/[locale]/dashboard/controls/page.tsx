@@ -256,27 +256,36 @@ export default async function ControlsPage({
   const fmtHours = (min: number) =>
     min >= 60 ? `${Math.floor(min / 60)} h ${String(Math.round(min % 60)).padStart(2, '0')}` : `${min} min`;
 
-  // Team-wide client-time ratio: minutes on site over the field span of each
-  // person-day (first check-in → last check-out). Shown against each day in
-  // the journal so a number has something to be compared with.
-  const personDays = new Map<string, { onSite: number; first: number; last: number }>();
-  for (const v of [...timedVisits, ...timedInstallTrips]) {
-    const inMs = new Date(v.started_at as string).getTime();
-    const outMs = new Date(v.visited_at).getTime();
-    const key = `${v.rep_id}|${(v.started_at as string).slice(0, 10)}`;
-    const row = personDays.get(key) ?? { onSite: 0, first: inMs, last: outMs };
-    row.onSite += (outMs - inMs) / 60_000;
-    row.first = Math.min(row.first, inMs);
-    row.last = Math.max(row.last, outMs);
-    personDays.set(key, row);
-  }
-  let onSiteTotal = 0;
-  let fieldTotal = 0;
-  for (const r of personDays.values()) {
-    onSiteTotal += r.onSite;
-    fieldTotal += (r.last - r.first) / 60_000;
-  }
-  const teamRatio = fieldTotal > 0 ? Math.round((onSiteTotal / fieldTotal) * 100) : null;
+  // Client-time ratio: minutes on site over the field span of each person-day
+  // (first check-in → last check-out). Commercials and technicians are averaged
+  // SEPARATELY — a technician spends hours on one site, so a shared average
+  // would make every rep look idle by comparison.
+  const ratioOver = (list: VisitRow[]): number | null => {
+    const personDays = new Map<string, { onSite: number; first: number; last: number }>();
+    for (const v of list) {
+      const inMs = new Date(v.started_at as string).getTime();
+      const outMs = new Date(v.visited_at).getTime();
+      const key = `${v.rep_id}|${(v.started_at as string).slice(0, 10)}`;
+      const row = personDays.get(key) ?? { onSite: 0, first: inMs, last: outMs };
+      row.onSite += (outMs - inMs) / 60_000;
+      row.first = Math.min(row.first, inMs);
+      row.last = Math.max(row.last, outMs);
+      personDays.set(key, row);
+    }
+    let onSite = 0;
+    let field = 0;
+    for (const r of personDays.values()) {
+      // A day with a single stop says nothing about how the day was spent.
+      if (r.last === r.first) continue;
+      onSite += r.onSite;
+      field += (r.last - r.first) / 60_000;
+    }
+    return field > 0 ? Math.round((onSite / field) * 100) : null;
+  };
+  const teamRatios = {
+    visit: ratioOver(timedVisits),
+    install: ratioOver(timedInstallTrips),
+  };
 
   const journalPeople = [...new Map(journalRows.map((r) => [r.personId, r.personName])).entries()]
     .map(([id, name]) => ({ id, name }))
@@ -379,7 +388,7 @@ export default async function ControlsPage({
         </Card>
 
         {/* Every passage, day by day */}
-        <CheckInJournal rows={journalRows} people={journalPeople} teamRatio={teamRatio} />
+        <CheckInJournal rows={journalRows} people={journalPeople} teamRatios={teamRatios} />
 
         {/* Flag summary */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
