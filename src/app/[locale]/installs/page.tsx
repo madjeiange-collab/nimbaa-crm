@@ -1,5 +1,5 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
-import { CalendarClock, MapPin, Wrench } from 'lucide-react';
+import { CalendarClock, MapPin, Plus, Wrench } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { requireUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
@@ -37,6 +37,7 @@ export default async function InstallsPage({
   setRequestLocale(locale);
   const user = await requireUser();
   const t = await getTranslations('installation');
+  const tInt = await getTranslations('intervention');
   const tStatus = await getTranslations('installation.status');
 
   const isManager = user.role === 'manager' || user.role === 'admin';
@@ -99,6 +100,14 @@ export default async function InstallsPage({
           <StatTile label={t('kpiDoneWeek')} value={doneWeek ?? 0} accent="green" />
           <StatTile label={t('kpiRevisits')} value={revisits} accent="amber" />
         </div>
+
+        {/* Raise a job nobody sold — SAV, warranty, maintenance. */}
+        <Link href="/install/intervention" className="block">
+          <Card className="flex items-center justify-center gap-2 p-3 text-sm font-medium text-primary transition-colors hover:bg-accent">
+            <Plus className="h-4 w-4" />
+            {tInt('newIntervention')}
+          </Card>
+        </Link>
 
         {jobs.length === 0 ? (
           <Card className="flex flex-col items-center gap-2 p-8 text-center text-muted-foreground">

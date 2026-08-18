@@ -25,6 +25,27 @@
     "logoutUnsynced": "{count, plural, one {# visit is not synced yet} other {# visits are not synced yet}} — logging out now will delete them. Continue?",
     "goThere": "Directions"
   },
+  "intervention": {
+    "pageTitle": "New intervention",
+    "newIntervention": "New intervention (service, warranty…)",
+    "customer": "Customer",
+    "searchCustomer": "Search a customer…",
+    "noMatch": "No match",
+    "change": "Change",
+    "type": "Type of intervention",
+    "origin_service": "Service",
+    "origin_warranty": "Warranty",
+    "origin_maintenance": "Maintenance",
+    "title": "Title",
+    "reason": "Reason",
+    "reasonPlaceholder": "What the customer reports…",
+    "when": "Planned date",
+    "assignee": "Technician",
+    "noSaleHint": "This intervention is not a sale: it stays out of the pipeline and earns no commission.",
+    "create": "Create and open",
+    "creating": "Creating…",
+    "saveError": "Could not create — please retry."
+  },
   "tasks": {
     "myTasks": "To do",
     "contactTasks": "Follow-ups",

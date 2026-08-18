@@ -1030,3 +1030,17 @@ alter table visits
 
 create index if not exists visits_installation_ix on visits (installation_id, visited_at desc);
 create index if not exists visits_task_ix on visits (task_id) where task_id is not null;
+
+-- 0027: interventions that are not sales (SAV, warranty, maintenance). deal_id
+-- stays null for those, which also means no technician commission — the
+-- commission helper requires a won deal.
+alter table installations
+  add column if not exists origin text not null default 'sale',
+  add column if not exists reason text;
+
+alter table installations drop constraint if exists installations_origin_check;
+alter table installations
+  add constraint installations_origin_check
+  check (origin in ('sale', 'service', 'warranty', 'maintenance'));
+
+create index if not exists installations_origin_ix on installations (origin, status);

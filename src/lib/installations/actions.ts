@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { ensureTechCommissionForInstall } from '@/lib/commissions/core';
 import { createClient } from '@/lib/supabase/server';
 import { ensureTaskForRevisit } from '@/lib/tasks/actions';
+import { getTemplateChecklist } from '@/lib/installations/template';
 import type {
   ChecklistItem,
   EquipmentItem,
@@ -48,6 +49,61 @@ export async function assignInstaller(
 
   revalidateContact(contactId);
   return { ok: true };
+}
+
+export type InterventionOrigin = 'service' | 'warranty' | 'maintenance';
+
+/**
+ * Open a job that no sale produced — an SAV callback, a warranty return, a
+ * maintenance round. Any field user can raise one: a technician who takes the
+ * call should not have to route it through a commercial, and a commercial who
+ * spots a fault on site should not have to invent an affaire.
+ *
+ * `deal_id` stays null, which is also what keeps it out of the pipeline and
+ * out of the technician's commission (that helper requires a won deal).
+ */
+export async function createIntervention(input: {
+  contactId: string;
+  origin: InterventionOrigin;
+  title: string;
+  reason?: string | null;
+  scheduledDate?: string | null;
+  assignedTo?: string | null;
+}): Promise<{ ok: true; installationId: string } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+  if (!input.title.trim()) return { ok: false, error: 'title_required' };
+
+  const checklist = await getTemplateChecklist(supabase);
+  const assignee = input.assignedTo ?? user.id;
+  const row: Record<string, unknown> = {
+    contact_id: input.contactId,
+    deal_id: null,
+    title: input.title.trim(),
+    status: assignee ? 'scheduled' : 'pending',
+    checklist,
+    equipment: [],
+    installer_id: assignee,
+    scheduled_date: input.scheduledDate || null,
+    created_by: user.id,
+  };
+
+  let { data, error } = await supabase
+    .from('installations')
+    .insert({ ...row, origin: input.origin, reason: input.reason?.trim() || null })
+    .select('id')
+    .single();
+  // Pre-0027 the origin columns do not exist yet — still create the job.
+  if (error && /origin|reason/.test(error.message)) {
+    ({ data, error } = await supabase.from('installations').insert(row).select('id').single());
+  }
+  if (error || !data) return { ok: false, error: 'save_failed' };
+
+  revalidateContact(input.contactId);
+  return { ok: true, installationId: data.id };
 }
 
 export interface InstallPhotoMeta {

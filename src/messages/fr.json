@@ -25,6 +25,27 @@
     "logoutUnsynced": "{count, plural, one {# visite n'est pas encore synchronisée} other {# visites ne sont pas encore synchronisées}} — se déconnecter maintenant les supprimera. Continuer ?",
     "goThere": "Y aller"
   },
+  "intervention": {
+    "pageTitle": "Nouvelle intervention",
+    "newIntervention": "Nouvelle intervention (SAV, garantie…)",
+    "customer": "Client",
+    "searchCustomer": "Rechercher un client…",
+    "noMatch": "Aucun résultat",
+    "change": "Changer",
+    "type": "Type d'intervention",
+    "origin_service": "SAV",
+    "origin_warranty": "Garantie",
+    "origin_maintenance": "Entretien",
+    "title": "Intitulé",
+    "reason": "Motif",
+    "reasonPlaceholder": "Ce que le client signale…",
+    "when": "Date prévue",
+    "assignee": "Technicien",
+    "noSaleHint": "Cette intervention n'est pas une vente : elle n'entre pas dans le pipeline et ne génère pas de commission.",
+    "create": "Créer et ouvrir",
+    "creating": "Création…",
+    "saveError": "Création impossible — réessayez."
+  },
   "tasks": {
     "myTasks": "À faire",
     "contactTasks": "Suivi à faire",

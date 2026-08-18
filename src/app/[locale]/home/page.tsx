@@ -301,7 +301,9 @@ export default async function HomePage({
               />
             )}
 
-            {(user.can_do_b2b || user.can_do_d2d) && (
+            {/* Technicians log client visits too — a diagnostic call is not a
+                knock, but it is still a visit worth recording. */}
+            {(user.can_do_b2b || user.can_do_d2d || isTechnician) && (
               <HomeCard
                 href="/visit/new"
                 icon={DoorOpen}

@@ -1,6 +1,7 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Wrench } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 import { Link } from '@/i18n/navigation';
 import { requireUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
@@ -28,6 +29,7 @@ export default async function ContactDetailPage({
   const user = await requireUser();
   const t = await getTranslations('contacts');
   const tTasks = await getTranslations('tasks');
+  const tInt = await getTranslations('intervention');
 
   const supabase = await createClient();
   const contactTasks = await loadContactTasks(supabase, id);
@@ -298,6 +300,16 @@ export default async function ContactDetailPage({
           canInstall={canInstall}
           isManager={user.role === 'manager' || user.role === 'admin'}
         />
+        {/* Raise an SAV / warranty / maintenance job here — no sale needed. */}
+        {canInstall && (
+          <Link href={`/install/intervention?contact=${id}`} className="block">
+            <Card className="flex items-center justify-center gap-2 p-3 text-sm font-medium text-primary transition-colors hover:bg-accent">
+              <Wrench className="h-4 w-4" />
+              {tInt('newIntervention')}
+            </Card>
+          </Link>
+        )}
+
         {/* Each job as its trips: how many returns, how long, with the photos */}
         {jobHistories.map((h) => (
           <JobHistoryPanel key={h.installationId} history={h} />
