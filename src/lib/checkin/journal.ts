@@ -28,6 +28,8 @@ export interface JournalRow {
   contactName: string | null;
   kind: 'visit' | 'install';
   disposition: string | null;
+  /** A trip's own conclusion (0026). Null on commercial visits. */
+  installStatus: string | null;
   arrivalUrl: string | null;
   completionUrl: string | null;
   pairMeters: number | null;
@@ -45,6 +47,7 @@ export interface JournalVisit {
   contact_id: string | null;
   visit_type: string;
   disposition: string | null;
+  install_status?: string | null;
   visited_at: string;
   started_at: string | null;
   created_at: string;
@@ -70,7 +73,7 @@ export async function loadJournalRows(
   let q = supabase
     .from('visits')
     .select(
-      'id, rep_id, contact_id, visit_type, disposition, visited_at, started_at, created_at, lat, lng, contacts(name, lat, lng)',
+      'id, rep_id, contact_id, visit_type, disposition, install_status, visited_at, started_at, created_at, lat, lng, contacts(name, lat, lng)',
     )
     .order('visited_at', { ascending: false })
     .limit(limit);
@@ -155,6 +158,7 @@ export async function buildJournalRows(
       contactName: v.contacts?.name ?? null,
       kind: isInstall ? ('install' as const) : ('visit' as const),
       disposition: v.disposition,
+      installStatus: v.install_status ?? null,
       arrivalUrl: arrival ? (signed.get(arrival.storage_path) ?? null) : null,
       completionUrl: completion ? (signed.get(completion.storage_path) ?? null) : null,
       pairMeters,

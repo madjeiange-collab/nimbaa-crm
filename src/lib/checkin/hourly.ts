@@ -128,7 +128,10 @@ export function buildHourly(rows: JournalRow[]): {
 
     // The three words mean different things per trade, deliberately: the group
     // header says which, and one number spanning both would be a lie.
-    const d = r.disposition ?? '';
+    // A trip concludes in install_status; a visit in disposition. Reading
+    // disposition for both left every technician cell blank, because
+    // saveInstallation never writes one.
+    const d = (r.kind === 'install' ? r.installStatus : r.disposition) ?? '';
     const isWon = r.kind === 'install' ? d === 'done' : d === 'sold';
     const isWarm =
       r.kind === 'install' ? d === 'needs_revisit' : ENGAGED.has(d) && d !== 'sold';

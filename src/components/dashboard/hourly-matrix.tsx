@@ -203,9 +203,11 @@ function Drilldown({
                     )}
                   </span>
                   <span
-                    className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] ${tone(p.disposition)}`}
+                    className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] ${tone(
+                      row.kind === 'install' ? p.installStatus : p.disposition,
+                    )}`}
                   >
-                    {label(p.disposition)}
+                    {label(row.kind === 'install' ? p.installStatus : p.disposition)}
                     {p.durationMin != null ? ` · ${p.durationMin} min` : ''}
                   </span>
                 </div>
