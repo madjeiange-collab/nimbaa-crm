@@ -27,6 +27,7 @@ export interface SaveVisitInput {
   appointmentDate?: string | null; // ISO
   contactId?: string | null;
   contactName?: string | null;
+  contactPhone?: string | null;
   address?: string | null; // reverse-geocoded label (best-effort)
   dealId?: string | null; // link the visit to a chosen affaire (existing contact)
   visitedAt?: string; // ISO — defaults to now
@@ -203,6 +204,7 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
       .from('contacts')
       .insert({
         name: input.contactName ?? null,
+        phone: input.contactPhone?.trim() || null,
         address: input.address ?? null,
         lifecycle: meta!.lifecycle,
         pipeline_stage_id: stageId,

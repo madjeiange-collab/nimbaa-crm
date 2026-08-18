@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { useDictation, withLivePreview } from '@/hooks/use-dictation';
+import { PhoneInput } from '@/components/shared/phone-input';
 import { useGeolocation } from '@/hooks/use-geolocation';
 import { pointInAnyPolygon, haversineMeters } from '@/lib/geo';
 import { reverseGeocode } from '@/lib/geo/reverse';
@@ -100,6 +101,7 @@ export function LogVisitForm({
   const [dnkFlag, setDnkFlag] = useState(false);
   const [appointmentDate, setAppointmentDate] = useState('');
   const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [address, setAddress] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -212,6 +214,7 @@ export function LogVisitForm({
     disposition != null ||
     notes.trim() !== '' ||
     contactName.trim() !== '' ||
+    contactPhone.trim() !== '' ||
     appointmentDate !== '';
 
   useEffect(() => {
@@ -332,6 +335,7 @@ export function LogVisitForm({
         notes: notes.trim() || null,
         appointmentDate: needsAppointment && appointmentDate ? appointmentDate : null,
         contactName: isEngaged && !linked && contactName.trim() ? contactName.trim() : null,
+        contactPhone: isEngaged && !linked && contactPhone.trim() ? contactPhone.trim() : null,
         address: hasFix ? address : null,
         contactId: linked?.id ?? null,
         dealId: linked ? dealId : null,
@@ -559,6 +563,9 @@ export function LogVisitForm({
                   placeholder={t('newProspectPlaceholder')}
                   className={needsName ? 'border-destructive' : undefined}
                 />
+                {/* Captured here or not at all: the number is how the relance
+                    happens, and going back to add it later rarely does. */}
+                <PhoneInput value={contactPhone} onChange={setContactPhone} />
                 <p className={`text-xs ${needsName ? 'text-destructive' : 'text-muted-foreground'}`}>
                   {needsName ? t('nameRequired') : t('linkNew')}
                 </p>
