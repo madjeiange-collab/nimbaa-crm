@@ -253,6 +253,52 @@ export const TOOL_DEFINITIONS: OpenAI.Responses.Tool[] = [
   {
     type: 'function' as const,
     strict: true,
+    name: 'interventions_stats',
+    description:
+      "Interventions techniques SANS vente : SAV, garantie, entretien. Compte par type sur la période, combien sont terminées, combien attendent un retour, et le délai moyen. Utiliser pour 'combien de SAV ce mois', 'combien d'interventions sous garantie', 'les interventions en attente'. NE PAS confondre avec installations_list, qui couvre aussi les poses issues d'une vente.",
+    parameters: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', enum: ['week', 'month', 'all'], description: 'Période' },
+      },
+      required: ['period'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'contacts_by_type',
+    description:
+      "Clients et prospects d'un type d'activité donné (maquis, pharmacie, supérette…), avec la date de leur dernière visite. Utiliser pour 'quels maquis n'ai-je pas encore visités', 'liste des pharmacies', 'mes supérettes sans visite récente'. Le type est porté par le commerce lui-même, donc les clients sans affaire apparaissent aussi.",
+    parameters: {
+      type: 'object',
+      properties: {
+        business_type: { type: 'string', description: "Type d'activité recherché, ex. 'maquis'" },
+        never_visited: { type: 'boolean', description: 'true = uniquement ceux jamais visités' },
+      },
+      required: ['business_type', 'never_visited'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'multi_site_owners',
+    description:
+      "Personnes qui tiennent PLUSIEURS commerces, avec la liste de leurs commerces. Utiliser pour 'qui a plusieurs boutiques', 'quels clients appartiennent au même propriétaire', 'nos plus gros propriétaires'.",
+    parameters: {
+      type: 'object',
+      properties: {
+        min_sites: { type: 'number', description: 'Nombre minimum de commerces (2 par défaut)' },
+      },
+      required: ['min_sites'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
     name: 'stale_deals',
     description:
       "Affaires qui traînent : affaires OUVERTES sans aucune mise à jour depuis N jours, les plus anciennes d'abord, avec client et étape. Utiliser pour 'quelles affaires sont bloquées', 'relances pipeline'.",
@@ -548,7 +594,9 @@ async function contactHistory(db: Db, args: { contact_id: string }) {
         .maybeSingle(),
       db
         .from('visits')
-        .select('visited_at, disposition, notes, appointment_date, users(full_name)')
+        .select(
+          'visited_at, disposition, notes, appointment_date, visit_type, install_status, users(full_name)',
+        )
         .eq('contact_id', args.contact_id)
         .order('visited_at', { ascending: false })
         .limit(8),
@@ -580,7 +628,24 @@ async function contactHistory(db: Db, args: { contact_id: string }) {
       .filter((l) => l.contact_people)
       .map((l) => ({ ...l.contact_people!, role: l.role })),
     affaires: deals ?? [],
-    visites: visits ?? [],
+    visites: ((visits ?? []) as unknown as {
+      visited_at: string;
+      disposition: string | null;
+      notes: string | null;
+      appointment_date: string | null;
+      visit_type: string | null;
+      install_status: string | null;
+      users: { full_name: string | null } | null;
+    }[]).map((v) => ({
+      quand: v.visited_at,
+      // A trip and a commercial call are both rows here; only saying which
+      // makes "combien de retours" answerable.
+      nature: v.visit_type === 'installation' ? 'passage chantier' : 'visite commerciale',
+      resultat: v.visit_type === 'installation' ? v.install_status : v.disposition,
+      notes: v.notes ?? undefined,
+      rdv_le: v.appointment_date ?? undefined,
+      par: v.users?.full_name ?? undefined,
+    })),
     activites: activities ?? [],
   };
 }
@@ -591,7 +656,7 @@ async function installationsList(db: Db, user: AppUser, args: { status: string }
   let q = db
     .from('installations')
     .select(
-      'title, status, scheduled_date, next_visit_date, completed_at, contacts(name, address), installer:users!installer_id(full_name)',
+      'title, status, origin, reason, scheduled_date, next_visit_date, completed_at, contacts(name, address), installer:users!installer_id(full_name)',
     )
     .order('updated_at', { ascending: false })
     .limit(25);
@@ -1507,6 +1572,151 @@ async function checkinStats(db: Db, user: AppUser, args: { period: string }) {
   return { periode: args.period, scope: isManager ? 'équipe' : 'moi', ...res };
 }
 
+/** Labels the model can repeat back without inventing its own vocabulary. */
+const ORIGIN_LABEL: Record<string, string> = {
+  sale: 'pose après vente',
+  service: 'SAV',
+  warranty: 'garantie',
+  maintenance: 'entretien',
+};
+
+/**
+ * Interventions are the technical trips that are NOT a sale (0027). Without
+ * this the assistant counted them as ordinary installations and could not
+ * answer "combien de SAV ce mois".
+ */
+async function interventionsStats(db: Db, user: AppUser, args: { period: string }) {
+  const since = periodStart(args.period, new Date());
+  let q = db
+    .from('installations')
+    .select('origin, status, created_at, completed_at')
+    .neq('origin', 'sale')
+    .gte('created_at', since.toISOString())
+    .limit(5000);
+  if (user.role === 'technician') q = q.eq('installer_id', user.id);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+
+  type Row = { origin: string | null; status: string; created_at: string; completed_at: string | null };
+  const rows = (data ?? []) as Row[];
+  const byOrigin = new Map<string, { total: number; terminees: number; retour_attendu: number }>();
+  let durTotal = 0;
+  let durCount = 0;
+  for (const r of rows) {
+    const key = ORIGIN_LABEL[r.origin ?? ''] ?? (r.origin ?? 'autre');
+    const a = byOrigin.get(key) ?? { total: 0, terminees: 0, retour_attendu: 0 };
+    a.total++;
+    if (r.status === 'done') a.terminees++;
+    if (r.status === 'needs_revisit') a.retour_attendu++;
+    byOrigin.set(key, a);
+    if (r.completed_at) {
+      durTotal += (new Date(r.completed_at).getTime() - new Date(r.created_at).getTime()) / 86400000;
+      durCount++;
+    }
+  }
+  return {
+    periode: args.period,
+    total: rows.length,
+    par_type: [...byOrigin.entries()].map(([type, v]) => ({ type, ...v })),
+    delai_moyen_jours: durCount > 0 ? Math.round((durTotal / durCount) * 10) / 10 : null,
+    note: "Interventions sans vente uniquement. Les poses issues d'une vente sont dans installations_list.",
+  };
+}
+
+/**
+ * The type lives on the commerce itself (0030), so a customer with no affaire
+ * still has one — which is exactly the customer you want when asking which
+ * maquis have never been visited.
+ */
+async function contactsByType(
+  db: Db,
+  user: AppUser,
+  args: { business_type: string; never_visited: boolean },
+) {
+  const wanted = args.business_type.trim().toLowerCase();
+  let q = db
+    .from('contacts')
+    .select('id, name, business_type, address, lifecycle')
+    .not('business_type', 'is', null)
+    .limit(500);
+  if (!isManagerRole(user)) q = q.eq('assigned_rep_id', user.id);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+
+  type C = { id: string; name: string | null; business_type: string | null; address: string | null; lifecycle: string };
+  const matching = ((data ?? []) as C[]).filter((c) =>
+    (c.business_type ?? '').toLowerCase().includes(wanted),
+  );
+  if (matching.length === 0) return { type: args.business_type, clients: [], total: 0 };
+
+  const ids = matching.map((c) => c.id);
+  const { data: vs } = await db
+    .from('visits')
+    .select('contact_id, visited_at')
+    .in('contact_id', ids)
+    .order('visited_at', { ascending: false })
+    .limit(5000);
+  const last = new Map<string, string>();
+  for (const v of (vs ?? []) as { contact_id: string | null; visited_at: string }[]) {
+    if (v.contact_id && !last.has(v.contact_id)) last.set(v.contact_id, v.visited_at);
+  }
+
+  const list = matching
+    .map((c) => ({
+      client: c.name,
+      statut: c.lifecycle,
+      adresse: c.address ?? undefined,
+      derniere_visite: last.get(c.id) ?? null,
+    }))
+    .filter((c) => (args.never_visited ? c.derniere_visite === null : true))
+    .sort((a, b) => (a.derniere_visite ?? '') < (b.derniere_visite ?? '') ? -1 : 1);
+
+  return {
+    type: args.business_type,
+    total: list.length,
+    jamais_visites: list.filter((c) => !c.derniere_visite).length,
+    clients: list.slice(0, 40),
+  };
+}
+
+/** Who is behind several commerces (0031) — common here, and worth knowing. */
+async function multiSiteOwners(db: Db, user: AppUser, args: { min_sites: number }) {
+  const min = Math.max(2, Math.floor(args.min_sites || 2));
+  const { data, error } = await db
+    .from('contact_people_links')
+    .select('person_id, contact_people(name, phone), contacts(id, name, assigned_rep_id)')
+    .limit(5000);
+  if (error) return { error: error.message };
+
+  type L = {
+    person_id: string;
+    contact_people: { name: string; phone: string | null } | null;
+    contacts: { id: string; name: string | null; assigned_rep_id: string | null } | null;
+  };
+  const byPerson = new Map<string, { nom: string; tel: string | null; commerces: string[]; mine: boolean }>();
+  for (const l of (data ?? []) as unknown as L[]) {
+    if (!l.contact_people || !l.contacts) continue;
+    const e = byPerson.get(l.person_id) ?? {
+      nom: l.contact_people.name,
+      tel: l.contact_people.phone,
+      commerces: [],
+      mine: false,
+    };
+    e.commerces.push(l.contacts.name ?? '—');
+    if (l.contacts.assigned_rep_id === user.id) e.mine = true;
+    byPerson.set(l.person_id, e);
+  }
+
+  const owners = [...byPerson.values()]
+    .filter((o) => o.commerces.length >= min)
+    .filter((o) => (isManagerRole(user) ? true : o.mine))
+    .sort((a, b) => b.commerces.length - a.commerces.length)
+    .slice(0, 30)
+    .map((o) => ({ personne: o.nom, telephone: o.tel ?? undefined, nb_commerces: o.commerces.length, commerces: o.commerces }));
+
+  return { min_commerces: min, total: owners.length, proprietaires: owners };
+}
+
 async function businessTypeStats(db: Db, user: AppUser, args: { period: string }) {
   const isManager = isManagerRole(user);
   const since = periodStart(args.period, new Date());
@@ -1618,6 +1828,12 @@ export async function executeTool(
         return await checkinStats(db, user, args as { period: string });
       case 'my_tasks':
         return await myTasks(db, user, args as { scope: string });
+      case 'interventions_stats':
+        return await interventionsStats(db, user, args as { period: string });
+      case 'contacts_by_type':
+        return await contactsByType(db, user, args as { business_type: string; never_visited: boolean });
+      case 'multi_site_owners':
+        return await multiSiteOwners(db, user, args as { min_sites: number });
       case 'stale_deals':
         return await staleDeals(db, user, args as { min_days: number });
       case 'neglected_contacts':
