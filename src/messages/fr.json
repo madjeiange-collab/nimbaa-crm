@@ -705,7 +705,8 @@
     "newAffaire": "Nouvelle affaire",
     "affaire": "Affaire",
     "orNewProspect": "ou nommez un nouveau prospect",
-    "newProspectPlaceholder": "Nom de l'enseigne…"
+    "newProspectPlaceholder": "Nom de l'enseigne…",
+    "nameRequired": "Nommez le prospect, ou liez un contact existant."
   },
   "turf": {
     "title": "Mon secteur",
@@ -776,7 +777,16 @@
     "unassigned": "Non assigné",
     "assignSaved": "Attribution mise à jour",
     "edit": "Modifier",
-    "save": "Enregistrer"
+    "save": "Enregistrer",
+    "newTitle": "Nouveau prospect",
+    "newName": "Nom de l'enseigne",
+    "newNamePlaceholder": "Maquis du Rond-Point, Pharmacie Les Palmiers…",
+    "newPhone": "Téléphone",
+    "newAddress": "Adresse",
+    "newAddressPlaceholder": "Quartier, rue, repère…",
+    "newHint": "Seul le nom est obligatoire. Le type d'activité, les tags et l'affaire se renseignent ensuite sur la fiche.",
+    "newSave": "Créer le prospect",
+    "newError": "Création impossible — réessayez."
   },
   "stats": {
     "title": "Mes statistiques",

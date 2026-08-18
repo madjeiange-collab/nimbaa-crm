@@ -189,6 +189,11 @@ export function LogVisitForm({
   const hasCompletion = photos.some((p) => p.meta.kind === 'completion');
   const needsCompletion = hasArrival && !hasCompletion;
 
+  // An engaged outcome creates the contact on save. Without a name that is a
+  // record called "(sans nom)" that nobody can identify afterwards, so the name
+  // is required — either by linking someone on file, or by typing one.
+  const needsName = isEngaged && !linked && contactName.trim() === '';
+
   const canSave =
     gpsResolved &&
     !dnkBlocked &&
@@ -196,6 +201,7 @@ export function LogVisitForm({
     hasArrival &&
     hasCompletion &&
     !processing &&
+    !needsName &&
     (!needsAppointment || !!appointmentDate);
 
   // Work in progress lives only in this component (the photos are blobs), so
@@ -551,8 +557,11 @@ export function LogVisitForm({
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
                   placeholder={t('newProspectPlaceholder')}
+                  className={needsName ? 'border-destructive' : undefined}
                 />
-                <p className="text-xs text-muted-foreground">{t('linkNew')}</p>
+                <p className={`text-xs ${needsName ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {needsName ? t('nameRequired') : t('linkNew')}
+                </p>
               </div>
             )}
           </div>

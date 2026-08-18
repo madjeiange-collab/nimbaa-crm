@@ -1,4 +1,6 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
+import { Plus } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 import { Link } from '@/i18n/navigation';
 import { requireUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
@@ -127,6 +129,17 @@ export default async function ContactsPage({
   return (
     <>
       <AppHeader title={t('title')} />
+      {/* A prospect met on the phone or through a referral has no doorstep to
+          knock on. Before this the only ways in were logging a visit or an
+          admin CSV import. */}
+      <div className="mx-auto max-w-3xl px-4 pt-4">
+        <Link href="/contacts/new" className="block">
+          <Card className="flex items-center justify-center gap-2 p-3 text-sm font-medium text-primary transition-colors hover:bg-accent">
+            <Plus className="h-4 w-4" />
+            {t('newTitle')}
+          </Card>
+        </Link>
+      </div>
       {isField && (
         <div className="mx-auto max-w-3xl px-4 pt-4">
           <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">

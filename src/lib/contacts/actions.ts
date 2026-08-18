@@ -76,3 +76,57 @@ export async function updateContact(
   revalidateContact(contactId);
   return { ok: true };
 }
+
+/**
+ * Create a prospect by hand.
+ *
+ * Until now a contact could only appear two ways: a visit with an engaged
+ * outcome, or an admin CSV import. Neither covers the ordinary case of meeting
+ * someone, being given a name over the phone, or taking a referral — so those
+ * were recorded by inventing a visit, or not at all.
+ *
+ * The rep who creates it owns it, and the territory follows theirs, matching
+ * what a knock-created contact gets.
+ */
+export async function createContact(input: {
+  name: string;
+  phone?: string | null;
+  address?: string | null;
+  priority?: PriorityLevel;
+}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const name = input.name.trim();
+  if (!name) return { ok: false, error: 'name_required' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  const { data: ut } = await supabase
+    .from('user_territories')
+    .select('territory_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .maybeSingle();
+
+  const { data, error } = await supabase
+    .from('contacts')
+    .insert({
+      name,
+      phone: input.phone?.trim() || null,
+      address: input.address?.trim() || null,
+      lifecycle: 'lead',
+      source: 'manual',
+      priority: input.priority ?? 'medium',
+      assigned_rep_id: user.id,
+      territory_id: ut?.territory_id ?? null,
+      created_by: user.id,
+    })
+    .select('id')
+    .single();
+  if (error || !data) return { ok: false, error: 'save_failed' };
+
+  revalidatePath('/[locale]/contacts', 'page');
+  return { ok: true, id: data.id };
+}

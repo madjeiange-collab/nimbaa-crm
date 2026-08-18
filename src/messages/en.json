@@ -705,7 +705,8 @@
     "newAffaire": "New deal",
     "affaire": "Deal",
     "orNewProspect": "or name a new lead",
-    "newProspectPlaceholder": "Business name…"
+    "newProspectPlaceholder": "Business name…",
+    "nameRequired": "Name the lead, or link an existing contact."
   },
   "turf": {
     "title": "My turf",
@@ -776,7 +777,16 @@
     "unassigned": "Unassigned",
     "assignSaved": "Assignment updated",
     "edit": "Edit",
-    "save": "Save"
+    "save": "Save",
+    "newTitle": "New lead",
+    "newName": "Business name",
+    "newNamePlaceholder": "Maquis du Rond-Point, Pharmacie Les Palmiers…",
+    "newPhone": "Phone",
+    "newAddress": "Address",
+    "newAddressPlaceholder": "Area, street, landmark…",
+    "newHint": "Only the name is required. Business type, tags and the deal are filled in afterwards on the record.",
+    "newSave": "Create lead",
+    "newError": "Could not create — please retry."
   },
   "stats": {
     "title": "My statistics",
