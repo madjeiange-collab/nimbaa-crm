@@ -7,7 +7,7 @@ import { AppHeader } from '@/components/shared/app-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { loadJournalRows, type JournalRow } from '@/lib/checkin/journal';
 import { periodSince } from '@/lib/checkin/period';
-import { buildHourly, silentFor, hm, totalsOf } from '@/lib/checkin/hourly';
+import { buildHourly, hm, totalsOf } from '@/lib/checkin/hourly';
 import { HourlyMatrix } from '@/components/dashboard/hourly-matrix';
 
 /** Someone with nothing received for this long is worth a call, not a guess. */
@@ -79,11 +79,29 @@ export default async function JourneePage({
     new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', hour12: false, timeZone: 'Africa/Abidjan' })
       .format(now),
   );
-  const active = [...commercial, ...technical];
-  const activeIds = new Set(active.map((r) => r.personId));
+  // buildHourly keys rows by person AND trade, so anyone who did both a visit
+  // and a chantier today produces two rows. Counting rows gave "10/7 en
+  // tournée" and listed the same person twice as silent.
+  const fieldIds = new Set(
+    users.filter((u) => u.is_active && u.role !== 'manager' && u.role !== 'admin').map((u) => u.id),
+  );
+  const byPerson = new Map<string, { name: string; lastAt: string | null }>();
+  for (const r of [...commercial, ...technical]) {
+    const cur = byPerson.get(r.personId);
+    if (!cur || (r.lastAt && (!cur.lastAt || r.lastAt > cur.lastAt))) {
+      byPerson.set(r.personId, { name: r.personName, lastAt: r.lastAt });
+    }
+  }
+  const activeIds = new Set(byPerson.keys());
 
-  const silent = active
-    .map((r) => ({ row: r, min: silentFor(r, nowMs) }))
+  // Only field staff: a manager who logged a visit is not someone to chase.
+  const silent = [...byPerson.entries()]
+    .filter(([id]) => fieldIds.has(id))
+    .map(([id, p]) => ({
+      id,
+      name: p.name,
+      min: p.lastAt ? Math.round((nowMs - new Date(p.lastAt).getTime()) / 60_000) : null,
+    }))
     .filter((x) => x.min != null && x.min >= SILENT_MIN)
     .sort((a, b) => (b.min ?? 0) - (a.min ?? 0));
 
@@ -131,7 +149,7 @@ export default async function JourneePage({
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           <p className="text-sm text-muted-foreground">
             <span className="mr-1 text-lg font-semibold text-foreground">
-              {active.length}/{users.filter((u) => u.is_active && u.role !== 'manager' && u.role !== 'admin').length}
+              {[...activeIds].filter((id) => fieldIds.has(id)).length}/{fieldIds.size}
             </span>
             {t('onTheRoad')}
           </p>
@@ -169,18 +187,13 @@ export default async function JourneePage({
                   <span className="text-muted-foreground"> — {t('notStarted')}</span>
                 </p>
               ))}
-              {silent.map(({ row, min }) => (
-                <p key={row.personId} className="text-sm">
-                  <span className="font-medium">{row.personName}</span>
+              {silent.map((p) => (
+                <p key={p.id} className="text-sm">
+                  <span className="font-medium">{p.name}</span>
                   <span className="text-muted-foreground">
                     {' — '}
-                    {t('silentSince', { time: hm(min), n: min ?? 0 })}
+                    {t('silentSince', { time: hm(p.min) })}
                   </span>
-                  {phones[row.personId] && (
-                    <a href={`tel:${phones[row.personId]}`} className="ml-2 text-primary underline">
-                      {t('call')}
-                    </a>
-                  )}
                 </p>
               ))}
             </CardContent>

@@ -29,7 +29,7 @@ import { RecapCard } from '@/components/leaderboard/recap-card';
 import type { InstallPoint, TurfKnock } from '@/components/map/turf-map';
 import { loadJournalRows } from '@/lib/checkin/journal';
 import { periodSince } from '@/lib/checkin/period';
-import { buildHourly, silentFor } from '@/lib/checkin/hourly';
+import { buildHourly } from '@/lib/checkin/hourly';
 import type { UserRole } from '@/types/database';
 
 /** Green commercial, blue technical — the pairing used across the app. */
@@ -308,19 +308,25 @@ export default async function HomePage({
     );
     const { commercial, technical } = buildHourly(todayRows);
     const rowsAll = [...commercial, ...technical];
+    // Keyed by person AND trade, so someone doing both counts twice.
     const seen = new Set(rowsAll.map((r) => r.personId));
     const nowMs = Date.now();
-    const silent = rowsAll.filter((r) => {
-      const m = silentFor(r, nowMs);
-      return m != null && m >= 120;
-    }).length;
+    const fieldIds = new Set(field.map((u) => u.id));
+    const latest = new Map();
+    for (const r of rowsAll) {
+      const cur = latest.get(r.personId);
+      if (!cur || (r.lastAt && (!cur || r.lastAt > cur))) latest.set(r.personId, r.lastAt);
+    }
+    const silent = [...latest.entries()].filter(
+      ([id, at]) => fieldIds.has(id) && at && (nowMs - new Date(at).getTime()) / 60_000 >= 120,
+    ).length;
     const hourNow = Number(
       new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', hour12: false, timeZone: 'Africa/Abidjan' })
         .format(new Date()),
     );
     const notStarted = hourNow >= 9 ? field.filter((u) => !seen.has(u.id)).length : 0;
     strip = {
-      active: seen.size,
+      active: [...seen].filter((id) => fieldIds.has(id)).length,
       total: field.length,
       passages: rowsAll.reduce((n, r) => n + r.total, 0),
       toCall: silent + notStarted,
