@@ -28,6 +28,8 @@ import { PeopleSection, type PersonCard } from '@/components/contacts/people-sec
 import { WhatsappDraft } from '@/components/contacts/whatsapp-draft';
 import { PhoneInput } from '@/components/shared/phone-input';
 import { AddressPicker } from '@/components/shared/address-picker';
+import { BusinessTypeSelect } from '@/components/shared/business-type-select';
+import { TagsInput } from '@/components/shared/tags-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,6 +47,8 @@ export interface ContactFull {
   assignedRepId: string | null;
   lat: number | null;
   lng: number | null;
+  /** The business's own type — every affaire inherits it (0030). */
+  businessType: string | null;
 }
 
 export interface Stage {
@@ -130,6 +134,7 @@ export function ContactDetail({
   const tInt = useTranslations('intervention');
   const tInst = useTranslations('installation');
   const tCommon = useTranslations('common');
+  const tDeals = useTranslations('deals');
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -140,6 +145,8 @@ export function ContactDetail({
   const [address, setAddress] = useState(contact.address ?? '');
   const [lat, setLat] = useState<number | null>(contact.lat);
   const [lng, setLng] = useState<number | null>(contact.lng);
+  const [businessType, setBusinessType] = useState<string | null>(contact.businessType);
+  const [tags, setTags] = useState<string[]>(contact.tags);
 
   const [actType, setActType] = useState<ActivityType>('call');
   const [actContent, setActContent] = useState('');
@@ -210,6 +217,20 @@ export function ContactDetail({
                 />
               </div>
               <div className="space-y-1">
+                {/* Set here, pushed down to every affaire on save. */}
+                <Label>{tDeals('businessType')}</Label>
+                <BusinessTypeSelect
+                  value={businessType}
+                  onCommit={setBusinessType}
+                  emptyLabel={tDeals('noBusinessType')}
+                  otherPlaceholder={tDeals('businessTypeOther')}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>{tDeals('tags')}</Label>
+                <TagsInput tags={tags} onCommit={setTags} placeholder={tDeals('tagsPlaceholder')} />
+              </div>
+              <div className="space-y-1">
                 <Label htmlFor="c-prio">{t('priority')}</Label>
                 <select
                   id="c-prio"
@@ -237,6 +258,8 @@ export function ContactDetail({
                     setAddress(contact.address ?? '');
                     setLat(contact.lat);
                     setLng(contact.lng);
+                    setBusinessType(contact.businessType);
+                    setTags(contact.tags);
                     setEditing(false);
                   }}
                 >
@@ -252,6 +275,8 @@ export function ContactDetail({
                         phone: phone.trim() || null,
                         priority,
                         address: address.trim() || null,
+                        businessType,
+                        tags,
                         // Only overwrite the pin when the picker produced one:
                         // hand-typed text must not silently drop the old fix.
                         ...(lat != null && lng != null ? { lat, lng } : {}),

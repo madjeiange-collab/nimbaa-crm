@@ -394,26 +394,24 @@ function DealRow({
         </div>
       </div>
 
-      {/* Business type + free tags — categorization for later analysis */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <div className="space-y-1">
-          <Label className="text-xs">{t('businessType')}</Label>
-          <BusinessTypeSelect
-            value={deal.businessType}
-            onCommit={(type) => run(() => updateDeal(deal.id, { businessType: type }))}
-            emptyLabel={t('noBusinessType')}
-            otherPlaceholder={t('businessTypeOther')}
-          />
+      {/* Set once on the fiche and inherited by every affaire (0030): a maquis
+          is a maquis whichever forfait it buys, and asking per affaire let the
+          same customer end up two different things. */}
+      {(deal.businessType || deal.tags.length > 0) && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          {deal.businessType && (
+            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-secondary-foreground">
+              {deal.businessType}
+            </span>
+          )}
+          {deal.tags.map((tag) => (
+            <span key={tag} className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+              {tag}
+            </span>
+          ))}
+          <span className="text-muted-foreground">{t('fromContact')}</span>
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs">{t('tags')}</Label>
-          <TagsInput
-            tags={deal.tags}
-            onCommit={(tags) => run(() => updateDeal(deal.id, { tags }))}
-            placeholder={t('tagsPlaceholder')}
-          />
-        </div>
-      </div>
+      )}
 
       {/* Interlocutor this deal is negotiated with — always visible, with a
           one-tap way to create the person right here. */}
@@ -623,15 +621,6 @@ export function DealsSection({
             {t('newAffaire')}
           </p>
           <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={t('productPlaceholder')} />
-          <div className="space-y-1">
-            <Label className="text-xs">{t('businessType')}</Label>
-            <BusinessTypeSelect
-              value={newType}
-              onCommit={setNewType}
-              emptyLabel={t('noBusinessType')}
-              otherPlaceholder={t('businessTypeOther')}
-            />
-          </div>
           <div className="space-y-1.5">
             <Label className="text-xs">{t('person')}</Label>
             {people.length > 0 && (

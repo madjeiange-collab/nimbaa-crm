@@ -412,7 +412,8 @@
     "wonAll": "Tout",
     "wonWeek": "Cette semaine",
     "wonMonth": "Ce mois",
-    "deleteConfirm": "Supprimer cette affaire ? Les chantiers et leurs passages seront supprimés avec elle."
+    "deleteConfirm": "Supprimer cette affaire ? Les chantiers et leurs passages seront supprimés avec elle.",
+    "fromContact": "· défini sur la fiche client"
   },
   "installation": {
     "title": "Installation",

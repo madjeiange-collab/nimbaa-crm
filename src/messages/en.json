@@ -412,7 +412,8 @@
     "wonAll": "All",
     "wonWeek": "This week",
     "wonMonth": "This month",
-    "deleteConfirm": "Delete this deal? Its jobs and their trips will be deleted with it."
+    "deleteConfirm": "Delete this deal? Its jobs and their trips will be deleted with it.",
+    "fromContact": "· set on the customer record"
   },
   "installation": {
     "title": "Installation",

@@ -47,7 +47,7 @@ export default async function ContactDetailPage({
   const { data: contact } = await supabase
     .from('contacts')
     .select(
-      'id, name, phone, address, lat, lng, lifecycle, priority, value_xof, tags, assigned_rep_id, created_at',
+      'id, name, phone, address, lat, lng, lifecycle, priority, value_xof, tags, assigned_rep_id, business_type, created_at',
     )
     .eq('id', id)
     .maybeSingle();
@@ -219,6 +219,7 @@ export default async function ContactDetailPage({
     assignedRepId: contact.assigned_rep_id,
     lat: contact.lat,
     lng: contact.lng,
+    businessType: contact.business_type ?? null,
   };
 
   type InstRow = {

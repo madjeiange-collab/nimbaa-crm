@@ -69,14 +69,30 @@ export async function updateContact(
     /** Only sent when the picker produced a pin — see the caller. */
     lat?: number | null;
     lng?: number | null;
+    businessType?: string | null;
   },
 ): Promise<ActionResult> {
   const supabase = await createClient();
+  const { businessType, ...rest } = fields;
+  const patch: Record<string, unknown> = { ...rest, updated_at: new Date().toISOString() };
+  if (businessType !== undefined) patch.business_type = businessType?.trim() || null;
+
   const { error } = await supabase
     .from('contacts')
-    .update({ ...fields, updated_at: new Date().toISOString() })
+    .update(patch)
     .eq('id', contactId);
   if (error) return { ok: false, error: 'save_failed' };
+
+  // The affaires keep their own copy — forty-odd queries read it — so the
+  // customer's value is pushed down whenever it changes. Best-effort: a failure
+  // here must not lose the edit the user just made on the fiche.
+  const down: Record<string, unknown> = {};
+  if (businessType !== undefined) down.business_type = businessType?.trim() || null;
+  if (fields.tags !== undefined) down.tags = fields.tags;
+  if (Object.keys(down).length > 0) {
+    await supabase.from('deals').update(down).eq('contact_id', contactId);
+  }
+
   revalidateContact(contactId);
   return { ok: true };
 }
@@ -100,6 +116,9 @@ export async function createContact(input: {
   /** From the address picker: GPS, a search hit, or a dropped pin. */
   lat?: number | null;
   lng?: number | null;
+  /** Properties of the business — every affaire inherits them (0030). */
+  businessType?: string | null;
+  tags?: string[];
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const name = input.name.trim();
   if (!name) return { ok: false, error: 'name_required' };
@@ -125,6 +144,8 @@ export async function createContact(input: {
       address: input.address?.trim() || null,
       lat: input.lat ?? null,
       lng: input.lng ?? null,
+      business_type: input.businessType?.trim() || null,
+      tags: input.tags ?? [],
       lifecycle: 'lead',
       source: 'manual',
       priority: input.priority ?? 'medium',

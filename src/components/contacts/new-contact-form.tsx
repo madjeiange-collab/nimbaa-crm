@@ -6,6 +6,8 @@ import { useRouter } from '@/i18n/navigation';
 import { createContact } from '@/lib/contacts/actions';
 import { PhoneInput } from '@/components/shared/phone-input';
 import { AddressPicker } from '@/components/shared/address-picker';
+import { BusinessTypeSelect } from '@/components/shared/business-type-select';
+import { TagsInput } from '@/components/shared/tags-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +22,7 @@ import { Card, CardContent } from '@/components/ui/card';
 export function NewContactForm() {
   const t = useTranslations('contacts');
   const tCommon = useTranslations('common');
+  const tDeals = useTranslations('deals');
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -28,6 +31,8 @@ export function NewContactForm() {
   const [address, setAddress] = useState('');
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
+  const [businessType, setBusinessType] = useState<string | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const canSave = name.trim() !== '' && !isPending;
@@ -36,7 +41,7 @@ export function NewContactForm() {
     if (!canSave) return;
     setError(null);
     startTransition(async () => {
-      const res = await createContact({ name, phone, address, lat, lng });
+      const res = await createContact({ name, phone, address, lat, lng, businessType, tags });
       if (!res.ok) {
         setError(t('newError'));
         return;
@@ -77,6 +82,22 @@ export function NewContactForm() {
               setLng(ln);
             }}
           />
+        </div>
+
+        {/* Properties of the business: set here once, every affaire inherits. */}
+        <div className="space-y-2">
+          <Label>{tDeals('businessType')}</Label>
+          <BusinessTypeSelect
+            value={businessType}
+            onCommit={setBusinessType}
+            emptyLabel={tDeals('noBusinessType')}
+            otherPlaceholder={tDeals('businessTypeOther')}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>{tDeals('tags')}</Label>
+          <TagsInput tags={tags} onCommit={setTags} placeholder={tDeals('tagsPlaceholder')} />
         </div>
 
         <p className="text-xs text-muted-foreground">{t('newHint')}</p>

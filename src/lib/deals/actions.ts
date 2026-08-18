@@ -33,7 +33,7 @@ export async function createDeal(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  const [{ data: firstStage }, { data: contact }] = await Promise.all([
+  const [{ data: firstStage }, { data: contact }, { count: dealCount }] = await Promise.all([
     supabase
       .from('pipeline_stages')
       .select('id')
@@ -43,19 +43,40 @@ export async function createDeal(
       .order('sort_order', { ascending: true })
       .limit(1)
       .maybeSingle(),
-    supabase.from('contacts').select('assigned_rep_id').eq('id', contactId).maybeSingle(),
+    supabase
+      .from('contacts')
+      .select('assigned_rep_id, business_type, tags')
+      .eq('id', contactId)
+      .maybeSingle(),
+    supabase
+      .from('deals')
+      .select('*', { count: 'exact', head: true })
+      .eq('contact_id', contactId),
   ]);
+
+  const inherited = contact as {
+    assigned_rep_id?: string | null;
+    business_type?: string | null;
+    tags?: string[];
+  } | null;
+
+  // An affaire is a project with this customer, and an untitled one is
+  // impossible to talk about. "Projet 1", "Projet 2"... in order of creation,
+  // renameable on the card afterwards.
+  const title = fields.title?.trim() || `Projet ${(dealCount ?? 0) + 1}`;
 
   const { error } = await supabase.from('deals').insert({
     contact_id: contactId,
-    title: fields.title?.trim() || null,
+    title,
     value_xof: fields.value ?? null,
     pipeline_stage_id: firstStage?.id ?? null,
     status: 'open',
     needs_installation: fields.needsInstallation ?? false,
     contact_person_id: fields.contactPersonId ?? null,
-    business_type: fields.businessType?.trim() || null,
-    assigned_rep_id: contact?.assigned_rep_id ?? user.id,
+    // The business decides these, not the affaire (0030).
+    business_type: inherited?.business_type ?? fields.businessType?.trim() ?? null,
+    tags: inherited?.tags ?? [],
+    assigned_rep_id: inherited?.assigned_rep_id ?? user.id,
     created_by: user.id,
   });
   if (error) return { ok: false, error: 'save_failed' };
