@@ -128,7 +128,10 @@
     color: var(--accent);
     margin-bottom: 0.6rem;
   }
-  .sub { color: var(--muted); font-size: 1.02rem; max-width: 60ch; }
+  /* Scoped to the masthead on purpose: the bare .sub also matched every
+     <section class="screen sub">, capping half the manual at 60ch and
+     greying its body text. Sub-sections are sections, not ledes. */
+  .masthead .sub { color: var(--muted); font-size: 1.02rem; max-width: 60ch; }
   .meta { color: var(--muted); font-size: 0.85rem; margin-top: 0.9rem; }
   .meta code {
     background: var(--card);
