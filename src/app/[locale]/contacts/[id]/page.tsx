@@ -71,18 +71,44 @@ export default async function ContactDetailPage({
 
   // Interlocuteurs of this business (fetched separately: pre-0014 DB degrades
   // to an empty list instead of breaking the page).
-  const { data: peopleRows } = await supabase
-    .from('contact_people')
-    .select('id, name, role, phone, email')
+  // 0031: a person can run several commerces, so the tie lives in a link
+  // table and the role is the one they hold HERE. The nested select also
+  // brings back their other businesses, shown on the card.
+  const { data: linkRows } = await supabase
+    .from('contact_people_links')
+    .select(
+      'role, created_at, contact_people(id, name, phone, email, contact_people_links(contact_id, contacts(id, name)))',
+    )
     .eq('contact_id', id)
     .order('created_at', { ascending: true });
-  const people = (peopleRows ?? []) as {
-    id: string;
-    name: string;
+
+  type LinkRow = {
     role: string | null;
-    phone: string | null;
-    email: string | null;
-  }[];
+    contact_people: {
+      id: string;
+      name: string;
+      phone: string | null;
+      email: string | null;
+      contact_people_links?: { contact_id: string; contacts: { id: string; name: string | null } | null }[];
+    } | null;
+  };
+
+  const people = ((linkRows ?? []) as unknown as LinkRow[])
+    .filter((l) => l.contact_people)
+    .map((l) => {
+      const p = l.contact_people!;
+      return {
+        id: p.id,
+        name: p.name,
+        role: l.role,
+        phone: p.phone,
+        email: p.email,
+        otherBusinesses: (p.contact_people_links ?? [])
+          .filter((x) => x.contact_id !== id)
+          .map((x) => x.contacts)
+          .filter((c): c is { id: string; name: string | null } => !!c),
+      };
+    });
 
   const { data: productRows } = await supabase
     .from('products')

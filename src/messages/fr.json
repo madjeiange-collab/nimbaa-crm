@@ -132,7 +132,10 @@
     "cancel": "Annuler",
     "remove": "Supprimer",
     "deleteConfirm": "Supprimer {name} ?",
-    "error": "Enregistrement impossible — réessayez."
+    "error": "Enregistrement impossible — réessayez.",
+    "knownAlready": "Déjà connu — lier au lieu de recréer",
+    "alsoAt": "Aussi chez",
+    "unlinkConfirm": "Retirer {name} de ce commerce ? La personne reste enregistrée ({count} autre(s) commerce(s))."
   },
   "profile": {
     "photoTitle": "Photo de profil",

@@ -1,10 +1,16 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { Briefcase, Phone, Mail, MessageCircle, Plus, Trash2, UserRound } from 'lucide-react';
-import { useRouter } from '@/i18n/navigation';
-import { addContactPerson, deleteContactPerson } from '@/lib/contacts/people-actions';
+import { Briefcase, Phone, Mail, MessageCircle, Plus, Trash2, UserRound, Store } from 'lucide-react';
+import { Link, useRouter } from '@/i18n/navigation';
+import {
+  addContactPerson,
+  unlinkContactPerson,
+  linkExistingPerson,
+  searchKnownPeople,
+  type KnownPerson,
+} from '@/lib/contacts/people-actions';
 import { whatsappUrl } from '@/lib/phone';
 import { PhoneInput } from '@/components/shared/phone-input';
 import { RoleSelect, DEFAULT_ROLE } from '@/components/shared/role-select';
@@ -15,9 +21,12 @@ import { Card, CardContent } from '@/components/ui/card';
 export interface PersonCard {
   id: string;
   name: string;
+  /** The role held at THIS business — it can differ at another (0031). */
   role: string | null;
   phone: string | null;
   email: string | null;
+  /** Other commerces this person runs. Empty for most people. */
+  otherBusinesses?: { id: string; name: string | null }[];
 }
 
 export function PeopleSection({
@@ -39,6 +48,34 @@ export function PeopleSection({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState(false);
+  const [hits, setHits] = useState<KnownPerson[]>([]);
+
+  // While a name is typed, look for someone the team already knows. A
+  // multi-site owner should be linked, not created a second time.
+  useEffect(() => {
+    const q = name.trim();
+    if (!adding || q.length < 2) {
+      setHits([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setHits(await searchKnownPeople(contactId, q));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [name, adding, contactId]);
+
+  function onLink(person: KnownPerson) {
+    startTransition(async () => {
+      await linkExistingPerson(contactId, person.id, role);
+      setName('');
+      setRole(DEFAULT_ROLE);
+      setPhone('');
+      setEmail('');
+      setHits([]);
+      setAdding(false);
+      router.refresh();
+    });
+  }
 
   function onAdd() {
     if (!name.trim()) return;
@@ -59,9 +96,16 @@ export function PeopleSection({
   }
 
   function onDelete(p: PersonCard) {
-    if (!window.confirm(t('deleteConfirm', { name: p.name }))) return;
+    // Detaching from this business, not deleting the person — they may still
+    // run the shop next door. The warning says which one it will be.
+    const others = p.otherBusinesses ?? [];
+    const message =
+      others.length > 0
+        ? t('unlinkConfirm', { name: p.name, count: others.length })
+        : t('deleteConfirm', { name: p.name });
+    if (!window.confirm(message)) return;
     startTransition(async () => {
-      await deleteContactPerson(p.id, contactId);
+      await unlinkContactPerson(p.id, contactId);
       router.refresh();
     });
   }
@@ -106,6 +150,21 @@ export function PeopleSection({
                     >
                       <Mail className="h-3 w-3" /> {p.email}
                     </a>
+                  )}
+                  {(p.otherBusinesses ?? []).length > 0 && (
+                    <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                      <Store className="h-3 w-3 shrink-0" />
+                      {t('alsoAt')}
+                      {(p.otherBusinesses ?? []).map((b) => (
+                        <Link
+                          key={b.id}
+                          href={`/contacts/${b.id}`}
+                          className="underline hover:text-foreground"
+                        >
+                          {b.name ?? '—'}
+                        </Link>
+                      ))}
+                    </p>
                   )}
                   {(dealsByPerson[p.id] ?? []).length > 0 && (
                     <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
@@ -163,6 +222,36 @@ export function PeopleSection({
               placeholder={t('emailPlaceholder')}
             />
             {error && <p className="text-xs text-destructive">{t('error')}</p>}
+
+            {/* Someone the team already knows: link them instead of creating a
+                second copy whose phone will drift from the first. */}
+            {hits.length > 0 && (
+              <div className="space-y-1 rounded-md border border-dashed bg-muted/40 p-2">
+                <p className="text-xs font-medium text-muted-foreground">{t('knownAlready')}</p>
+                {hits.map((h) => (
+                  <button
+                    key={h.id}
+                    type="button"
+                    onClick={() => onLink(h)}
+                    disabled={isPending}
+                    className="flex w-full flex-col items-start rounded px-2 py-1.5 text-left hover:bg-accent"
+                  >
+                    <span className="text-sm font-medium">
+                      {h.name}
+                      {h.phone && (
+                        <span className="ml-2 text-xs font-normal text-muted-foreground">{h.phone}</span>
+                      )}
+                    </span>
+                    {h.otherBusinesses.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {t('alsoAt')} {h.otherBusinesses.map((b) => b.name ?? '—').join(', ')}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="flex gap-2">
               <Button
                 type="button"

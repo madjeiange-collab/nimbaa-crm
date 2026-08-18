@@ -562,15 +562,23 @@ async function contactHistory(db: Db, args: { contact_id: string }) {
         .from('deals')
         .select('title, status, value_xof, won_at, business_type, tags, pipeline_stages(name)')
         .eq('contact_id', args.contact_id),
+      // 0031: the tie to a business lives in the link table, and the role is
+      // the one held here. Querying contact_people directly would return
+      // nothing for anyone created after that migration.
       db
-        .from('contact_people')
-        .select('name, role, phone, email')
+        .from('contact_people_links')
+        .select('role, contact_people(name, phone, email)')
         .eq('contact_id', args.contact_id),
     ]);
   if (!contact) return { error: 'contact introuvable' };
   return {
     contact,
-    interlocuteurs: people ?? [],
+    interlocuteurs: ((people ?? []) as unknown as {
+      role: string | null;
+      contact_people: { name: string; phone: string | null; email: string | null } | null;
+    }[])
+      .filter((l) => l.contact_people)
+      .map((l) => ({ ...l.contact_people!, role: l.role })),
     affaires: deals ?? [],
     visites: visits ?? [],
     activites: activities ?? [],

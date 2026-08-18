@@ -132,7 +132,10 @@
     "cancel": "Cancel",
     "remove": "Delete",
     "deleteConfirm": "Delete {name}?",
-    "error": "Could not save — try again."
+    "error": "Could not save — try again.",
+    "knownAlready": "Already known — link instead of retyping",
+    "alsoAt": "Also at",
+    "unlinkConfirm": "Remove {name} from this business? The person stays on file ({count} other business(es))."
   },
   "profile": {
     "photoTitle": "Profile photo",
