@@ -641,6 +641,7 @@
     "photoPairRequired": "Arrivée + fin",
     "photoEndMissing": "Photo de fin manquante",
     "photoPairDone": "Complet",
+    "cancelConfirm": "Abandonner cette visite ? Les photos prises seront perdues.",
     "slotArrivalEmpty": "Prendre la photo",
     "slotCompletionEmpty": "Prendre la photo",
     "slotCompletionLocked": "Après l'arrivée",

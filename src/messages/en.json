@@ -640,6 +640,7 @@
     "photoPairRequired": "Arrival + end",
     "photoEndMissing": "End photo missing",
     "photoPairDone": "Complete",
+    "cancelConfirm": "Discard this visit? The photos you took will be lost.",
     "slotArrivalEmpty": "Take the photo",
     "slotCompletionEmpty": "Take the photo",
     "slotCompletionLocked": "After arrival",

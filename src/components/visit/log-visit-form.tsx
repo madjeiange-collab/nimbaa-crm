@@ -13,6 +13,7 @@ import {
   X,
   MapPin,
 } from 'lucide-react';
+import { useRouter } from '@/i18n/navigation';
 import { useDictation } from '@/hooks/use-dictation';
 import { useGeolocation } from '@/hooks/use-geolocation';
 import { pointInAnyPolygon, haversineMeters } from '@/lib/geo';
@@ -84,6 +85,7 @@ export function LogVisitForm({
   const tDisp = useTranslations('dispositions');
   const tLife = useTranslations('lifecycle');
   const geo = useGeolocation(true);
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -183,6 +185,25 @@ export function LogVisitForm({
     hasCompletion &&
     !processing &&
     (!needsAppointment || !!appointmentDate);
+
+  /**
+   * "Annuler" abandons the visit and leaves the screen. On an untouched form
+   * that used to clear empty fields and look broken; with work in progress it
+   * asks first, because the photos only live in this component.
+   */
+  function onCancel() {
+    const started =
+      photos.length > 0 ||
+      disposition != null ||
+      notes.trim() !== '' ||
+      contactName.trim() !== '' ||
+      appointmentDate !== '';
+    if (started && !window.confirm(t('cancelConfirm'))) return;
+    reset();
+    setResult(null);
+    if (window.history.length > 1) router.back();
+    else router.push('/home');
+  }
 
   function reset() {
     setDisposition(null);
@@ -748,10 +769,7 @@ export function LogVisitForm({
             variant="outline"
             size="xl"
             className="flex-1"
-            onClick={() => {
-              reset();
-              setResult(null);
-            }}
+            onClick={onCancel}
             disabled={isPending}
           >
             {t('cancel')}
