@@ -537,7 +537,24 @@ export function LogVisitForm({
                 </div>
               </div>
             )}
-            <p className="text-xs text-muted-foreground">{t('linkNew')}</p>
+            {/* The other half of the choice: name a prospect who is not on
+                file yet. It used to live below the outcome buttons, so the
+                only visible path here was linking an existing contact and a
+                new prospect got saved as "—". Both ways are on screen now. */}
+            {!showPicker && (
+              <div className="space-y-1.5 border-t pt-2.5">
+                <Label htmlFor="cname" className="text-xs text-muted-foreground">
+                  {t('orNewProspect')}
+                </Label>
+                <Input
+                  id="cname"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder={t('newProspectPlaceholder')}
+                />
+                <p className="text-xs text-muted-foreground">{t('linkNew')}</p>
+              </div>
+            )}
           </div>
         )}
       </Card>
@@ -692,8 +709,9 @@ export function LogVisitForm({
         </label>
       )}
 
-      {/* Conditional fields for engaged dispositions */}
-      {isEngaged && (needsAppointment || !linked) && (
+      {/* The rendez-vous date. The prospect's name moved up to the client card,
+          where both ways of naming who you visited now sit together. */}
+      {isEngaged && needsAppointment && (
         <Card className="space-y-4 p-4">
           {needsAppointment && (
             <div className="space-y-2">
@@ -703,17 +721,6 @@ export function LogVisitForm({
                 type="datetime-local"
                 value={appointmentDate}
                 onChange={(e) => setAppointmentDate(e.target.value)}
-              />
-            </div>
-          )}
-          {!linked && (
-            <div className="space-y-2">
-              <Label htmlFor="cname">{t('contactName')}</Label>
-              <Input
-                id="cname"
-                value={contactName}
-                onChange={(e) => setContactName(e.target.value)}
-                placeholder="—"
               />
             </div>
           )}

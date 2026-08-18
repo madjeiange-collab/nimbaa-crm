@@ -650,7 +650,6 @@
     "dictateListening": "Speak, I'm listening…",
     "dictateError": "Microphone unavailable or transcription failed",
     "appointmentDate": "Appointment date",
-    "contactName": "Contact name (optional)",
     "save": "Save",
     "saving": "Saving…",
     "savedKnock": "Visit saved",
@@ -696,7 +695,7 @@
     "completionDone": "End photo taken — time on site recorded",
     "forContact": "Visit for: {name}",
     "linkTitle": "Customer / lead & deal",
-    "linkNew": "No link: contact + deal created if sold/appointment/interested",
+    "linkNew": "Created with its deal if the outcome is sold, appointment or interested.",
     "linkExisting": "Link to an existing contact",
     "nearby": "Nearby",
     "searchContact": "Search a name…",
@@ -704,7 +703,9 @@
     "unlink": "Unlink",
     "whichAffaire": "Which deal?",
     "newAffaire": "New deal",
-    "affaire": "Deal"
+    "affaire": "Deal",
+    "orNewProspect": "or name a new lead",
+    "newProspectPlaceholder": "Business name…"
   },
   "turf": {
     "title": "My turf",

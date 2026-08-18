@@ -650,7 +650,6 @@
     "dictateListening": "Parlez, j'écoute…",
     "dictateError": "Micro indisponible ou transcription échouée",
     "appointmentDate": "Date du rendez-vous",
-    "contactName": "Nom du contact (facultatif)",
     "save": "Enregistrer",
     "saving": "Enregistrement…",
     "savedKnock": "Visite enregistrée",
@@ -696,7 +695,7 @@
     "slotExtraHint": "Facultatif : devanture, compteur, dégâts, document signé…",
     "forContact": "Visite pour : {name}",
     "linkTitle": "Client / prospect & affaire",
-    "linkNew": "Sans lien : contact + affaire créés si vendu/RDV/intéressé",
+    "linkNew": "Créé avec son affaire si le résultat est vendu, RDV ou intéressé.",
     "linkExisting": "Lier à un contact existant",
     "nearby": "À proximité",
     "searchContact": "Rechercher un nom…",
@@ -704,7 +703,9 @@
     "unlink": "Détacher",
     "whichAffaire": "Quelle affaire ?",
     "newAffaire": "Nouvelle affaire",
-    "affaire": "Affaire"
+    "affaire": "Affaire",
+    "orNewProspect": "ou nommez un nouveau prospect",
+    "newProspectPlaceholder": "Nom de l'enseigne…"
   },
   "turf": {
     "title": "Mon secteur",
