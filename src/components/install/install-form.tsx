@@ -60,6 +60,7 @@ export function InstallForm({
   initialChecklist,
   initialEquipment,
   initialStatus,
+  taskId = null,
 }: {
   technicianId: string;
   technicianName?: string | null;
@@ -70,6 +71,8 @@ export function InstallForm({
   initialChecklist: ChecklistItem[] | null;
   initialEquipment: EquipmentItem[] | null;
   initialStatus: InstallStatus | null;
+  /** Set when the trip was started from a planned follow-up. */
+  taskId?: string | null;
 }) {
   const t = useTranslations('installation');
   const tVisit = useTranslations('visit'); // shared dictation labels
@@ -267,6 +270,7 @@ export function InstallForm({
         notes: notes.trim() || null,
         nextVisitDate: status === 'needs_revisit' && nextVisitDate ? nextVisitDate : null,
         visitedAt: new Date().toISOString(),
+        taskId,
         startedAt: arrivalAt ?? photos[0]?.meta.capturedAt ?? null,
         photoMeta: photos.map((p) => p.meta),
       };

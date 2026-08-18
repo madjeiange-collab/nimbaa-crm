@@ -10,7 +10,7 @@ export default async function NewVisitPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ contact?: string }>;
+  searchParams: Promise<{ contact?: string; deal?: string; task?: string }>;
 }) {
   const { locale } = await params;
   const sp = await searchParams;
@@ -75,6 +75,8 @@ export default async function NewVisitPage({
         canDoB2b={user.can_do_b2b}
         attachedContact={attachedContact}
         contacts={contacts}
+        taskId={sp.task ?? null}
+        presetDealId={sp.deal ?? null}
       />
     </>
   );

@@ -31,6 +31,7 @@ export interface SaveVisitInput {
   dealId?: string | null; // link the visit to a chosen affaire (existing contact)
   visitedAt?: string; // ISO — defaults to now
   startedAt?: string | null; // ISO — arrival-photo moment (time spent = visited - started)
+  taskId?: string | null; // the planned follow-up this visit discharges
   photoPaths?: string[]; // storage paths of geo-stamped check-in photos
   photoMeta?: VisitPhotoMeta[]; // forensic metadata, aligned with photoPaths
 }
@@ -111,9 +112,16 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
   };
   let { data: visit, error: vErr } = await supabase
     .from('visits')
-    .insert({ ...visitRow, started_at: input.startedAt ?? null })
+    .insert({ ...visitRow, started_at: input.startedAt ?? null, task_id: input.taskId ?? null })
     .select('id')
     .single();
+  if (vErr && /task_id/.test(vErr.message)) {
+    ({ data: visit, error: vErr } = await supabase
+      .from('visits')
+      .insert({ ...visitRow, started_at: input.startedAt ?? null })
+      .select('id')
+      .single());
+  }
   if (vErr && /started_at/.test(vErr.message)) {
     ({ data: visit, error: vErr } = await supabase
       .from('visits')
@@ -251,6 +259,15 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
 
     if (dealId) await supabase.from('visits').update({ deal_id: dealId }).eq('id', visit.id);
     await recomputeContactRollup(supabase, contactId);
+  }
+
+  // The visit discharged a planned follow-up — close it. Best-effort.
+  if (input.taskId) {
+    await supabase
+      .from('tasks')
+      .update({ status: 'done', completed_at: now, completed_by: user.id, updated_at: now })
+      .eq('id', input.taskId)
+      .eq('status', 'open');
   }
 
   // A rendez-vous becomes a real follow-up someone owns and closes, not just a

@@ -69,6 +69,8 @@ export function LogVisitForm({
   attachedContact,
   contacts = [],
   dispositionSettings,
+  taskId = null,
+  presetDealId = null,
 }: {
   repId: string;
   repName?: string | null;
@@ -77,6 +79,9 @@ export function LogVisitForm({
   canDoB2b: boolean;
   attachedContact?: { id: string; name: string | null } | null;
   contacts?: PickContact[];
+  /** Set when the visit was started from a planned follow-up — closes it on save. */
+  taskId?: string | null;
+  presetDealId?: string | null;
   /** Admin-configured labels/visibility per outcome (defaults when absent). */
   dispositionSettings?: Partial<
     Record<KnockDisposition, { label: string | null; active: boolean }>
@@ -108,7 +113,7 @@ export function LogVisitForm({
   const dictation = useDictation((text) =>
     setNotes((prev) => (prev ? prev + ' ' + text : text)),
   );
-  const [dealId, setDealId] = useState<string | null>(null);
+  const [dealId, setDealId] = useState<string | null>(presetDealId);
   const [showPicker, setShowPicker] = useState(false);
   const [contactQuery, setContactQuery] = useState('');
 
@@ -321,6 +326,7 @@ export function LogVisitForm({
         visitedAt: new Date().toISOString(),
         startedAt: arrivalAt ?? photos[0]?.meta.capturedAt ?? null,
         photoMeta: photos.map((p) => p.meta),
+        taskId,
       };
 
       // No network: keep the visit (photos included) in the offline queue.

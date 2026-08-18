@@ -8,6 +8,8 @@ import { AppHeader } from '@/components/shared/app-header';
 import { ContactDetail } from '@/components/contacts/contact-detail';
 import { TaskList } from '@/components/tasks/task-list';
 import { loadContactTasks } from '@/lib/tasks/queries';
+import { JobHistoryPanel } from '@/components/install/job-history';
+import { loadJobHistory, type JobHistory } from '@/lib/installations/history';
 import type {
   TimelineItem,
   ContactFull,
@@ -29,6 +31,18 @@ export default async function ContactDetailPage({
 
   const supabase = await createClient();
   const contactTasks = await loadContactTasks(supabase, id);
+
+  // Trip history per job (needs 0026; returns nothing before it).
+  const { data: jobRows } = await supabase
+    .from('installations')
+    .select('id')
+    .eq('contact_id', id)
+    .limit(10);
+  const jobHistories = (
+    await Promise.all(
+      ((jobRows ?? []) as { id: string }[]).map((j) => loadJobHistory(supabase, j.id)),
+    )
+  ).filter((h): h is JobHistory => h != null);
 
   const { data: contact } = await supabase
     .from('contacts')
@@ -284,6 +298,11 @@ export default async function ContactDetailPage({
           canInstall={canInstall}
           isManager={user.role === 'manager' || user.role === 'admin'}
         />
+        {/* Each job as its trips: how many returns, how long, with the photos */}
+        {jobHistories.map((h) => (
+          <JobHistoryPanel key={h.installationId} history={h} />
+        ))}
+
         {/* Follow-ups on this customer — everyone on the job sees the same list */}
         <TaskList
           tasks={contactTasks}

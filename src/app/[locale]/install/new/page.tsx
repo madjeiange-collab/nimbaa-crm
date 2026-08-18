@@ -11,7 +11,7 @@ export default async function NewInstallPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ job?: string }>;
+  searchParams: Promise<{ job?: string; task?: string }>;
 }) {
   const { locale } = await params;
   const sp = await searchParams;
@@ -55,6 +55,7 @@ export default async function NewInstallPage({
         initialChecklist={job.checklist ?? null}
         initialEquipment={job.equipment ?? null}
         initialStatus={job.status ?? null}
+        taskId={sp.task ?? null}
       />
     </>
   );

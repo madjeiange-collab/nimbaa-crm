@@ -1018,3 +1018,15 @@ create policy tasks_delete on tasks
   for delete using (
     exists (select 1 from users u where u.id = auth.uid() and u.role in ('manager', 'admin'))
   );
+
+-- 0026: each trip records the job it belongs to, the planned follow-up it
+-- discharged, what the technician concluded at that trip, and how far the
+-- protocol stood then — a job becomes a history instead of a final state.
+alter table visits
+  add column if not exists installation_id uuid references installations(id) on delete set null,
+  add column if not exists task_id uuid references tasks(id) on delete set null,
+  add column if not exists install_status text,
+  add column if not exists checklist_snapshot jsonb;
+
+create index if not exists visits_installation_ix on visits (installation_id, visited_at desc);
+create index if not exists visits_task_ix on visits (task_id) where task_id is not null;

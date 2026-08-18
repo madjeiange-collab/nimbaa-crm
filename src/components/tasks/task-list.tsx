@@ -2,12 +2,29 @@
 
 import { useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { CalendarClock, Check, Undo2, Wrench } from 'lucide-react';
+import { CalendarClock, Check, Play, Undo2, Wrench } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { completeTask, reopenTask, type TaskRow } from '@/lib/tasks/actions';
 import { Card, CardContent } from '@/components/ui/card';
 
 const KIND_ICON = { rdv: CalendarClock, revisit: Wrench, manual: Check } as const;
+
+/**
+ * Where "Commencer" leads: the form that produces the fact this task planned,
+ * already pointed at the right customer or job. `task` comes back on save so
+ * the visit records what it discharged and the task closes itself.
+ */
+function startHref(task: TaskRow): string | null {
+  if (task.kind === 'revisit' && task.installationId) {
+    return `/install/new?job=${task.installationId}&task=${task.id}`;
+  }
+  if (task.contactId) {
+    const p = new URLSearchParams({ contact: task.contactId, task: task.id });
+    if (task.dealId) p.set('deal', task.dealId);
+    return `/visit/new?${p.toString()}`;
+  }
+  return null;
+}
 
 /**
  * Open follow-ups. Anyone on the team can close one, because whoever turns up
@@ -105,6 +122,16 @@ export function TaskList({
                       )}
                     </p>
                   </div>
+                  {/* Start the work: opens the right form already pointed at
+                      this customer/job, and the save closes the task. */}
+                  {!done && startHref(task) && (
+                    <Link
+                      href={startHref(task) as string}
+                      className="flex h-9 shrink-0 items-center gap-1 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground"
+                    >
+                      <Play className="h-3.5 w-3.5" /> {t('start')}
+                    </Link>
+                  )}
                   <button
                     type="button"
                     disabled={isPending}

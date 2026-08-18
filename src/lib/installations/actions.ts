@@ -74,6 +74,7 @@ export interface SaveInstallationInput {
   photoMeta?: InstallPhotoMeta[]; // forensic metadata, aligned with photoPaths
   startedAt?: string | null; // ISO — arrival-photo moment of THIS trip
   visitedAt?: string; // ISO — defaults to now
+  taskId?: string | null; // the planned follow-up this trip discharges
 }
 
 export type SaveInstallationResult =
@@ -121,11 +122,29 @@ export async function saveInstallation(
     next_visit_date:
       input.status === 'needs_revisit' ? input.nextVisitDate ?? null : null,
   };
+  // 0026: the trip carries which job it belongs to, which planned follow-up it
+  // discharged, what was concluded and how far the protocol stood — that is
+  // what turns a job into a history rather than a final state.
+  const linked = {
+    ...visitRow,
+    started_at: input.startedAt ?? null,
+    installation_id: input.installationId,
+    task_id: input.taskId ?? null,
+    install_status: input.status,
+    checklist_snapshot: input.checklist,
+  };
   let { data: visit, error: vErr } = await supabase
     .from('visits')
-    .insert({ ...visitRow, started_at: input.startedAt ?? null })
+    .insert(linked)
     .select('id')
     .single();
+  if (vErr && /installation_id|task_id|install_status|checklist_snapshot/.test(vErr.message)) {
+    ({ data: visit, error: vErr } = await supabase
+      .from('visits')
+      .insert({ ...visitRow, started_at: input.startedAt ?? null })
+      .select('id')
+      .single());
+  }
   if (vErr && /started_at/.test(vErr.message)) {
     ({ data: visit, error: vErr } = await supabase
       .from('visits')
