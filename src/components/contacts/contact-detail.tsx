@@ -27,6 +27,7 @@ import {
 import { PeopleSection, type PersonCard } from '@/components/contacts/people-section';
 import { WhatsappDraft } from '@/components/contacts/whatsapp-draft';
 import { PhoneInput } from '@/components/shared/phone-input';
+import { AddressPicker } from '@/components/shared/address-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -136,6 +137,9 @@ export function ContactDetail({
   const [name, setName] = useState(contact.name ?? '');
   const [phone, setPhone] = useState(contact.phone ?? '');
   const [priority, setPriority] = useState<PriorityLevel>(contact.priority);
+  const [address, setAddress] = useState(contact.address ?? '');
+  const [lat, setLat] = useState<number | null>(contact.lat);
+  const [lng, setLng] = useState<number | null>(contact.lng);
 
   const [actType, setActType] = useState<ActivityType>('call');
   const [actContent, setActContent] = useState('');
@@ -191,6 +195,21 @@ export function ContactDetail({
                 <PhoneInput id="c-phone" value={phone} onChange={setPhone} />
               </div>
               <div className="space-y-1">
+                {/* Addable at creation but not correctable until now: a fiche
+                    keeps the address the knock happened to reverse-geocode. */}
+                <Label htmlFor="nc-address">{t('address')}</Label>
+                <AddressPicker
+                  value={address}
+                  lat={lat}
+                  lng={lng}
+                  onChange={(a, la, ln) => {
+                    setAddress(a);
+                    setLat(la);
+                    setLng(ln);
+                  }}
+                />
+              </div>
+              <div className="space-y-1">
                 <Label htmlFor="c-prio">{t('priority')}</Label>
                 <select
                   id="c-prio"
@@ -215,6 +234,9 @@ export function ContactDetail({
                     setName(contact.name ?? '');
                     setPhone(contact.phone ?? '');
                     setPriority(contact.priority);
+                    setAddress(contact.address ?? '');
+                    setLat(contact.lat);
+                    setLng(contact.lng);
                     setEditing(false);
                   }}
                 >
@@ -229,6 +251,10 @@ export function ContactDetail({
                         name: name.trim() || null,
                         phone: phone.trim() || null,
                         priority,
+                        address: address.trim() || null,
+                        // Only overwrite the pin when the picker produced one:
+                        // hand-typed text must not silently drop the old fix.
+                        ...(lat != null && lng != null ? { lat, lng } : {}),
                       });
                       setEditing(false);
                     })

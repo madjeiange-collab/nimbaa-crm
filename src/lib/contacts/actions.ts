@@ -65,6 +65,10 @@ export async function updateContact(
     phone?: string | null;
     priority?: PriorityLevel;
     tags?: string[];
+    address?: string | null;
+    /** Only sent when the picker produced a pin — see the caller. */
+    lat?: number | null;
+    lng?: number | null;
   },
 ): Promise<ActionResult> {
   const supabase = await createClient();
