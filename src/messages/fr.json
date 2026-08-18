@@ -828,6 +828,7 @@
     "jCol_toContact": "Distance client (m)",
     "jCol_flags": "Alertes",
     "myJournalTitle": "Mes passages",
+    "jPersonTitle": "Passages · {name}",
     "flagPairFar": "Photos arrivée/fin éloignées",
     "flagTooShort": "Visites trop courtes",
     "flagFarFromContact": "Photo loin du client",

@@ -61,7 +61,7 @@ export default async function StatsPage({
         <AppHeader title={tHome('techStats')} />
         <TechnicianStats userId={user.id} />
         <div className="mx-auto max-w-3xl px-4 pb-4">
-          <CheckInJournal rows={myRows} showPerson={false} />
+          <CheckInJournal rows={myRows} showPerson={false} title={tDash('myJournalTitle')} />
         </div>
       </>
     );
@@ -141,10 +141,12 @@ export default async function StatsPage({
     ]);
 
   // Own check-in / check-out passages (a manager inspecting a rep sees theirs).
-  const journalRows = await loadJournalRows(supabase, {
-    sinceIso: d14.toISOString(),
-    repId: targetId,
-  });
+  const isManagerViewer = user.role === 'manager' || user.role === 'admin';
+  const inspectingSomeone = !!target && target.id !== user.id;
+  const showJournal = !isManagerViewer || inspectingSomeone;
+  const journalRows = showJournal
+    ? await loadJournalRows(supabase, { sinceIso: d14.toISOString(), repId: targetId })
+    : [];
 
   // Personal goal wins over the global app setting, then the default.
   const { data: goalSetting } = await supabase
@@ -553,8 +555,21 @@ export default async function StatsPage({
           </CardContent>
         </Card>
 
-        {/* Own check-in / check-out journal — the record backing your hours */}
-        <CheckInJournal rows={journalRows} showPerson={false} />
+        {/* The personal record backing your hours. A manager looking at their
+            own page already has the team-wide journal on Check-In and -Out, so
+            it only appears here for a field user — or when a manager is
+            inspecting one specific person. */}
+        {showJournal && (
+          <CheckInJournal
+            rows={journalRows}
+            showPerson={false}
+            title={
+              inspectingSomeone
+                ? tDash('jPersonTitle', { name: target?.full_name ?? target?.username ?? '—' })
+                : tDash('myJournalTitle')
+            }
+          />
+        )}
       </main>
     </>
   );

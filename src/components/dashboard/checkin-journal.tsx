@@ -59,9 +59,12 @@ export function CheckInJournal({
   people = [],
   showPerson = true,
   teamRatios = null,
+  title,
 }: {
   rows: JournalRow[];
   people?: { id: string; name: string }[];
+  /** Overrides the card heading — the personal view says whose passages these are. */
+  title?: string;
   /** Team view shows who did what; the personal view already knows. */
   showPerson?: boolean;
   /** Client-time averages per kind of work — a day is compared with its own. */
@@ -186,7 +189,7 @@ export function CheckInJournal({
       <CardContent className="space-y-3 pt-4">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <p className="text-sm font-semibold">{t('journalTitle')}</p>
+            <p className="text-sm font-semibold">{title ?? t('journalTitle')}</p>
             <p className="text-xs text-muted-foreground">{t('journalHint')}</p>
           </div>
           <button
