@@ -357,7 +357,11 @@
     <h3>Installer l'application sur l'écran d'accueil</h3>
     <p>Nimbaa CRM est une application web installable (PWA). Sur Android/Chrome : menu ⋮ → <span class="btn-ref">Ajouter à l'écran d'accueil</span>. Sur iPhone/Safari : Partager → <span class="btn-ref">Sur l'écran d'accueil</span>. L'application s'ouvre alors comme une app normale, en plein écran.</p>
     <h3>Changer la langue</h3>
-    <p>En haut de l'écran d'accueil, le sélecteur <span class="btn-ref">FR</span> / <span class="btn-ref">EN</span> bascule toute l'interface entre français et anglais, immédiatement.</p>
+    <p>En haut de l'écran d'accueil, le sélecteur <span class="btn-ref">FR</span> / <span class="btn-ref">EN</span> bascule toute l'interface entre français et anglais, immédiatement. En face, une pastille rappelle <strong>le rôle avec lequel vous êtes connecté</strong> — <em>Commercial</em> en vert, <em>Technicien</em> en bleu, <em>Manager</em> en ambre, <em>Administrateur</em> en gris. Utile sur un téléphone partagé, où l'on ne sait pas toujours qui a ouvert la session.</p>
+    <div class="callout warn">
+      <span class="lbl">L'application est en anglais ?</span>
+      <p>Si les libellés paraissent traduits à la machine — « Carte de vos coups » au lieu de « Carte de vos portes frappées » — c'est que la session est en <strong>EN</strong> et que le navigateur du téléphone traduit tout seul. Touchez <span class="btn-ref">FR</span> : vous retrouvez le français d'origine, écrit pour le terrain d'Abidjan.</p>
+    </div>
     <div class="callout danger">
       <span class="lbl">Sécurité</span>
       <p>Au premier accès, changez votre mot de passe dans <strong>Profil</strong> (icône ronde en haut à droite). Ne partagez jamais vos identifiants.</p>
@@ -423,7 +427,7 @@
     <ol>
       <li><strong>Photo d'arrivée.</strong> En arrivant, touchez la case verte <span class="btn-ref">ARRIVÉE</span>. La photo est horodatée et géolocalisée automatiquement ; l'adresse détectée s'affiche plus bas.</li>
       <li><strong>Résultat.</strong> Choisissez l'issue de la visite : <em>Pas de réponse</em>, <em>Absent</em>, <em>Refus</em>, <em>Intéressé</em>, <em>Rendez-vous</em> ou <em>Vendu</em>.</li>
-      <li><strong>Contact (optionnel).</strong> <span class="btn-ref">Lier à un contact existant</span> rattache la visite à une fiche déjà créée. Sans lien, si le résultat est <em>Vendu</em>, <em>Rendez-vous</em> ou <em>Intéressé</em>, l'application crée automatiquement le contact et l'affaire.</li>
+      <li><strong>Qui vous visitez.</strong> Deux chemins côte à côte, en haut du formulaire : <span class="btn-ref">Lier à un contact existant</span> pour une fiche déjà créée, ou <strong>ou nommez un nouveau prospect</strong> — son nom, et son <strong>téléphone</strong> pendant que vous êtes devant lui. Le contact et son affaire sont créés à l'enregistrement si le résultat est <em>Vendu</em>, <em>Rendez-vous</em> ou <em>Intéressé</em>.</li>
       <li><strong>Notes.</strong> Tapez, ou touchez <span class="btn-ref">🎤 Dicter</span> et parlez : <strong>les mots s'écrivent pendant que vous parlez</strong> (voir juste après).</li>
       <li><strong>Photo de fin.</strong> Au moment de repartir, touchez la case orange <span class="btn-ref">FIN</span>. C'est elle qui referme la visite.</li>
       <li><span class="btn-ref">Enregistrer</span>.</li>
@@ -439,6 +443,14 @@
     </table></div>
     <p>La case <strong>FIN</strong> reste <strong>verrouillée</strong> (cadenas) tant que la photo d'arrivée n'est pas prise : on ne peut pas repartir avant d'être arrivé. La pastille en haut à droite indique où vous en êtes : <em>Arrivée + fin</em> → <em>Photo de fin manquante</em> → <em>Complet</em>. Tant que la paire n'est pas complète, le bouton <span class="btn-ref">Enregistrer</span> reste inactif.</p>
 
+    <div class="callout warn">
+      <span class="lbl">Un prospect a toujours un nom</span>
+      <p>Sur un résultat <em>Vendu</em>, <em>Rendez-vous</em> ou <em>Intéressé</em>, l'enregistrement est <strong>bloqué</strong> tant que la visite ne dit pas chez qui elle a eu lieu : liez un contact, ou saisissez un nom. Sans cela on créait des fiches « (sans nom) » que personne ne pouvait identifier ensuite. Les autres résultats — porte sans réponse, absent, refus — n'ont besoin de rien.</p>
+    </div>
+    <div class="callout tip">
+      <span class="lbl">Le téléphone se demande sur place</span>
+      <p>Le numéro est <strong>facultatif</strong> — un gérant absent ne doit pas empêcher d'enregistrer la visite — mais c'est par lui que passe la relance, et y revenir plus tard ne se fait jamais. Demandez-le pendant que vous y êtes.</p>
+    </div>
     <div class="callout tip">
       <span class="lbl">Pourquoi deux photos</span>
       <p>L'écart entre les deux photos mesure le <strong>temps réellement passé chez le client</strong>. C'est ce qui permet de valoriser le travail de terrain — et ce qui rend les chiffres incontestables. Une seule photo ne prouve qu'un instant ; la paire prouve une présence.</p>
@@ -486,7 +498,8 @@
   <div class="txt">
     <h2>5 · Clients, prospects &amp; conversion</h2>
     <div class="roles"><span class="chip com">Commercial</span><span class="chip man">Manager</span></div>
-    <p><span class="btn-ref">Mes clients &amp; prospects</span> liste vos fiches, avec recherche et filtres. Chaque fiche regroupe :</p>
+    <p><span class="btn-ref">Mes clients &amp; prospects</span> liste vos fiches, avec recherche et filtres. En haut de la liste, <span class="btn-ref">+ Nouveau prospect</span> crée une fiche sans passer par une visite (voir 5e).</p>
+    <p>Chaque fiche regroupe :</p>
     <ul>
       <li><strong>Coordonnées</strong> — le téléphone est saisi avec l'indicatif pays (🇨🇮 +225 par défaut, modifiable). Le bouton <strong>WhatsApp</strong> ouvre une conversation directement, avec un brouillon de message proposé par l'IA.</li>
       <li><strong>Interlocuteurs</strong> — les personnes chez le client (rôle par défaut : <em>Gérant</em>), reliables aux affaires.</li>
@@ -539,6 +552,7 @@
     <div class="callout warn">
       <span class="lbl">Étape choisie par erreur</span>
       <p>Passer une affaire en <em>Gagné</em> crée l'abonnement et la commission. Remettre l'affaire sur une étape en cours ne les supprime pas : prévenez votre <strong>manager</strong>, qui peut résilier l'abonnement depuis la fiche client.</p>
+      <p>La <strong>corbeille</strong> d'une affaire ne s'affiche que tant qu'elle n'a rien produit : une affaire <em>ouverte</em> et sans abonnement se supprime librement. Dès qu'elle est gagnée, perdue ou porteuse d'un abonnement, seul un <strong>manager</strong> peut la supprimer — la suppression emporte aussi ses chantiers et leurs passages.</p>
     </div>
     <p><strong>Prospect perdu ?</strong> Choisissez l'étape <strong>Perdu</strong>. Si le contact n'a plus aucune affaire ouverte ni gagnée, il bascule dans l'onglet <em>Perdus</em> — sa fiche et son historique restent consultables.</p>
   </div>
@@ -587,6 +601,29 @@
   <figure class="phone">
     <img src="/manuel/21-history-streams.png" alt="Historique d'un client : lignes à barre verte pour les visites et à barre bleue pour les interventions, avec durée et résultat" />
     <figcaption>Vert = commercial, bleu = technique. La même liste raconte les deux métiers.</figcaption>
+  </figure>
+</section>
+
+<!-- ---- 5e. Créer un prospect sans visite ---- -->
+<section class="screen sub" id="nouveau-prospect">
+  <div class="txt">
+    <h3>Créer un prospect sans visite</h3>
+    <p>Tous les prospects ne se rencontrent pas sur un pas de porte. Un numéro donné au téléphone, une recommandation, une carte échangée au marché : <span class="btn-ref">+ Nouveau prospect</span>, en haut de la liste des clients, enregistre la fiche directement.</p>
+    <ol>
+      <li><strong>Nom de l'enseigne</strong> — le seul champ obligatoire.</li>
+      <li><strong>Téléphone</strong> — avec l'indicatif 🇨🇮 +225 par défaut, modifiable.</li>
+      <li><strong>Adresse</strong> — quartier, rue, repère.</li>
+      <li><span class="btn-ref">Créer le prospect</span> vous dépose sur sa fiche, où se saisissent le type d'activité, les tags et l'affaire.</li>
+    </ol>
+    <p>La fiche vous est <strong>attribuée</strong>, comme un prospect créé depuis une visite. Elle apparaît aussitôt dans l'onglet <em>Prospects</em>.</p>
+    <div class="callout tip">
+      <span class="lbl">Les trois façons d'enregistrer un client</span>
+      <p>Une <strong>visite</strong> avec un résultat engagé (section 4) · <span class="btn-ref">+ Nouveau prospect</span> pour un contact obtenu autrement · un <strong>import CSV</strong> pour une liste entière, réservé à l'administrateur (section 14). Aucune de ces trois voies ne peut créer une fiche sans nom.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/25-new-prospect.png" alt="Formulaire Nouveau prospect : nom de l'enseigne, téléphone avec indicatif +225, adresse, bouton Créer le prospect" />
+    <figcaption>Un nom suffit. Le reste de la fiche se remplit ensuite.</figcaption>
   </figure>
 </section>
 
@@ -779,10 +816,29 @@
     <h3>Mes passages</h3>
     <p>Tout en bas de la page, le <strong>journal de vos passages</strong> : chaque visite des 14 derniers jours avec l'heure d'arrivée, l'heure de départ, la durée et vos deux photos. C'est votre relevé personnel — celui qui atteste du temps que vous passez chez les clients. Le détail de sa lecture est décrit en section 12.</p>
     <p>La page <span class="btn-ref">Statistiques techniciens</span> suit la même logique pour les installations, avec le même journal en bas de page.</p>
+
   </div>
   <figure class="phone">
     <img src="/manuel/09-stats.png" alt="Statistiques commerciales avec filtres par secteur, type et tag" />
     <figcaption>Statistiques : vos chiffres, filtrables ; « Mes commissions » en bas de page.</figcaption>
+  </figure>
+</section>
+
+<!-- ---- 10b. Les deux métiers ---- -->
+<section class="screen sub" id="deux-metiers">
+  <div class="txt">
+    <h3>Quand on fait les deux métiers</h3>
+    <p>Un commercial peut ouvrir une intervention, un technicien peut enregistrer une visite (sections 7b et 4) — vos statistiques suivent ce que vous faites réellement :</p>
+    <div class="tablewrap"><table>
+      <tr><th>Vous êtes</th><th>Ce qui s'ajoute à vos statistiques</th></tr>
+      <tr><td><span class="chip com">Commercial</span> avec des chantiers</td><td>Un bloc <strong>Statistiques techniciens</strong> : faites (7 j / 30 j), en cours, retours, répartition par statut et carte de vos chantiers.</td></tr>
+      <tr><td><span class="chip tec">Technicien</span> avec des visites</td><td>Un bloc <strong>Mes visites</strong> : visites (7 j / 30 j), engagées, ventes, et la répartition des résultats.</td></tr>
+    </table></div>
+    <p>Ces blocs <strong>n'apparaissent que si vous avez ce travail-là</strong> : un commercial qui ne fait que du porte-à-porte ne voit pas de panneau chantiers vide, et inversement. Dans les deux cas ce sont <strong>vos</strong> chiffres — jamais ceux de l'équipe.</p>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/26-cross-stats.png" alt="Bloc Statistiques techniciens sur la page d'un commercial : faites 7 j et 30 j, en cours, retours" />
+    <figcaption>Chez un commercial qui a ouvert des interventions : ses chantiers, sur sa propre page.</figcaption>
   </figure>
 </section>
 
