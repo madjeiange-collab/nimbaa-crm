@@ -2,19 +2,20 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { requireRole } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
-import { haversineMeters } from '@/lib/geo';
+import { haversineMeters, pointInAnyPolygon } from '@/lib/geo';
 import { DISPOSITION_BY_KEY, type KnockDisposition } from '@/lib/visits/dispositions';
 import { AppHeader } from '@/components/shared/app-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatTile } from '@/components/charts/stat-tile';
 import { CheckInJournal } from '@/components/dashboard/checkin-journal';
 import { PeriodFilter } from '@/components/dashboard/period-filter';
+import { ControlsFilters } from '@/components/dashboard/controls-filters';
 import { asPeriod, periodSince } from '@/lib/checkin/period';
 
 /** Rows listed in the journal; the aggregates above it cover the full window. */
 const JOURNAL_CAP = 150;
 import {
-  loadJournalRows,
+  buildJournalRows,
   PAIR_DISTANCE_M,
   CONTACT_DISTANCE_M,
   MIN_ENGAGED_VISIT_MIN,
@@ -54,7 +55,7 @@ export default async function ControlsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ p?: string }>;
+  searchParams: Promise<{ p?: string; terr?: string; type?: string; tag?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -62,8 +63,12 @@ export default async function ControlsPage({
   const t = await getTranslations('dashboard');
 
   const supabase = await createClient();
-  const period = asPeriod((await searchParams).p);
+  const sp = await searchParams;
+  const period = asPeriod(sp.p);
   const since = periodSince(period);
+  const terrId = sp.terr ?? '';
+  const typeFilter = sp.type ?? '';
+  const tagFilter = sp.tag ?? '';
 
   // "Tout" drops the lower bound entirely, so each query is built then
   // conditionally narrowed rather than always calling .gte().
@@ -82,7 +87,7 @@ export default async function ControlsPage({
     .limit(6000);
   const installsQ = supabase
     .from('installations')
-    .select('id, installer_id, started_at, completed_at, title, contact_id, contacts(name)')
+    .select('id, installer_id, started_at, completed_at, title, contact_id, contacts(name, lat, lng)')
     .not('completed_at', 'is', null)
     .limit(1000);
 
@@ -91,13 +96,15 @@ export default async function ControlsPage({
     { data: photoRows },
     { data: userRows },
     { data: installRows },
-    journalRows,
+    { data: turfRows },
+    { data: dealRows },
   ] = await Promise.all([
     since ? visitsQ.gte('visited_at', since) : visitsQ,
     since ? photosQ.gte('captured_at', since) : photosQ,
     supabase.from('users').select('id, full_name, username'),
     since ? installsQ.gte('completed_at', since) : installsQ,
-    loadJournalRows(supabase, { sinceIso: since, limit: JOURNAL_CAP }),
+    supabase.rpc('territories_geojson'),
+    supabase.from('deals').select('contact_id, business_type, tags').limit(5000),
   ]);
 
   const nameOf = new Map(
@@ -106,7 +113,46 @@ export default async function ControlsPage({
     ),
   );
 
-  const visits = (visitRows ?? []) as unknown as VisitRow[];
+  // ---- secteur / type d'activité / tag ---------------------------------------
+  // Applied here rather than in SQL: the secteur test is a point-in-polygon,
+  // and filtering before the journal is capped keeps the list meaningful.
+  const turfs = ((turfRows ?? []) as { id: string; name?: string | null; geojson?: { coordinates?: number[][][] } }[])
+    .filter((r) => r.geojson?.coordinates);
+  const territories = turfs.map((r) => ({ id: r.id, name: r.name ?? '—' }));
+  const chosenTurf = turfs.find((r) => r.id === terrId);
+  const turfPolygons: number[][][][] | null = chosenTurf ? [chosenTurf.geojson!.coordinates!] : null;
+
+  const deals = (dealRows ?? []) as {
+    contact_id: string | null;
+    business_type: string | null;
+    tags: string[] | null;
+  }[];
+  const typeOptions = [...new Set(deals.map((d) => d.business_type).filter((v): v is string => !!v))].sort();
+  const tagOptions = [...new Set(deals.flatMap((d) => d.tags ?? []))].sort();
+  const contactsMatching =
+    typeFilter || tagFilter
+      ? new Set(
+          deals
+            .filter(
+              (d) =>
+                (!typeFilter || d.business_type === typeFilter) &&
+                (!tagFilter || (d.tags ?? []).includes(tagFilter)),
+            )
+            .map((d) => d.contact_id)
+            .filter((v): v is string => !!v),
+        )
+      : null;
+
+  const allVisits = (visitRows ?? []) as unknown as VisitRow[];
+  const visits = allVisits.filter((v) => {
+    if (contactsMatching && !(v.contact_id && contactsMatching.has(v.contact_id))) return false;
+    if (turfPolygons) {
+      const lat = v.lat ?? v.contacts?.lat ?? null;
+      const lng = v.lng ?? v.contacts?.lng ?? null;
+      if (lat == null || lng == null || !pointInAnyPolygon(lat, lng, turfPolygons)) return false;
+    }
+    return true;
+  });
   const photos = (photoRows ?? []) as PhotoRow[];
   const photosByVisit = new Map<string, PhotoRow[]>();
   for (const p of photos) {
@@ -200,8 +246,17 @@ export default async function ControlsPage({
     completed_at: string | null;
     title: string | null;
     contact_id: string | null;
-    contacts: { name: string | null } | null;
-  }[]).map((i) => ({
+    contacts: { name: string | null; lat: number | null; lng: number | null } | null;
+  }[])
+    .filter((i) => {
+      if (contactsMatching && !(i.contact_id && contactsMatching.has(i.contact_id))) return false;
+      if (turfPolygons) {
+        const { lat, lng } = i.contacts ?? { lat: null, lng: null };
+        if (lat == null || lng == null || !pointInAnyPolygon(lat, lng, turfPolygons)) return false;
+      }
+      return true;
+    })
+    .map((i) => ({
     ...i,
     durationMin:
       i.started_at && i.completed_at ? Math.round(minutesBetween(i.started_at, i.completed_at)) : null,
@@ -299,6 +354,8 @@ export default async function ControlsPage({
     install: ratioOver(timedInstallTrips),
   };
 
+  // Built from the FILTERED visits, so the cap applies to what survived.
+  const journalRows = await buildJournalRows(supabase, visits.slice(0, JOURNAL_CAP), nameOf);
   const journalPeople = [...new Map(journalRows.map((r) => [r.personId, r.personName])).entries()]
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -329,6 +386,12 @@ export default async function ControlsPage({
       <AppHeader title={t('controlsTitle')} />
       <main className="mx-auto max-w-4xl space-y-4 p-4">
         <PeriodFilter active={period} />
+        <ControlsFilters
+          territories={territories}
+          types={typeOptions}
+          tags={tagOptions}
+          current={{ terr: terrId, type: typeFilter, tag: tagFilter }}
+        />
         <p className="text-sm text-muted-foreground">{t('controlsHint')}</p>
         {vErr && (
           <Card>

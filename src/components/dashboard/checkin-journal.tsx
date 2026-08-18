@@ -83,19 +83,23 @@ export function CheckInJournal({
 
   const [person, setPerson] = useState('');
   const [kind, setKind] = useState('');
-  const [onlyFlagged, setOnlyFlagged] = useState(false);
+  const [alert, setAlert] = useState('');
 
   // The window itself is chosen above the page (?p=), which re-queries — these
   // filters only narrow what came back.
+  const matchesAlert = (r: JournalRow) => {
+    if (!alert) return true;
+    if (alert === 'any') return r.flags.length > 0;
+    // "Paire incomplète": no arrival photo, so no measurable time on site —
+    // the adoption question rather than a fraud signal.
+    if (alert === 'incomplete') return r.durationMin == null;
+    return r.flags.includes(alert as JournalRow['flags'][number]);
+  };
+
   const filtered = useMemo(
-    () =>
-      rows.filter(
-        (r) =>
-          (!person || r.personId === person) &&
-          (!kind || r.kind === kind) &&
-          (!onlyFlagged || r.flags.length > 0),
-      ),
-    [rows, person, kind, onlyFlagged],
+    () => rows.filter((r) => (!person || r.personId === person) && (!kind || r.kind === kind) && matchesAlert(r)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, person, kind, alert],
   );
 
   const groups = useMemo<DayGroup[]>(() => {
@@ -229,14 +233,15 @@ export function CheckInJournal({
             <option value="visit">{t('jVisit')}</option>
             <option value="install">{t('jInstall')}</option>
           </select>
-          <label className="flex min-h-touch items-center gap-2 rounded-md border border-input px-2 text-sm">
-            <input
-              type="checkbox"
-              checked={onlyFlagged}
-              onChange={(e) => setOnlyFlagged(e.target.checked)}
-            />
-            {t('jOnlyFlagged')}
-          </label>
+          <select value={alert} onChange={(e) => setAlert(e.target.value)} className={selectCls}>
+            <option value="">{t('jAllAlerts')}</option>
+            <option value="any">{t('jOnlyFlagged')}</option>
+            <option value="incomplete">{t('jIncomplete')}</option>
+            <option value="pairFar">{t('flag_pairFar')}</option>
+            <option value="tooShort">{t('flag_tooShort')}</option>
+            <option value="farFromContact">{t('flag_farFromContact')}</option>
+            <option value="clockDrift">{t('flag_clockDrift')}</option>
+          </select>
         </div>
 
         {/* Never let a truncated list read as a complete one. */}

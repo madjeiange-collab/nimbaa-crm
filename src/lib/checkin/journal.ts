@@ -38,6 +38,21 @@ export interface JournalRow {
 const minutesBetween = (a: string, b: string) =>
   Math.abs(new Date(b).getTime() - new Date(a).getTime()) / 60_000;
 
+/** The visit shape the journal needs — the controls page already selects it. */
+export interface JournalVisit {
+  id: string;
+  rep_id: string;
+  contact_id: string | null;
+  visit_type: string;
+  disposition: string | null;
+  visited_at: string;
+  started_at: string | null;
+  created_at: string;
+  lat: number | null;
+  lng: number | null;
+  contacts: { name: string | null; lat: number | null; lng: number | null } | null;
+}
+
 /**
  * The check-in / check-out journal: one row per passage, newest first, with the
  * arrival and end photos signed for display. Rows without an arrival photo
@@ -68,26 +83,25 @@ export async function loadJournalRows(
   ]);
   if (error) return [];
 
-  const visits = (visitRows ?? []) as unknown as {
-    id: string;
-    rep_id: string;
-    contact_id: string | null;
-    visit_type: string;
-    disposition: string | null;
-    visited_at: string;
-    started_at: string | null;
-    created_at: string;
-    lat: number | null;
-    lng: number | null;
-    contacts: { name: string | null; lat: number | null; lng: number | null } | null;
-  }[];
-  if (visits.length === 0) return [];
-
   const nameOf = new Map(
     ((userRows ?? []) as { id: string; full_name: string | null; username: string | null }[]).map(
       (u) => [u.id, u.full_name ?? u.username ?? '—'],
     ),
   );
+  return buildJournalRows(supabase, (visitRows ?? []) as unknown as JournalVisit[], nameOf);
+}
+
+/**
+ * Turn already-fetched visits into journal rows. Split out so a caller that
+ * filters its visits first (by secteur, type d'activité, tag) can cap the list
+ * AFTER filtering — capping before would leave a nearly empty journal.
+ */
+export async function buildJournalRows(
+  supabase: ServerClient,
+  visits: JournalVisit[],
+  nameOf: Map<string, string>,
+): Promise<JournalRow[]> {
+  if (visits.length === 0) return [];
 
   // Photos of exactly these visits (arrival + end carry the forensics).
   const { data: photoRows } = await supabase
