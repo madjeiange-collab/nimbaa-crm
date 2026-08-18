@@ -11,6 +11,7 @@ import {
   MapPin,
   Navigation,
   Wrench,
+  Tag,
 } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { directionsUrl } from '@/lib/geo';
@@ -182,6 +183,18 @@ export function ContactDetail({
             <span className="rounded bg-brand-amber/15 px-2 py-0.5 text-xs font-medium text-brand-brown">
               {tPrio(contact.priority)}
             </span>
+            {contact.businessType ? (
+              <span className="rounded bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+                {contact.businessType}
+              </span>
+            ) : (
+              <button
+                onClick={() => setEditing(true)}
+                className="rounded border border-dashed px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground"
+              >
+                {tDeals('noBusinessType')}
+              </button>
+            )}
             <button
               onClick={() => setEditing((v) => !v)}
               className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
@@ -325,13 +338,24 @@ export function ContactDetail({
                 </p>
               )}
               {contact.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-1">
+                <div className="flex flex-wrap items-center gap-1 pt-1">
+                  <Tag className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   {contact.tags.map((tag) => (
                     <span key={tag} className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
                       {tag}
                     </span>
                   ))}
                 </div>
+              )}
+              {!contact.phone && (
+                <p className="flex items-center gap-1.5 text-muted-foreground">
+                  <Phone className="h-4 w-4 shrink-0" /> {t('noPhoneYet')}
+                </p>
+              )}
+              {!contact.address && (
+                <p className="flex items-center gap-1.5 text-muted-foreground">
+                  <MapPin className="h-4 w-4 shrink-0" /> {t('noAddressYet')}
+                </p>
               )}
             </div>
           )}

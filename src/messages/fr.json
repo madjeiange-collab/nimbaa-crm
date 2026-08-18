@@ -787,7 +787,9 @@
     "newAddressPlaceholder": "Quartier, rue, repère…",
     "newHint": "Seul le nom est obligatoire. Le type d'activité, les tags et l'affaire se renseignent ensuite sur la fiche.",
     "newSave": "Créer le prospect",
-    "newError": "Création impossible — réessayez."
+    "newError": "Création impossible — réessayez.",
+    "noPhoneYet": "Téléphone non renseigné",
+    "noAddressYet": "Adresse non renseignée"
   },
   "stats": {
     "title": "Mes statistiques",

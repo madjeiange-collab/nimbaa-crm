@@ -787,7 +787,9 @@
     "newAddressPlaceholder": "Area, street, landmark…",
     "newHint": "Only the name is required. Business type, tags and the deal are filled in afterwards on the record.",
     "newSave": "Create lead",
-    "newError": "Could not create — please retry."
+    "newError": "Could not create — please retry.",
+    "noPhoneYet": "No phone yet",
+    "noAddressYet": "No address yet"
   },
   "stats": {
     "title": "My statistics",
