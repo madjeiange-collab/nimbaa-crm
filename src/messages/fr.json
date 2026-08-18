@@ -430,6 +430,7 @@
     "removePhoto": "Retirer la photo",
     "slotExtraTitle": "Autres photos (documentation)",
     "slotExtraHint": "Facultatif : matériel posé, numéros de série, câblage, anomalie…",
+    "interventionTitle": "Nouvelle intervention",
     "historyTitle": "Historique du chantier",
     "historySummary": "{trips, plural, one {# passage} other {# passages}} · {returns, plural, =0 {aucun retour} one {# retour} other {# retours}} · {total} sur place",
     "cancel": "Annuler",

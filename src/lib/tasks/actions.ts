@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 
-export type TaskKind = 'rdv' | 'revisit' | 'manual';
+export type TaskKind = 'rdv' | 'revisit' | 'service' | 'manual';
 export type TaskStatus = 'open' | 'done' | 'cancelled';
 
 export interface TaskRow {

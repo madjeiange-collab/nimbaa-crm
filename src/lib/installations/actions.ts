@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 import { revalidatePath } from 'next/cache';
 import { ensureTechCommissionForInstall } from '@/lib/commissions/core';
@@ -116,9 +116,12 @@ export interface InstallPhotoMeta {
 }
 
 export interface SaveInstallationInput {
-  installationId: string;
+  /** Empty when the trip itself opens the job (an SAV done on the spot). */
+  installationId: string | null;
   clientUuid: string;
   contactId: string;
+  /** Only for a job being opened by this trip. */
+  newIntervention?: { origin: InterventionOrigin; title?: string | null; reason?: string | null } | null;
   lat: number | null;
   lng: number | null;
   status: InstallStatus; // in_progress | done | needs_revisit
@@ -164,6 +167,22 @@ export async function saveInstallation(
 
   const now = input.visitedAt ?? new Date().toISOString();
 
+  // 0. An SAV done on the spot opens its own job: one save, not two. The job
+  //    is created first so the trip below can point at it.
+  let installationId = input.installationId;
+  if (!installationId) {
+    if (!input.newIntervention) return { ok: false, error: 'save_failed' };
+    const created = await createIntervention({
+      contactId: input.contactId,
+      origin: input.newIntervention.origin,
+      title: input.newIntervention.title?.trim() || input.newIntervention.origin,
+      reason: input.newIntervention.reason ?? null,
+      assignedTo: user.id,
+    });
+    if (!created.ok) return { ok: false, error: 'save_failed' };
+    installationId = created.installationId;
+  }
+
   // 1. Insert the installation visit (reuses the field-visit infrastructure).
   //    started_at is 0024 — retry without it if the migration isn't applied.
   const visitRow = {
@@ -184,7 +203,7 @@ export async function saveInstallation(
   const linked = {
     ...visitRow,
     started_at: input.startedAt ?? null,
-    installation_id: input.installationId,
+    installation_id: installationId,
     task_id: input.taskId ?? null,
     install_status: input.status,
     checklist_snapshot: input.checklist,
@@ -242,7 +261,7 @@ export async function saveInstallation(
   const { data: prev } = await supabase
     .from('installations')
     .select('started_at')
-    .eq('id', input.installationId)
+    .eq('id', installationId)
     .maybeSingle();
 
   const patch: Record<string, unknown> = {
@@ -264,12 +283,12 @@ export async function saveInstallation(
   const { error: iErr } = await supabase
     .from('installations')
     .update(patch)
-    .eq('id', input.installationId);
+    .eq('id', installationId);
   if (iErr) return { ok: false, error: 'save_failed' };
 
   // A completed installation earns the technician their per-product rate.
   if (input.status === 'done') {
-    await ensureTechCommissionForInstall(supabase, input.installationId, user.id);
+    await ensureTechCommissionForInstall(supabase, installationId, user.id);
   }
 
   // "Retour requis" becomes an owned, dated task carrying what is left to do —
@@ -278,7 +297,7 @@ export async function saveInstallation(
     const { data: job } = await supabase
       .from('installations')
       .select('title, deal_id, contacts(name)')
-      .eq('id', input.installationId)
+      .eq('id', installationId)
       .maybeSingle();
     const pending = (input.checklist ?? []).filter((c) => !c.done).map((c) => c.label);
     const details = [
@@ -288,7 +307,7 @@ export async function saveInstallation(
       .filter(Boolean)
       .join(' — ');
     await ensureTaskForRevisit(supabase, {
-      installationId: input.installationId,
+      installationId: installationId,
       contactId: input.contactId,
       dealId: (job as { deal_id?: string | null } | null)?.deal_id ?? null,
       assignedTo: user.id,
@@ -301,7 +320,7 @@ export async function saveInstallation(
     await supabase
       .from('tasks')
       .update({ status: 'done', completed_at: now, completed_by: user.id, updated_at: now })
-      .eq('installation_id', input.installationId)
+      .eq('installation_id', installationId)
       .eq('status', 'open')
       .eq('kind', 'revisit');
   }

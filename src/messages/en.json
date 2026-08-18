@@ -430,6 +430,7 @@
     "removePhoto": "Remove photo",
     "slotExtraTitle": "Other photos (documentation)",
     "slotExtraHint": "Optional: installed equipment, serial numbers, wiring, issues…",
+    "interventionTitle": "New intervention",
     "historyTitle": "Job history",
     "historySummary": "{trips, plural, one {# trip} other {# trips}} · {returns, plural, =0 {no return} one {# return} other {# returns}} · {total} on site",
     "cancel": "Cancel",

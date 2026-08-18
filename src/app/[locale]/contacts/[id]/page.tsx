@@ -302,7 +302,7 @@ export default async function ContactDetailPage({
         />
         {/* Raise an SAV / warranty / maintenance job here — no sale needed. */}
         {canInstall && (
-          <Link href={`/install/intervention?contact=${id}`} className="block">
+          <Link href={`/install/new?contact=${id}`} className="block">
             <Card className="flex items-center justify-center gap-2 p-3 text-sm font-medium text-primary transition-colors hover:bg-accent">
               <Wrench className="h-4 w-4" />
               {tInt('newIntervention')}

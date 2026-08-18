@@ -980,7 +980,7 @@ create table if not exists tasks (
   installation_id uuid references installations(id) on delete set null,
   visit_id        uuid references visits(id) on delete set null,
   kind            text not null default 'manual'
-                    check (kind in ('rdv', 'revisit', 'manual')),
+                    check (kind in ('rdv', 'revisit', 'service', 'manual')),
   title           text not null,
   details         text,
   due_at          timestamptz,

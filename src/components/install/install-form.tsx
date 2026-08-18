@@ -22,7 +22,7 @@ import { reverseGeocode } from '@/lib/geo/reverse';
 import { processCheckInPhoto } from '@/lib/image/capture';
 import { dHash, type PhotoMeta } from '@/lib/image/phash';
 import { uploadVisitPhoto } from '@/lib/visits/upload';
-import { saveInstallation } from '@/lib/installations/actions';
+import { saveInstallation, type InterventionOrigin } from '@/lib/installations/actions';
 import { enqueueInstall } from '@/lib/offline/queue';
 import { freshChecklist } from '@/lib/installations/protocol';
 import type { ChecklistItem, EquipmentItem, InstallStatus } from '@/types/database';
@@ -61,13 +61,17 @@ export function InstallForm({
   initialEquipment,
   initialStatus,
   taskId = null,
+  contacts = [],
 }: {
   technicianId: string;
   technicianName?: string | null;
-  installationId: string;
-  contactId: string;
+  /** Null when this trip opens its own job — an SAV done on the spot. */
+  installationId: string | null;
+  contactId: string | null;
   contactName: string | null;
   jobTitle: string | null;
+  /** Customers to choose from, only needed in "new intervention" mode. */
+  contacts?: { id: string; name: string | null; address: string | null }[];
   initialChecklist: ChecklistItem[] | null;
   initialEquipment: EquipmentItem[] | null;
   initialStatus: InstallStatus | null;
@@ -76,6 +80,7 @@ export function InstallForm({
 }) {
   const t = useTranslations('installation');
   const tVisit = useTranslations('visit'); // shared dictation labels
+  const tInt = useTranslations('intervention');
   const geo = useGeolocation(true);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -92,6 +97,12 @@ export function InstallForm({
       : 'in_progress',
   );
   const [nextVisitDate, setNextVisitDate] = useState('');
+  // "New intervention" mode: no job yet, so the trip carries what to create.
+  const isNew = !installationId;
+  const [pickedContact, setPickedContact] = useState<string | null>(contactId);
+  const [contactQuery, setContactQuery] = useState('');
+  const [origin, setOrigin] = useState<InterventionOrigin>('service');
+  const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
   const dictation = useDictation((text) =>
     setNotes((prev) => (prev ? prev + ' ' + text : text)),
@@ -157,6 +168,7 @@ export function InstallForm({
     hasArrival &&
     hasCompletion &&
     !processing &&
+    (!isNew || !!pickedContact) &&
     (status !== 'needs_revisit' || !!nextVisitDate);
 
   function toggleStep(idx: number) {
@@ -261,7 +273,10 @@ export function InstallForm({
       const arrivalAt = photos.find((p) => p.meta.kind === 'arrival')?.meta.capturedAt;
       const payload = {
         installationId,
-        contactId,
+        contactId: (isNew ? pickedContact : contactId) as string,
+        newIntervention: isNew
+          ? { origin, title: t(`origin_${origin}` as never), reason: reason.trim() || null }
+          : null,
         lat: hasFix ? geo.lat : null,
         lng: hasFix ? geo.lng : null,
         status,
@@ -355,16 +370,98 @@ export function InstallForm({
         onChange={onPickPhoto}
       />
 
-      {/* Which customer / affaire is being installed */}
-      <Card className="p-4">
-        <p className="text-xs text-muted-foreground">{t('installingFor')}</p>
-        <p className="text-lg font-semibold">{contactName ?? '—'}</p>
-        {jobTitle && (
-          <p className="mt-0.5 inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-sm font-medium text-primary">
-            {t('affaire')}: {jobTitle}
-          </p>
-        )}
-      </Card>
+      {/* Which customer / affaire is being installed. In "new intervention"
+          mode the job does not exist yet, so this block asks what to open —
+          and saving below creates it together with the trip, in one step. */}
+      {isNew ? (
+        <Card className="space-y-3 p-4">
+          <p className="text-sm font-semibold">{tInt('customer')}</p>
+          {pickedContact ? (
+            <div className="flex items-center justify-between gap-2 rounded-md bg-primary/10 px-3 py-2">
+              <span className="truncate text-sm font-medium text-primary">
+                {contacts.find((c) => c.id === pickedContact)?.name ?? contactName ?? '—'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPickedContact(null)}
+                className="shrink-0 text-xs text-muted-foreground underline"
+              >
+                {tInt('change')}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Input
+                value={contactQuery}
+                onChange={(e) => setContactQuery(e.target.value)}
+                placeholder={tInt('searchCustomer')}
+                autoFocus
+              />
+              <div className="max-h-56 overflow-y-auto rounded-md border">
+                {(contactQuery.trim()
+                  ? contacts.filter((c) =>
+                      (c.name ?? '').toLowerCase().includes(contactQuery.trim().toLowerCase()),
+                    )
+                  : contacts
+                )
+                  .slice(0, 25)
+                  .map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setPickedContact(c.id)}
+                      className="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-accent"
+                    >
+                      <span className="text-sm">{c.name ?? '—'}</span>
+                      {c.address && <span className="text-xs text-muted-foreground">{c.address}</span>}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <p className="text-sm font-semibold">{tInt('type')}</p>
+            <div className="grid grid-cols-3 gap-2">
+              {(['service', 'warranty', 'maintenance'] as InterventionOrigin[]).map((o) => (
+                <button
+                  key={o}
+                  type="button"
+                  onClick={() => setOrigin(o)}
+                  className={`min-h-touch rounded-lg border px-2 text-sm font-medium ${
+                    origin === o
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-input bg-background'
+                  }`}
+                >
+                  {tInt(`origin_${o}` as never)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="i-reason">{tInt('reason')}</Label>
+            <Input
+              id="i-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={tInt('reasonPlaceholder')}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">{tInt('noSaleHint')}</p>
+        </Card>
+      ) : (
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">{t('installingFor')}</p>
+          <p className="text-lg font-semibold">{contactName ?? '—'}</p>
+          {jobTitle && (
+            <p className="mt-0.5 inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-sm font-medium text-primary">
+              {t('affaire')}: {jobTitle}
+            </p>
+          )}
+        </Card>
+      )}
 
       {/* Photo + GPS check-in */}
       <Card className="space-y-3 p-4">

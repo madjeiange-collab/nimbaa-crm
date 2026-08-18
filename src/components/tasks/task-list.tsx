@@ -7,7 +7,7 @@ import { Link, useRouter } from '@/i18n/navigation';
 import { completeTask, reopenTask, type TaskRow } from '@/lib/tasks/actions';
 import { Card, CardContent } from '@/components/ui/card';
 
-const KIND_ICON = { rdv: CalendarClock, revisit: Wrench, manual: Check } as const;
+const KIND_ICON = { rdv: CalendarClock, revisit: Wrench, service: Wrench, manual: Check } as const;
 
 /**
  * Where "Commencer" leads: the form that produces the fact this task planned,
@@ -17,6 +17,11 @@ const KIND_ICON = { rdv: CalendarClock, revisit: Wrench, manual: Check } as cons
 function startHref(task: TaskRow): string | null {
   if (task.kind === 'revisit' && task.installationId) {
     return `/install/new?job=${task.installationId}&task=${task.id}`;
+  }
+  // A reported fault with no job yet: open the intervention form on that
+  // customer — saving there creates the job and the trip together.
+  if (task.kind === 'service' && task.contactId) {
+    return `/install/new?contact=${task.contactId}&task=${task.id}`;
   }
   if (task.contactId) {
     const p = new URLSearchParams({ contact: task.contactId, task: task.id });

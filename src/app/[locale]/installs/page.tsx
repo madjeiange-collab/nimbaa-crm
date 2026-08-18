@@ -102,7 +102,7 @@ export default async function InstallsPage({
         </div>
 
         {/* Raise a job nobody sold — SAV, warranty, maintenance. */}
-        <Link href="/install/intervention" className="block">
+        <Link href="/install/new" className="block">
           <Card className="flex items-center justify-center gap-2 p-3 text-sm font-medium text-primary transition-colors hover:bg-accent">
             <Plus className="h-4 w-4" />
             {tInt('newIntervention')}
