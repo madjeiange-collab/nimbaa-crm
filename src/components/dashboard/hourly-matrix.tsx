@@ -280,7 +280,9 @@ function Section({
             <td className="px-1.5 text-center text-sm">{r.warm || '—'}</td>
             <td className="px-1.5 text-center text-sm">{isTech ? '—' : r.refused || '—'}</td>
             <td className="border-l px-1.5 text-center text-sm">
-              {r.engagementPct != null ? `${r.engagementPct} %` : '—'}
+              {/* Engagement is a commercial idea: most trips are still in
+                  progress, so the ratio said nothing for a technician. */}
+              {isTech || r.engagementPct == null ? '—' : `${r.engagementPct} %`}
             </td>
             <td className="px-1.5 text-center text-sm">
               {r.conversionPct != null ? `${r.conversionPct} %` : '—'}
@@ -319,7 +321,7 @@ function Section({
         <td className="px-1.5 text-center text-sm">{tot.warm || '—'}</td>
         <td className="px-1.5 text-center text-sm">{isTech ? '—' : tot.refused || '—'}</td>
         <td className="border-l px-1.5 text-center text-sm">
-          {tot.engagementPct != null ? `${tot.engagementPct} %` : '—'}
+          {isTech || tot.engagementPct == null ? '—' : `${tot.engagementPct} %`}
         </td>
         <td className="px-1.5 text-center text-sm">
           {tot.conversionPct != null ? `${tot.conversionPct} %` : '—'}

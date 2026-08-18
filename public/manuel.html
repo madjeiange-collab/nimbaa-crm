@@ -950,6 +950,7 @@
       <li><strong>Pipeline</strong> — toutes les affaires par étape, avec type d'activité et tags sur chaque carte, filtres et export CSV.</li>
       <li><strong>Audit photos</strong> — contrôle des photos de visites et d'installations.</li>
       <li><strong>Pipeline installations</strong> — suivi des poses en attente, en cours, terminées.</li>
+      <li><strong>Journée en cours</strong> — le suivi heure par heure de la journée qui se déroule (12b).</li>
       <li><strong>Check-In and -Out</strong> — temps passé chez le client et vérifications automatiques (ci-dessous).</li>
       <li><strong>Commissions</strong> — le panneau de paie (section 13).</li>
     </ul>
@@ -961,10 +962,75 @@
   </figure>
 </section>
 
+<!-- ---- 12b. Journée en cours ---- -->
+<section class="screen sub" id="journee">
+  <div class="txt">
+    <h3>Journée en cours — le suivi heure par heure</h3>
+    <p>Les autres écrans racontent la journée <strong>après</strong> coup. Celui-ci la raconte pendant : une ligne par personne, une colonne par heure, de 6 h à 19 h. Il s'ouvre depuis l'<strong>Espace manager</strong>, et une ligne sur l'accueil du manager y mène directement.</p>
+
+    <h4>À rappeler maintenant</h4>
+    <p>En haut, avant la matrice, les seules lignes qui demandent une action : qui n'a <strong>rien enregistré</strong> ce matin, et qui est <strong>silencieux</strong> depuis plus de deux heures. La matrice dit la forme de la journée ; cette liste dit qui appeler.</p>
+
+    <h4>Lire une cellule</h4>
+    <p>Chaque case porte trois informations à la fois :</p>
+    <div class="tablewrap"><table>
+      <tr><th>Ce que vous voyez</th><th>Ce que cela dit</th></tr>
+      <tr><td>Le <strong>nombre</strong></td><td>Les passages terminés dans cette heure.</td></tr>
+      <tr><td>Le <strong>remplissage</strong></td><td>Découpé <strong>à proportion</strong> des résultats : vert vendu, ambre intéressé ou RDV, rouge refus, gris sans réponse. Une vente sur quatre portes remplit donc un quart de la case — pas la totalité.</td></tr>
+      <tr><td>La <strong>barre</strong> en bas</td><td>Les minutes réellement passées chez les clients dans l'heure. Une barre large avec peu de couleur = du temps donné sans résultat.</td></tr>
+    </table></div>
+    <p>Les petites marques précisent le compte : <strong>✓</strong> vendus, <strong>●</strong> engagés, <strong>✕</strong> refus, <strong>↻</strong> retours de chantier. Ainsi <em>4 · 1✓ 2● 1✕</em> se lit « quatre portes : une vente, deux intéressés, un refus ».</p>
+
+    <h4>Les colonnes de droite</h4>
+    <div class="tablewrap"><table>
+      <tr><th>Colonne</th><th>Ce qu'elle mesure</th></tr>
+      <tr><td><strong>Durée</strong> et <strong>Moy.</strong></td><td>Le total chez les clients, puis les minutes <strong>par passage</strong>. La moyenne est ce qui distingue douze visites courtes de quatre longues.</td></tr>
+      <tr><td><strong>Vendu · Int./RDV · Refus</strong></td><td>Le détail des résultats de la journée.</td></tr>
+      <tr><td><strong>Engagement</strong></td><td>Passages devenus intéressé, RDV ou vente ÷ passages.</td></tr>
+      <tr><td><strong>Conversion</strong></td><td>Ventes ÷ passages <strong>engagés</strong>. Ouvrir deux portes sur dix et en conclure une donne 50 %, pas 10 %. Ce sont les définitions du classement.</td></tr>
+    </table></div>
+
+    <h4>Les deux métiers ne se mélangent pas</h4>
+    <p>Commerciaux et techniciens ont leur propre bloc et leur propre total. Quatre passages dans l'heure est une bonne heure pour un commercial et un signal d'ennui pour un technicien, censé rester sur un chantier — l'écran le montre d'ailleurs sans le dire : autour de 20 min par passage chez les commerciaux, plus d'une heure chez les techniciens. Aucun chiffre ne fait la moyenne des deux.</p>
+
+    <div class="callout warn">
+      <span class="lbl">Une heure vide est souvent la route</span>
+      <p>Les heures affichées sont celles où le passage a été <strong>reçu</strong>. Une visite enregistrée hors réseau arrive à la synchronisation : une case vide peut être une zone sans couverture, pas une pause. Et le détail (ci-dessous) montre les <strong>temps de trajet</strong> — c'est souvent eux qui expliquent un trou.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/27-journee.png" alt="Matrice horaire : une ligne par personne, une colonne par heure, cellules remplies à proportion des résultats, puis les totaux et les taux" />
+    <figcaption>Une ligne par personne, une colonne par heure. La couleur d'une case est découpée selon ce que l'heure a produit.</figcaption>
+  </figure>
+</section>
+
+<!-- ---- 12c. Le détail d'une personne ---- -->
+<section class="screen sub" id="journee-detail">
+  <div class="txt">
+    <h3>Ouvrir la journée d'une personne</h3>
+    <p>Touchez un <strong>nom</strong> : sa ligne s'ouvre sous la matrice, sans la quitter. Une seule à la fois.</p>
+    <ul>
+      <li>Chaque passage avec l'heure d'<strong>arrivée</strong> et de <strong>départ</strong>, la durée, le client (lien vers sa fiche) et le résultat.</li>
+      <li>Les <strong>deux photos</strong> du passage en vignette.</li>
+      <li>Le <strong>temps de trajet</strong> entre deux passages — l'information que la matrice ne peut pas montrer, et souvent celle qui explique une heure creuse.</li>
+      <li>Les <strong>alertes</strong> posées sur le passage concerné : trop court, loin du client, photos éloignées.</li>
+    </ul>
+    <div class="callout tip">
+      <span class="lbl">Ce que l'écran est là pour faire</span>
+      <p>Il sert à <strong>appeler la personne qui est bloquée</strong>, pas à classer l'équipe à 10 h. Une heure sans résultat peut être la meilleure de la journée — une longue négociation qui signera l'après-midi. Regardez la durée et le trajet avant de conclure.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/28-journee-detail.png" alt="Détail d'une personne : ses passages de la journée avec heures, durées, résultats, photos et temps de trajet intercalés" />
+    <figcaption>La journée d'un commercial, passage par passage, avec les trajets intercalés.</figcaption>
+  </figure>
+</section>
+
 <!-- ---- 11b. Check-In and -Out ---- -->
 <section class="screen sub" id="controles">
   <div class="txt">
     <h3>Check-In and -Out</h3>
+    <p class="meta-note">À ne pas confondre avec <strong>Journée en cours</strong> (12b) : celle-ci demande « la journée produit-elle quelque chose », celle-ci demande « la personne était-elle bien là, et combien de temps ».</p>
     <p>Les photos d'arrivée (<em>check-in</em>) et de fin (<em>check-out</em>) ne servent pas qu'à prouver le passage : elles alimentent cette page. On y accède depuis l'<strong>Espace manager</strong> (onglets Commerciaux et Techniciens) ainsi que depuis les <strong>Statistiques commerciales</strong> et <strong>Statistiques techniciens</strong>.</p>
 
     <h4>Choisir la période</h4>

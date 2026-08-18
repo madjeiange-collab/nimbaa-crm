@@ -1012,7 +1012,7 @@
     "pipeline": "Pipeline",
     "teamRow": "Total",
     "sectionCommercial": "Sales reps — the cell is filled in proportion to the hour’s outcomes",
-    "sectionTechnical": "Technicians — sites visited · green finished · amber needs a return",
+    "sectionTechnical": "Technicians — sites visited · green finished · amber needs a return · \"conversion\" = finished ÷ concluded",
     "nothingToday": "No passages logged today.",
     "noPassages": "No passages on this day.",
     "noContact": "Door with no contact",

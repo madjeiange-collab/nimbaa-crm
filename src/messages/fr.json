@@ -1012,7 +1012,7 @@
     "pipeline": "Pipeline",
     "teamRow": "Total",
     "sectionCommercial": "Commerciaux — la cellule est remplie à proportion des résultats de l’heure",
-    "sectionTechnical": "Techniciens — chantiers touchés · vert terminé · ambre retour requis",
+    "sectionTechnical": "Techniciens — chantiers touchés · vert terminé · ambre retour requis · « conversion » = terminés ÷ conclusions",
     "nothingToday": "Aucun passage enregistré aujourd’hui.",
     "noPassages": "Aucun passage sur cette journée.",
     "noContact": "Porte sans contact",
