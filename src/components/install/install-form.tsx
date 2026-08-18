@@ -15,7 +15,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
-import { useDictation } from '@/hooks/use-dictation';
+import { useDictation, withLivePreview } from '@/hooks/use-dictation';
 import { useGeolocation } from '@/hooks/use-geolocation';
 import { markUnsaved } from '@/lib/ui/unsaved';
 import { reverseGeocode } from '@/lib/geo/reverse';
@@ -107,6 +107,12 @@ export function InstallForm({
   const dictation = useDictation((text) =>
     setNotes((prev) => (prev ? prev + ' ' + text : text)),
   );
+  // Keep the words being spoken in view as the note grows past the box.
+  const notesRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = notesRef.current;
+    if (el && dictation.interim) el.scrollTop = el.scrollHeight;
+  }, [dictation.interim]);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [address, setAddress] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -680,9 +686,14 @@ export function InstallForm({
         </div>
         <textarea
           id="notes"
-          value={notes}
+          ref={notesRef}
+          value={withLivePreview(notes, dictation.interim)}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder={t('notesPlaceholder')}
+          // The voice is driving the field; typing into it would fight the tail.
+          readOnly={!!dictation.interim}
+          placeholder={
+            dictation.status === 'recording' ? tVisit('dictateListening') : t('notesPlaceholder')
+          }
           rows={2}
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-base"
         />

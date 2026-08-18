@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Mic, Send, Loader2, Sparkles, Volume2 } from 'lucide-react';
-import { useDictation } from '@/hooks/use-dictation';
+import { useDictation, withLivePreview } from '@/hooks/use-dictation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
@@ -294,8 +294,11 @@ export function AssistantChat() {
           />
         </Button>
         <textarea
-          value={input}
+          // Voice mode sends the transcript straight to the assistant, so the
+          // words show here only to confirm what was heard.
+          value={withLivePreview(input, dictation.interim)}
           onChange={(e) => setInput(e.target.value)}
+          readOnly={!!dictation.interim}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();

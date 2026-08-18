@@ -14,7 +14,7 @@ import {
   MapPin,
 } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
-import { useDictation } from '@/hooks/use-dictation';
+import { useDictation, withLivePreview } from '@/hooks/use-dictation';
 import { useGeolocation } from '@/hooks/use-geolocation';
 import { pointInAnyPolygon, haversineMeters } from '@/lib/geo';
 import { reverseGeocode } from '@/lib/geo/reverse';
@@ -113,6 +113,12 @@ export function LogVisitForm({
   const dictation = useDictation((text) =>
     setNotes((prev) => (prev ? prev + ' ' + text : text)),
   );
+  // Two rows only, so keep the words being spoken in view.
+  const notesRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = notesRef.current;
+    if (el && dictation.interim) el.scrollTop = el.scrollHeight;
+  }, [dictation.interim]);
   const [dealId, setDealId] = useState<string | null>(presetDealId);
   const [showPicker, setShowPicker] = useState(false);
   const [contactQuery, setContactQuery] = useState('');
@@ -748,8 +754,11 @@ export function LogVisitForm({
         </div>
         <textarea
           id="notes"
-          value={notes}
+          ref={notesRef}
+          value={withLivePreview(notes, dictation.interim)}
           onChange={(e) => setNotes(e.target.value)}
+          // The voice is driving the field; typing into it would fight the tail.
+          readOnly={!!dictation.interim}
           placeholder={
             dictation.status === 'recording' ? t('dictateListening') : t('notesPlaceholder')
           }
