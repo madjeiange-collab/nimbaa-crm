@@ -502,7 +502,7 @@
     <p>Chaque fiche regroupe :</p>
     <ul>
       <li><strong>Coordonnées</strong> — le téléphone est saisi avec l'indicatif pays (🇨🇮 +225 par défaut, modifiable). Le bouton <strong>WhatsApp</strong> ouvre une conversation directement, avec un brouillon de message proposé par l'IA.</li>
-      <li><strong>Interlocuteurs</strong> — les personnes chez le client (rôle par défaut : <em>Gérant</em>), reliables aux affaires.</li>
+      <li><strong>Interlocuteurs</strong> — les personnes chez le client (rôle par défaut : <em>Gérant</em>), reliables aux affaires. Une même personne peut tenir <strong>plusieurs commerces</strong> — voir 5f.</li>
       <li><strong>Identité du commerce</strong> — en haut de la fiche, trois pastilles disent ce qu'est ce client : son <strong>statut</strong> (Prospect / Client), sa <strong>priorité</strong> et son <strong>type d'activité</strong> (Maquis, Restaurant, Glacier, Chawarma, Supérette…). Les <strong>tags</strong> libres suivent en dessous.</li>
       <li><strong>Affaires (deals)</strong> — le produit proposé et l'étape du pipeline. C'est ici que se joue le passage de prospect à client — voir juste après.</li>
       <li><strong>Abonnement</strong> — sur un client gagné : le forfait actif, sa date de début et son statut. Le manager peut y déclarer une <strong>résiliation</strong>.</li>
@@ -657,6 +657,50 @@
     <img src="/manuel/25-new-prospect.png" alt="Formulaire Nouveau prospect : nom de l'enseigne, téléphone avec indicatif +225, adresse, bouton Créer le prospect" />
     <figcaption>Un nom suffit. Le reste de la fiche se remplit ensuite.</figcaption>
   </figure>
+</section>
+
+<!-- ---- 5f. Une personne, plusieurs commerces ---- -->
+<section class="screen sub noshot" id="multi-commerces">
+  <div class="txt">
+    <h3>Une personne, plusieurs commerces</h3>
+    <p>Ici, le même gérant tient souvent trois kiosques, ou une famille détient un maquis et une supérette. L'interlocuteur n'appartient donc pas à une fiche : il <strong>existe une fois</strong> et il est <strong>rattaché</strong> à chaque commerce qu'il tient.</p>
+
+    <h4>Rattacher quelqu'un que l'équipe connaît déjà</h4>
+    <ol>
+      <li>Sur la fiche, <span class="btn-ref">+ Ajouter</span> dans <strong>Interlocuteurs</strong>.</li>
+      <li>Tapez son nom. Dès deux lettres, l'application propose les personnes déjà connues, avec leur <strong>numéro</strong> et la liste de leurs <strong>autres commerces</strong> — c'est ce qui permet de distinguer deux Rosaline.</li>
+      <li>Touchez la bonne : elle est rattachée à ce commerce. Aucune copie n'est créée.</li>
+    </ol>
+    <p>Si personne ne correspond, remplissez les champs en dessous : vous créez une nouvelle personne.</p>
+
+    <h4>Ce que cela change</h4>
+    <ul>
+      <li>Son <strong>téléphone vit à un seul endroit</strong>. Corrigé une fois, il est juste partout — avant, chaque fiche avait sa copie et elles divergeaient.</li>
+      <li>Sa carte affiche <strong>« Aussi chez … »</strong> avec des liens : on passe d'un de ses commerces à l'autre d'un geste.</li>
+      <li>Son <strong>rôle est propre à chaque commerce</strong> : Gérant ici, Propriétaire ailleurs.</li>
+    </ul>
+
+    <div class="callout warn">
+      <span class="lbl">La corbeille détache, elle ne supprime pas</span>
+      <p>Retirer un interlocuteur le retire <strong>de ce commerce</strong> ; il reste enregistré tant qu'il en tient un autre, et l'application vous le dit dans la confirmation. Ce n'est qu'en le retirant de son dernier commerce qu'il disparaît vraiment.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ---- 5g. Doublons ---- -->
+<section class="screen sub noshot" id="doublons">
+  <div class="txt">
+    <h3>Deux commerces, un seul numéro</h3>
+    <p>Une même ligne sert souvent plusieurs commerces d'un même propriétaire. Le numéro n'est donc <strong>pas une identité</strong>, et l'application ne s'en sert jamais pour refuser quelque chose — elle prévient, vous décidez.</p>
+
+    <h4>À la saisie</h4>
+    <p>Quand vous tapez un numéro déjà enregistré, un encadré ambre nomme les commerces qui le portent, en liens cliquables :</p>
+    <p class="path">Ce numéro est déjà enregistré chez : <strong>Pharmacie Les Palmiers</strong></p>
+    <p>Même commerce ? Ouvrez sa fiche plutôt que d'en créer une seconde. Sinon, continuez : <span class="btn-ref">Créer le prospect</span> reste actif.</p>
+
+    <h4>À l'import</h4>
+    <p>L'import CSV (section 14) ne saute une ligne que si le <strong>numéro et le nom</strong> correspondent tous les deux à une fiche existante. Trois kiosques d'une même famille sur une seule ligne téléphonique entrent donc bien tous les trois. Le compte rendu <strong>nomme</strong> les lignes écartées, pour qu'on puisse vérifier que ce sont les bonnes.</p>
+  </div>
 </section>
 
 <!-- ============ 6. SECTEUR ============ -->
