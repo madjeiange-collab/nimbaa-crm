@@ -556,9 +556,18 @@
     </div>
     <p><strong>Prospect perdu ?</strong> Choisissez l'étape <strong>Perdu</strong>. Si le contact n'a plus aucune affaire ouverte ni gagnée, il bascule dans l'onglet <em>Perdus</em> — sa fiche et son historique restent consultables.</p>
   </div>
+    <h4>Lire le bloc Affaires</h4>
+    <p>Un client peut porter plusieurs affaires en même temps. Deux repères visuels évitent de les confondre :</p>
+    <div class="tablewrap"><table>
+      <tr><th>Ce que vous voyez</th><th>Ce que c'est</th></tr>
+      <tr><td>Une carte blanche avec une <strong>barre de couleur</strong> à gauche</td><td>Une affaire qui <strong>existe</strong>. La couleur est celle de son statut : <strong>ambre</strong> en cours, <strong>vert</strong> gagnée, <strong>rouge</strong> perdue.</td></tr>
+      <tr><td>Un cadre <strong>gris en pointillés</strong>, titré <strong>+ NOUVELLE AFFAIRE</strong></td><td>Le formulaire pour en créer une. Rien n'y est encore enregistré — c'est la même écriture « emplacement vide » que les cases photo.</td></tr>
+    </table></div>
+    <p>Le compteur à droite du titre <strong>Affaires</strong> annonce combien il y en a.</p>
+  </div>
   <figure class="phone">
-    <img src="/manuel/16-deal-stage.png" alt="Section Affaires d'un prospect : sélecteur Produit, menu Étape sur Intéressé, case Installation requise" />
-    <figcaption>La section <strong>Affaires</strong> d'un prospect. Le menu <strong>Étape</strong> — ici sur « Intéressé » — est le seul geste qui transforme le prospect en client.</figcaption>
+    <img src="/manuel/16-deal-stage.png" alt="Bloc Affaires : une affaire existante à barre ambre au-dessus du cadre en pointillés Nouvelle affaire" />
+    <figcaption>Une affaire <strong>existante</strong> (barre ambre, « En cours ») au-dessus du cadre en pointillés qui sert à en <strong>créer</strong> une.</figcaption>
   </figure>
 </section>
 
@@ -612,10 +621,24 @@
     <ol>
       <li><strong>Nom de l'enseigne</strong> — le seul champ obligatoire.</li>
       <li><strong>Téléphone</strong> — avec l'indicatif 🇨🇮 +225 par défaut, modifiable.</li>
-      <li><strong>Adresse</strong> — quartier, rue, repère.</li>
+      <li><strong>Adresse</strong> — trois façons de la poser, selon où vous êtes (voir ci-dessous).</li>
       <li><span class="btn-ref">Créer le prospect</span> vous dépose sur sa fiche, où se saisissent le type d'activité, les tags et l'affaire.</li>
     </ol>
     <p>La fiche vous est <strong>attribuée</strong>, comme un prospect créé depuis une visite. Elle apparaît aussitôt dans l'onglet <em>Prospects</em>.</p>
+
+    <h4>Poser l'adresse</h4>
+    <p>Une adresse tapée à la main est un texte : personne ne peut s'y rendre et le client n'apparaît sur aucune carte. Les trois chemins ci-dessous enregistrent aussi les <strong>coordonnées</strong>.</p>
+    <div class="tablewrap"><table>
+      <tr><th>Vous êtes…</th><th>Le geste</th></tr>
+      <tr><td>Devant le client</td><td><span class="btn-ref">Ma position</span> — le bouton affiche déjà l'adresse détectée, par exemple « Ma position : Avenue Nangui Abrogroua, Indénié, Abidjan ». Un appui confirme.</td></tr>
+      <tr><td>Ailleurs, mais vous connaissez le nom</td><td>Tapez trois lettres dans le champ : les résultats proches d'Abidjan s'affichent, touchez le bon.</td></tr>
+      <tr><td>Ni l'un ni l'autre</td><td><span class="btn-ref">Choisir sur la carte</span> — touchez la carte ou faites glisser le repère ; l'adresse est retrouvée toute seule.</td></tr>
+    </table></div>
+    <p>Sous le champ, <em>Position enregistrée · 5.35737, -3.99493</em> confirme que le point est gardé. Vous pouvez toujours taper librement : le texte est conservé, simplement sans coordonnées.</p>
+    <div class="callout tip">
+      <span class="lbl">Corriger une adresse plus tard</span>
+      <p>Le même sélecteur est disponible sur la fiche, dans <span class="btn-ref">✎ Modifier</span>. Utile pour un client créé depuis une visite : l'adresse y est celle que le GPS avait devinée au moment de la porte, parfois à une rue près. Si vous tapez un texte à la main, l'ancien point reste — il n'est remplacé que lorsque vous en choisissez un nouveau.</p>
+    </div>
     <div class="callout tip">
       <span class="lbl">Les trois façons d'enregistrer un client</span>
       <p>Une <strong>visite</strong> avec un résultat engagé (section 4) · <span class="btn-ref">+ Nouveau prospect</span> pour un contact obtenu autrement · un <strong>import CSV</strong> pour une liste entière, réservé à l'administrateur (section 14). Aucune de ces trois voies ne peut créer une fiche sans nom.</p>
