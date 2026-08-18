@@ -792,7 +792,9 @@
     "newSave": "Create lead",
     "newError": "Could not create — please retry.",
     "noPhoneYet": "No phone yet",
-    "noAddressYet": "No address yet"
+    "noAddressYet": "No address yet",
+    "phoneInUse": "This number is already on file at:",
+    "phoneInUseHint": "Same business? Open its record instead of creating a second one. Otherwise carry on — one line can serve several businesses."
   },
   "stats": {
     "title": "My statistics",

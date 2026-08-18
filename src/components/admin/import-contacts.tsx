@@ -96,7 +96,7 @@ export function ImportContacts({
     startTransition(async () => {
       const all = buildRows();
       const total: ImportSummary = {
-        inserted: 0, duplicates: 0, invalid: 0, unknownTerritories: [], unknownReps: [],
+        inserted: 0, duplicates: 0, duplicateNames: [], invalid: 0, unknownTerritories: [], unknownReps: [],
       };
       // Serial chunks keep each server action call well under limits.
       for (let i = 0; i < all.length; i += 1000) {
@@ -107,6 +107,7 @@ export function ImportContacts({
         }
         total.inserted += res.inserted;
         total.duplicates += res.duplicates;
+        total.duplicateNames = [...total.duplicateNames, ...res.duplicateNames].slice(0, 20);
         total.invalid += res.invalid;
         total.unknownTerritories = [...new Set([...total.unknownTerritories, ...res.unknownTerritories])];
         total.unknownReps = [...new Set([...total.unknownReps, ...res.unknownReps])];
@@ -223,7 +224,14 @@ export function ImportContacts({
               <Check className="h-4 w-4" />
               {t('doneInserted', { count: result.inserted })}
             </p>
-            {result.duplicates > 0 && <p>{t('doneDuplicates', { count: result.duplicates })}</p>}
+            {result.duplicates > 0 && (
+              <p>
+                {t('doneDuplicates', { count: result.duplicates })}
+                {result.duplicateNames.length > 0 && (
+                  <span className="text-muted-foreground"> — {result.duplicateNames.join(', ')}</span>
+                )}
+              </p>
+            )}
             {result.invalid > 0 && <p>{t('doneInvalid', { count: result.invalid })}</p>}
             {result.unknownTerritories.length > 0 && (
               <p className="text-muted-foreground">

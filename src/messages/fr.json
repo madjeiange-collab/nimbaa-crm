@@ -792,7 +792,9 @@
     "newSave": "Créer le prospect",
     "newError": "Création impossible — réessayez.",
     "noPhoneYet": "Téléphone non renseigné",
-    "noAddressYet": "Adresse non renseignée"
+    "noAddressYet": "Adresse non renseignée",
+    "phoneInUse": "Ce numéro est déjà enregistré chez :",
+    "phoneInUseHint": "Même commerce ? Ouvrez sa fiche plutôt que d'en créer une seconde. Sinon, continuez — une même ligne peut servir à plusieurs commerces."
   },
   "stats": {
     "title": "Mes statistiques",

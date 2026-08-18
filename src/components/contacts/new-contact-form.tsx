@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
-import { createContact } from '@/lib/contacts/actions';
+import { createContact, findByPhone } from '@/lib/contacts/actions';
+import { Link } from '@/i18n/navigation';
 import { PhoneInput } from '@/components/shared/phone-input';
 import { AddressPicker } from '@/components/shared/address-picker';
 import { BusinessTypeSelect } from '@/components/shared/business-type-select';
@@ -34,6 +35,19 @@ export function NewContactForm() {
   const [businessType, setBusinessType] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [sharing, setSharing] = useState<{ id: string; name: string | null }[]>([]);
+
+  // A number already on file usually means this fiche exists. Usually — a
+  // family running three kiosks shares one line — so this informs, never blocks.
+  useEffect(() => {
+    const digits = phone.replace(/[^0-9]/g, '');
+    if (digits.length < 8) {
+      setSharing([]);
+      return;
+    }
+    const timer = setTimeout(async () => setSharing(await findByPhone(phone)), 500);
+    return () => clearTimeout(timer);
+  }, [phone]);
 
   const canSave = name.trim() !== '' && !isPending;
 
@@ -69,6 +83,24 @@ export function NewContactForm() {
           <Label htmlFor="nc-phone">{t('newPhone')}</Label>
           <PhoneInput id="nc-phone" value={phone} onChange={setPhone} />
         </div>
+
+        {sharing.length > 0 && (
+          <div className="rounded-md bg-brand-amber/10 p-2.5 text-xs">
+            <p className="font-medium text-brand-brown">{t('phoneInUse')}</p>
+            <p className="mt-0.5 flex flex-wrap gap-x-2 gap-y-1">
+              {sharing.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/contacts/${c.id}`}
+                  className="underline hover:text-foreground"
+                >
+                  {c.name ?? '—'}
+                </Link>
+              ))}
+            </p>
+            <p className="mt-1 text-muted-foreground">{t('phoneInUseHint')}</p>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="nc-address">{t('newAddress')}</Label>

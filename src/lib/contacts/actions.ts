@@ -160,3 +160,36 @@ export async function createContact(input: {
   revalidatePath('/[locale]/contacts', 'page');
   return { ok: true, id: data.id };
 }
+
+/**
+ * Businesses already carrying this number.
+ *
+ * A shared line is legitimate — one family, three kiosks — so this warns
+ * rather than blocks. What it prevents is the accidental second fiche for a
+ * customer already on file, which is the common case and the expensive one.
+ */
+export async function findByPhone(
+  phone: string,
+): Promise<{ id: string; name: string | null }[]> {
+  const digits = phone.replace(/[^0-9]/g, '');
+  if (digits.length < 6) return [];
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // Stored numbers carry spaces and a country code, so compare on the tail.
+  const tail = digits.slice(-8);
+  const { data } = await supabase
+    .from('contacts')
+    .select('id, name, phone')
+    .not('phone', 'is', null)
+    .limit(500);
+
+  return ((data ?? []) as { id: string; name: string | null; phone: string }[])
+    .filter((c) => c.phone.replace(/[^0-9]/g, '').endsWith(tail))
+    .map((c) => ({ id: c.id, name: c.name }))
+    .slice(0, 5);
+}

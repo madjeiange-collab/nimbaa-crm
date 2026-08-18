@@ -20,6 +20,8 @@ export interface ImportRow {
 export interface ImportSummary {
   inserted: number;
   duplicates: number;
+  /** Which rows were skipped — a bare count hides whether the right ones went. */
+  duplicateNames: string[];
   invalid: number;
   unknownTerritories: string[];
   unknownReps: string[];
@@ -123,21 +125,26 @@ export async function importContacts(rows: ImportRow[]): Promise<ImportResult> {
     });
   }
 
-  // Skip phones that already exist in the database (chunked .in()).
+  // A phone is NOT an identity here. Multi-site owners are common — a family
+  // runs three kiosks off one line — and skipping on the number alone silently
+  // discarded the second and third shop. A row is only a duplicate when the
+  // same number carries the same name.
   const phones = [...seenPhones];
   const existing = new Set<string>();
   for (let i = 0; i < phones.length; i += 200) {
     const { data } = await supabase
       .from('contacts')
-      .select('phone')
+      .select('phone, name')
       .in('phone', phones.slice(i, i + 200));
-    ((data ?? []) as { phone: string | null }[]).forEach((c) => {
-      if (c.phone) existing.add(c.phone);
+    ((data ?? []) as { phone: string | null; name: string | null }[]).forEach((c) => {
+      if (c.phone) existing.add(`${c.phone}|${(c.name ?? '').trim().toLowerCase()}`);
     });
   }
+  const duplicateNames: string[] = [];
   const toInsert = prepared.filter((p) => {
-    if (p.phone && existing.has(p.phone)) {
+    if (p.phone && existing.has(`${p.phone}|${(p.name ?? '').trim().toLowerCase()}`)) {
       duplicates++;
+      if (duplicateNames.length < 20) duplicateNames.push(p.name ?? '—');
       return false;
     }
     return true;
@@ -161,6 +168,9 @@ export async function importContacts(rows: ImportRow[]): Promise<ImportResult> {
     ok: true,
     inserted,
     duplicates,
+    // Names, not just a count: "12 doublons" tells you nothing about whether
+    // the right rows were dropped.
+    duplicateNames,
     invalid,
     unknownTerritories: [...unknownTerritories].slice(0, 10),
     unknownReps: [...unknownReps].slice(0, 10),
