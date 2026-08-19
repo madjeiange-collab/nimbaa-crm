@@ -158,9 +158,23 @@ export async function importContacts(rows: ImportRow[]): Promise<ImportResult> {
       source: 'import',
       created_by: me.id,
     }));
-    const { error } = await supabase.from('contacts').insert(chunk);
+    const { data: made, error } = await supabase.from('contacts').insert(chunk).select('id, name');
     if (error) return { ok: false, error: 'insertFailed' };
     inserted += chunk.length;
+
+    // Deliberately ONE line per contact rather than one per field: an import of
+    // four hundred rows would otherwise bury every fiche's journal under its
+    // own arrival.
+    if (made?.length) {
+      await supabase.from('contact_events').insert(
+        made.map((c) => ({
+          contact_id: c.id,
+          contact_name: c.name,
+          kind: 'imported',
+          actor_id: me.id,
+        })),
+      );
+    }
   }
 
   revalidatePath('/[locale]/contacts', 'page');

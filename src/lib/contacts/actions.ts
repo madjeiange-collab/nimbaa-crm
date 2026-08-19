@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { logContactEvent, logContactDiff, contactDiff, pin } from '@/lib/contacts/events';
 import type { ActivityType, PriorityLevel } from '@/types/database';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -48,11 +49,39 @@ export async function assignContact(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
+  // Read first: who it was is the half of the line worth having.
+  const { data: was } = await supabase
+    .from('contacts')
+    .select('name, assigned_rep_id')
+    .eq('id', contactId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from('contacts')
     .update({ assigned_rep_id: repId || null, updated_at: new Date().toISOString() })
     .eq('id', contactId);
   if (error) return { ok: false, error: 'save_failed' };
+
+  if (was && was.assigned_rep_id !== (repId || null)) {
+    const ids = [was.assigned_rep_id, repId].filter(Boolean) as string[];
+    const { data: staff } = ids.length
+      ? await supabase.from('users').select('id, full_name, username').in('id', ids)
+      : { data: [] };
+    const nameOf = (id: string | null) => {
+      if (!id) return null;
+      const u = (staff ?? []).find((x) => x.id === id);
+      return u?.full_name ?? u?.username ?? null;
+    };
+    await logContactEvent(supabase, {
+      contactId,
+      contactName: was.name,
+      kind: 'assigned',
+      from: nameOf(was.assigned_rep_id),
+      to: nameOf(repId || null),
+      actorId: user.id,
+    });
+  }
+
   revalidateContact(contactId);
   return { ok: true };
 }
@@ -73,6 +102,15 @@ export async function updateContact(
   },
 ): Promise<ActionResult> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: was } = await supabase
+    .from('contacts')
+    .select('name, phone, address, lat, lng, business_type, tags, priority')
+    .eq('id', contactId)
+    .maybeSingle();
+
   const { businessType, ...rest } = fields;
   const patch: Record<string, unknown> = { ...rest, updated_at: new Date().toISOString() };
   if (businessType !== undefined) patch.business_type = businessType?.trim() || null;
@@ -82,6 +120,20 @@ export async function updateContact(
     .update(patch)
     .eq('id', contactId);
   if (error) return { ok: false, error: 'save_failed' };
+
+  if (was) {
+    const changes = contactDiff(
+      was as Parameters<typeof contactDiff>[0],
+      { ...fields, businessType },
+    );
+    if (changes.length > 0) {
+      await logContactDiff(
+        supabase,
+        { contactId, contactName: fields.name ?? was.name, actorId: user?.id ?? null },
+        changes,
+      );
+    }
+  }
 
   // The affaires keep their own copy — forty-odd queries read it — so the
   // customer's value is pushed down whenever it changes. Best-effort: a failure
@@ -156,6 +208,17 @@ export async function createContact(input: {
     .select('id')
     .single();
   if (error || !data) return { ok: false, error: 'save_failed' };
+
+  // The pin goes on the creation line: an address that arrives without
+  // coordinates is a different starting point from one that arrives with them,
+  // and it explains a lot of later corrections.
+  await logContactEvent(supabase, {
+    contactId: data.id,
+    contactName: name,
+    kind: 'created',
+    to: pin(input.lat ?? null, input.lng ?? null),
+    actorId: user.id,
+  });
 
   revalidatePath('/[locale]/contacts', 'page');
   return { ok: true, id: data.id };

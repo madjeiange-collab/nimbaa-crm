@@ -1109,5 +1109,23 @@
     "lentOut": "equipment on loan",
     "overdueHint": "An overdue trial is equipment lent out by oversight.",
     "overdueLink": "Open the pipeline"
+  },
+  "contactJournal": {
+    "title": "Record journal",
+    "count": "{n, plural, one {# change} other {# changes}}",
+    "k_created": "record created",
+    "k_createdWithPin": "record created · pin {pin}",
+    "k_imported": "created by import",
+    "k_importedWithPin": "created by import · pin {pin}",
+    "f_created": "created",
+    "f_imported": "import",
+    "f_name": "name",
+    "f_phone": "phone",
+    "f_address": "address",
+    "f_geo": "GPS pin",
+    "f_business_type": "type",
+    "f_tags": "tags",
+    "f_priority": "priority",
+    "f_assigned": "owner"
   }
 }

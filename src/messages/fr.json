@@ -1109,5 +1109,23 @@
     "lentOut": "matériel prêté",
     "overdueHint": "Un essai échu est du matériel prêté par oubli.",
     "overdueLink": "Voir le pipeline"
+  },
+  "contactJournal": {
+    "title": "Journal de la fiche",
+    "count": "{n, plural, one {# changement} other {# changements}}",
+    "k_created": "fiche créée",
+    "k_createdWithPin": "fiche créée · point {pin}",
+    "k_imported": "créée par import",
+    "k_importedWithPin": "créée par import · point {pin}",
+    "f_created": "création",
+    "f_imported": "import",
+    "f_name": "nom",
+    "f_phone": "téléphone",
+    "f_address": "adresse",
+    "f_geo": "point GPS",
+    "f_business_type": "type",
+    "f_tags": "tags",
+    "f_priority": "priorité",
+    "f_assigned": "attribution"
   }
 }

@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/server';
 import { AppHeader } from '@/components/shared/app-header';
 import type { TrialRow } from '@/lib/deals/trial';
 import type { DealEvent } from '@/lib/deals/events';
+import type { ContactEvent } from '@/lib/contacts/events';
+import { ContactJournal } from '@/components/contacts/contact-journal';
 import { ContactDetail } from '@/components/contacts/contact-detail';
 import { TaskList } from '@/components/tasks/task-list';
 import { loadContactTasks } from '@/lib/tasks/queries';
@@ -303,6 +305,16 @@ export default async function ContactDetailPage({
     eventsByDeal.set(e.deal_id, list);
   }
 
+  // Same shape as the deal events above: a pre-0035 database degrades to an
+  // empty journal rather than taking the fiche down.
+  const { data: contactEventRows } = await supabase
+    .from('contact_events')
+    .select('id, contact_id, contact_name, kind, from_label, to_label, actor_id, at')
+    .eq('contact_id', id)
+    .order('at', { ascending: false })
+    .limit(200);
+  const contactEvents = (contactEventRows ?? []) as unknown as ContactEvent[];
+
   const trialsByDeal = new Map<string, TrialRow[]>();
   for (const t of (trialRows ?? []) as unknown as TrialRow[]) {
     const list = trialsByDeal.get(t.deal_id) ?? [];
@@ -367,6 +379,11 @@ export default async function ContactDetailPage({
         />
         {/* Raising an SAV / warranty / maintenance job sits with "Visite" in the
             composer above — down here it read as an afterthought. */}
+
+        <ContactJournal
+          events={contactEvents}
+          names={Object.fromEntries(nameOf)}
+        />
 
         {/* Each job as its trips: how many returns, how long, with the photos */}
         {jobHistories.map((h) => (

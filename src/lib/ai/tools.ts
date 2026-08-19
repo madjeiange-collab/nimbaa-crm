@@ -79,6 +79,21 @@ export const TOOL_DEFINITIONS: OpenAI.Responses.Tool[] = [
   {
     type: 'function' as const,
     strict: true,
+    name: 'contact_journal',
+    description:
+      "Journal d'une fiche client/prospect : ce qui a été modifié et par qui — nom, téléphone, adresse, point GPS, type d'activité, tags, priorité, attribution. Utiliser pour « qui a changé l'adresse de ce client », « depuis quand est-il attribué à X », ou pour expliquer une alerte « photo loin du client ». Passer l'id retourné par search_contacts.",
+    parameters: {
+      type: 'object',
+      properties: {
+        contact_id: { type: 'string', description: 'ID du contact (uuid)' },
+      },
+      required: ['contact_id'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
     name: 'deal_journal',
     description:
       "Journal d'une affaire : chaque changement d'étape avec le temps passé dans l'étape quittée, les changements de produit, de valeur et d'interlocuteur, et les essais. Utiliser pour répondre à « depuis quand cette affaire est en négociation », « où mes affaires s'enlisent », « qui a changé le produit ». Passer un contact_id (toutes ses affaires) ou un deal_id.",
@@ -595,6 +610,41 @@ async function myTodo(db: Db, user: AppUser) {
       contact: c.name ?? '—',
       phone: c.phone,
       dernier_contact: c.updated_at,
+    })),
+  };
+}
+
+/**
+ * What has been changed ON a fiche — as opposed to contact_history, which is
+ * what happened AT the customer. The two answer different questions and are
+ * deliberately separate tools.
+ */
+async function contactJournal(db: SupabaseClient, args: { contact_id: string }) {
+  const [{ data: events, error }, { data: users }] = await Promise.all([
+    db
+      .from('contact_events')
+      .select('kind, from_label, to_label, actor_id, at, contact_name')
+      .eq('contact_id', args.contact_id)
+      .order('at', { ascending: false })
+      .limit(200),
+    db.from('users').select('id, full_name, username'),
+  ]);
+  if (error) return { error: 'journal indisponible' };
+  if (!events || events.length === 0) return { events: [], note: 'aucune modification enregistrée' };
+
+  const nameOf = new Map(
+    ((users ?? []) as { id: string; full_name: string | null; username: string | null }[]).map((u) => [
+      u.id,
+      u.full_name ?? u.username ?? '—',
+    ]),
+  );
+  return {
+    events: events.map((e) => ({
+      quand: e.at,
+      champ: e.kind,
+      de: e.from_label,
+      vers: e.to_label,
+      par: e.actor_id ? (nameOf.get(e.actor_id as string) ?? null) : null,
     })),
   };
 }
@@ -1895,6 +1945,8 @@ export async function executeTool(
         return await visitStats(db, user, args as { period: string });
       case 'my_todo':
         return await myTodo(db, user);
+      case 'contact_journal':
+        return await contactJournal(db, args as { contact_id: string });
       case 'deal_journal':
         return await dealJournal(db, args as { contact_id?: string; deal_id?: string });
       case 'contact_history':
