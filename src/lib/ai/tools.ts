@@ -105,13 +105,21 @@ export const TOOL_DEFINITIONS: OpenAI.Responses.Tool[] = [
     name: 'dnk_check',
     description:
       "La liste « Ne pas frapper » : vérifier si une adresse ou un point est proche d'une entrée interdite, ou lister les entrées. Utiliser avant d'envoyer quelqu'un, ou pour « est-ce que cette adresse est sur la liste noire ».",
+    // strict mode requires EVERY property to appear in `required`; an optional
+    // one is expressed as a nullable type instead. Omitting the array made the
+    // whole tool list invalid and the assistant answered ai_error to
+    // everything — not just to questions about the list.
     parameters: {
       type: 'object',
       properties: {
-        address: { type: 'string', description: 'Texte d’adresse à chercher (facultatif)' },
-        lat: { type: 'number', description: 'Latitude à vérifier (facultatif)' },
-        lng: { type: 'number', description: 'Longitude à vérifier (facultatif)' },
+        address: {
+          type: ['string', 'null'],
+          description: 'Texte d’adresse à chercher, ou null',
+        },
+        lat: { type: ['number', 'null'], description: 'Latitude à vérifier, ou null' },
+        lng: { type: ['number', 'null'], description: 'Longitude à vérifier, ou null' },
       },
+      required: ['address', 'lat', 'lng'],
       additionalProperties: false,
     },
   },
@@ -139,9 +147,13 @@ export const TOOL_DEFINITIONS: OpenAI.Responses.Tool[] = [
     parameters: {
       type: 'object',
       properties: {
-        contact_id: { type: 'string', description: 'ID du contact (uuid)' },
-        deal_id: { type: 'string', description: 'ID de l’affaire (uuid)' },
+        contact_id: {
+          type: ['string', 'null'],
+          description: 'ID du contact (uuid) — toutes ses affaires, ou null',
+        },
+        deal_id: { type: ['string', 'null'], description: 'ID de l’affaire (uuid), ou null' },
       },
+      required: ['contact_id', 'deal_id'],
       additionalProperties: false,
     },
   },
