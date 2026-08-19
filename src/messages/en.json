@@ -1115,14 +1115,13 @@
     "loggedNothingMany": "{n, plural, one {# person} other {# people}} logged nothing"
   },
   "trials": {
-    "title": "Trials running",
-    "running": "trials running",
+    "title": "Trials",
+    "running": "running",
     "endingSoon": "ending this week",
     "overdue": "overdue, no decision",
-    "convertedRate": "trials → customers",
     "lentOut": "equipment on loan",
     "overdueHint": "An overdue trial is equipment lent out by oversight.",
-    "overdueLink": "Open the pipeline"
+    "convertedRateLine": "{pct} % of finished trials became customers ({n} trials)"
   },
   "contactJournal": {
     "title": "Record journal",

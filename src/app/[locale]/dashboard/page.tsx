@@ -110,7 +110,10 @@ export default async function DashboardPage({
   return (
     <>
       <AppHeader title={t('title')} />
-      <div className="mx-auto max-w-[1400px] px-4 pt-4">
+      {/* max-w-3xl and the same padding as DashboardTabs' own main: at 1400px
+          the band started further left than everything under it and read as a
+          separate page. */}
+      <div className="mx-auto max-w-3xl px-4 pt-4">
         <TrialTiles showMoney />
       </div>
       <DashboardTabs

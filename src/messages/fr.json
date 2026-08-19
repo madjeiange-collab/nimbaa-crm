@@ -1115,14 +1115,13 @@
     "loggedNothingMany": "{n, plural, one {# personne n’a} other {# personnes n’ont}} rien enregistré"
   },
   "trials": {
-    "title": "Essais en cours",
-    "running": "essais en cours",
+    "title": "Essais",
+    "running": "en cours",
     "endingSoon": "finissent cette semaine",
     "overdue": "échus, sans décision",
-    "convertedRate": "essais → clients",
     "lentOut": "matériel prêté",
     "overdueHint": "Un essai échu est du matériel prêté par oubli.",
-    "overdueLink": "Voir le pipeline"
+    "convertedRateLine": "{pct} % des essais terminés sont devenus clients ({n} essais)"
   },
   "contactJournal": {
     "title": "Journal de la fiche",
