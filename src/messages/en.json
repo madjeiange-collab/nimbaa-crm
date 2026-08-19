@@ -467,7 +467,9 @@
     "ev_deleted": "deleted",
     "ev_trial_opened": "trial",
     "ev_trial_extended": "trial",
-    "ev_trial_ended": "trial"
+    "ev_trial_ended": "trial",
+    "trialPosePlanned": "The pose is planned but not done yet — the equipment is not with the customer.",
+    "trialPoseUnassigned": "Nobody is assigned to the pose: pick a technician below."
   },
   "installation": {
     "title": "Installation",

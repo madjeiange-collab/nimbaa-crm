@@ -467,7 +467,9 @@
     "ev_deleted": "suppression",
     "ev_trial_opened": "essai",
     "ev_trial_extended": "essai",
-    "ev_trial_ended": "essai"
+    "ev_trial_ended": "essai",
+    "trialPosePlanned": "La pose est prévue mais pas encore faite — le matériel n’est pas encore chez le client.",
+    "trialPoseUnassigned": "La pose n’est attribuée à personne : choisissez un technicien ci-dessous."
   },
   "installation": {
     "title": "Installation",

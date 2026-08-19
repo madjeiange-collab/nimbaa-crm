@@ -323,7 +323,13 @@ function TrialPanel({
   const [note, setNote] = useState('');
 
   const current = deal.trials.find(isRunning) ?? null;
-  const onSite = daysOnSite(deal.trials);
+  // The trial's own pose, if it made one. Its status is the difference between
+  // "the kit is at the customer's" and "somebody still has to take it".
+  const pose = current?.installation_id
+    ? (deal.installs.find((i) => i.id === current.installation_id) ?? null)
+    : null;
+  const delivered = !!pose && ['done', 'in_progress', 'needs_revisit'].includes(pose.status);
+  const onSite = delivered ? daysOnSite(deal.trials) : 0;
   const left = current ? daysLeft(current) : null;
   const used = current?.extensions?.length ?? 0;
   const canExtend = isManager || used < FREE_EXTENSIONS;
@@ -369,6 +375,11 @@ function TrialPanel({
 
       {onSite > 0 && (
         <p className="text-xs font-medium text-brand-brown">{t('trialOnSite', { n: onSite })}</p>
+      )}
+      {pose && !delivered && (
+        <p className="text-xs text-muted-foreground">
+          {pose.installerId ? t('trialPosePlanned') : t('trialPoseUnassigned')}
+        </p>
       )}
 
       {current && !extending && (
@@ -842,7 +853,11 @@ function DealRow({
       )}
 
       {/* Installation(s) for a won + installable deal */}
-      {deal.status === 'won' && deal.needsInstallation && (
+      {/* Whenever the affaire actually HAS a chantier — a won deal's
+          installation, a pose d'essai, a dépose — not only when it is won. The
+          picker lives in here, so gating it on "won" left a trial's pose with
+          no way to reach a technician. */}
+      {(deal.installs.length > 0 || (deal.status === 'won' && deal.needsInstallation)) && (
         <div className="space-y-2">
           {deal.installs.length === 0 ? (
             <p className="text-xs text-muted-foreground">{tInstall('noJobs')}</p>
