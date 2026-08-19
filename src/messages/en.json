@@ -769,7 +769,11 @@
     "affaire": "Deal",
     "orNewProspect": "or name a new lead",
     "newProspectPlaceholder": "Business name…",
-    "nameRequired": "Name the lead, or link an existing contact."
+    "nameRequired": "Name the lead, or link an existing contact.",
+    "whoReceived": "Who received you",
+    "whoReceivedPlaceholder": "Person’s name…",
+    "whoReceivedRole": "Specify the role…",
+    "addressFromPhoto": "Address taken from the arrival photo. Correct it on the record if needed."
   },
   "turf": {
     "title": "My turf",

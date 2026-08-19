@@ -16,6 +16,9 @@ import {
 import { useRouter } from '@/i18n/navigation';
 import { useDictation, withLivePreview } from '@/hooks/use-dictation';
 import { PhoneInput } from '@/components/shared/phone-input';
+import { BusinessTypeSelect } from '@/components/shared/business-type-select';
+import { TagsInput } from '@/components/shared/tags-input';
+import { RoleSelect, DEFAULT_ROLE } from '@/components/shared/role-select';
 import { useGeolocation } from '@/hooks/use-geolocation';
 import { pointInAnyPolygon, haversineMeters } from '@/lib/geo';
 import { reverseGeocode } from '@/lib/geo/reverse';
@@ -91,6 +94,7 @@ export function LogVisitForm({
   const t = useTranslations('visit');
   const tDisp = useTranslations('dispositions');
   const tLife = useTranslations('lifecycle');
+  const tDeals = useTranslations('deals'); // shared type/tags labels
   const geo = useGeolocation(true);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -102,6 +106,11 @@ export function LogVisitForm({
   const [appointmentDate, setAppointmentDate] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  // The rest of the fiche, captured where it is easiest: standing in the shop.
+  const [businessType, setBusinessType] = useState<string | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
+  const [personName, setPersonName] = useState('');
+  const [personRole, setPersonRole] = useState(DEFAULT_ROLE);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [address, setAddress] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -336,6 +345,10 @@ export function LogVisitForm({
         appointmentDate: needsAppointment && appointmentDate ? appointmentDate : null,
         contactName: isEngaged && !linked && contactName.trim() ? contactName.trim() : null,
         contactPhone: isEngaged && !linked && contactPhone.trim() ? contactPhone.trim() : null,
+        businessType: isEngaged && !linked ? businessType : null,
+        tags: isEngaged && !linked ? tags : undefined,
+        personName: isEngaged && !linked && personName.trim() ? personName.trim() : null,
+        personRole: isEngaged && !linked && personName.trim() ? personRole : null,
         address: hasFix ? address : null,
         contactId: linked?.id ?? null,
         dealId: linked ? dealId : null,
@@ -563,9 +576,65 @@ export function LogVisitForm({
                   placeholder={t('newProspectPlaceholder')}
                   className={needsName ? 'border-destructive' : undefined}
                 />
-                {/* Captured here or not at all: the number is how the relance
-                    happens, and going back to add it later rarely does. */}
-                <PhoneInput value={contactPhone} onChange={setContactPhone} />
+
+                {/* Everything below opens only once a name is typed. Linking an
+                    existing contact — the common case — therefore shows LESS
+                    than before, not more. */}
+                {contactName.trim() !== '' && (
+                  <div className="space-y-2 pt-1">
+                    {/* Captured here or not at all: the number is how the
+                        relance happens, and going back to add it later rarely
+                        does. */}
+                    <PhoneInput value={contactPhone} onChange={setContactPhone} />
+
+                    {/* A number with nobody's name on it only half works: at
+                        the callback you do not know who to ask for. */}
+                    <div>
+                      <Label className="text-xs text-muted-foreground">{t('whoReceived')}</Label>
+                      <div className="mt-1 grid grid-cols-2 gap-2">
+                        <Input
+                          value={personName}
+                          onChange={(e) => setPersonName(e.target.value)}
+                          placeholder={t('whoReceivedPlaceholder')}
+                        />
+                        <RoleSelect
+                          value={personRole}
+                          onChange={setPersonRole}
+                          otherPlaceholder={t('whoReceivedRole')}
+                        />
+                      </div>
+                    </div>
+
+                    {/* The one moment nobody has to guess what the shop is. */}
+                    <div>
+                      <Label className="text-xs text-muted-foreground">{tDeals('businessType')}</Label>
+                      <BusinessTypeSelect
+                        value={businessType}
+                        onCommit={setBusinessType}
+                        emptyLabel={tDeals('noBusinessType')}
+                        otherPlaceholder={tDeals('businessTypeOther')}
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs text-muted-foreground">{tDeals('tags')}</Label>
+                      <TagsInput tags={tags} onCommit={setTags} placeholder={tDeals('tagsPlaceholder')} />
+                    </div>
+
+                    {/* No search box and no map: the arrival photo has just
+                        taken a fix. Asking a rep to look up an address they are
+                        standing in front of would be the slower answer. */}
+                    {hasFix && address && (
+                      <p className="rounded-md bg-primary/5 px-2.5 py-2 text-xs text-muted-foreground">
+                        <span className="mr-1">📍</span>
+                        <span className="font-medium text-foreground">{address}</span>
+                        <br />
+                        {t('addressFromPhoto')}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <p className={`text-xs ${needsName ? 'text-destructive' : 'text-muted-foreground'}`}>
                   {needsName ? t('nameRequired') : t('linkNew')}
                 </p>

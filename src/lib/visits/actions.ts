@@ -27,6 +27,11 @@ export interface SaveVisitInput {
   appointmentDate?: string | null; // ISO
   contactId?: string | null;
   contactName?: string | null;
+  /** The fiche fields the doorstep is the best place to capture. */
+  businessType?: string | null;
+  tags?: string[];
+  personName?: string | null;
+  personRole?: string | null;
   contactPhone?: string | null;
   address?: string | null; // reverse-geocoded label (best-effort)
   dealId?: string | null; // link the visit to a chosen affaire (existing contact)
@@ -206,6 +211,11 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
         name: input.contactName ?? null,
         phone: input.contactPhone?.trim() || null,
         address: input.address ?? null,
+        // 0030: the business decides these, and every affaire inherits them.
+        // Left empty here, a prospect born from a visit was absent from every
+        // count by type — which is how most of them are born.
+        business_type: input.businessType?.trim() || null,
+        tags: input.tags ?? [],
         lifecycle: meta!.lifecycle,
         pipeline_stage_id: stageId,
         source: 'd2d_knock',
@@ -221,6 +231,32 @@ export async function saveVisit(input: SaveVisitInput): Promise<SaveVisitResult>
     if (contact) {
       contactId = contact.id;
       await supabase.from('visits').update({ contact_id: contactId }).eq('id', visit.id);
+
+      // A number with nobody's name on it only half works: at the callback you
+      // do not know who to ask for. The person is an entity of its own (0031),
+      // so they are created and linked rather than flattened onto the fiche.
+      if (input.personName?.trim()) {
+        try {
+          const { data: person } = await supabase
+            .from('contact_people')
+            .insert({
+              name: input.personName.trim(),
+              phone: input.contactPhone?.trim() || null,
+              created_by: user.id,
+            })
+            .select('id')
+            .maybeSingle();
+          if (person) {
+            await supabase.from('contact_people_links').insert({
+              contact_id: contactId,
+              person_id: person.id,
+              role: input.personRole?.trim() || null,
+            });
+          }
+        } catch {
+          // Pre-0031 database — the visit and the fiche still stand.
+        }
+      }
     }
   }
 

@@ -769,7 +769,11 @@
     "affaire": "Affaire",
     "orNewProspect": "ou nommez un nouveau prospect",
     "newProspectPlaceholder": "Nom de l'enseigne…",
-    "nameRequired": "Nommez le prospect, ou liez un contact existant."
+    "nameRequired": "Nommez le prospect, ou liez un contact existant.",
+    "whoReceived": "Qui vous a reçu",
+    "whoReceivedPlaceholder": "Nom de la personne…",
+    "whoReceivedRole": "Préciser le rôle…",
+    "addressFromPhoto": "Adresse relevée par la photo d’arrivée. Corrigez-la sur la fiche si besoin."
   },
   "turf": {
     "title": "Mon secteur",
