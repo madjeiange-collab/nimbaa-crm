@@ -518,6 +518,7 @@
       <li><strong>Affaires (deals)</strong> — le produit proposé et l'étape du pipeline. C'est ici que se joue le passage de prospect à client — voir juste après.</li>
       <li><strong>Abonnement</strong> — sur un client gagné : le forfait actif, sa date de début et son statut. Le manager peut y déclarer une <strong>résiliation</strong>.</li>
       <li><strong>Historique</strong> — les passages commerciaux <em>et</em> techniques dans une seule liste, avec photos, durées et résultat (voir 5d).</li>
+      <li><strong>Journal de l'affaire</strong> — au bas de chaque affaire, ce qui a changé et quand, avec le temps passé à chaque étape (voir 5i).</li>
     </ul>
     <div class="callout tip">
       <span class="lbl">Astuce</span>
@@ -588,6 +589,47 @@
   <figure class="phone">
     <img src="/manuel/16-deal-stage.png" alt="Bloc Affaires : une affaire existante à barre ambre au-dessus du cadre en pointillés Nouvelle affaire" />
     <figcaption>Une affaire <strong>existante</strong> (barre ambre, « En cours ») au-dessus du cadre en pointillés qui sert à en <strong>créer</strong> une.</figcaption>
+  </figure>
+</section>
+
+<!-- ---- 5i. Le journal de l'affaire ---- -->
+<section class="screen sub" id="journal-affaire">
+  <div class="txt">
+    <h3>Ce que l'affaire a traversé</h3>
+    <p>Au bas de chaque affaire, un bloc replié : <strong>Journal de l'affaire</strong>. Il conserve ce qui a changé, quand, et par qui — l'étape, le produit, la valeur, l'interlocuteur, la case « installation requise », le titre, et les essais.</p>
+    <p>Auparavant une affaire ne portait que son état du moment : on voyait où elle était, jamais depuis quand ni par où elle était passée. La déplacer puis la ramener ne laissait aucune trace.</p>
+
+    <h4>Temps passé par étape</h4>
+    <p>C'est la partie à lire en premier. Chaque barre donne le <strong>nombre de jours</strong> que l'affaire a passés dans une étape — l'étape en cours en ambre, les précédentes en vert. Une affaire n'a de durée nulle part ailleurs dans l'application : sans ce bloc, « depuis combien de temps est-elle en négociation » n'avait pas de réponse.</p>
+    <p>Sous chaque changement d'étape, la même information est répétée en clair : <em>après 4 jours dans l'étape</em>. Une affaire revenue deux fois dans la même étape additionne ses séjours — la question est « combien de temps en négociation », pas « en deux fois ».</p>
+
+    <h4>Ce qu'on y lit d'autre</h4>
+    <div class="tablewrap"><table>
+      <tr><th>Ligne</th><th>Ce qu'elle dit</th></tr>
+      <tr><td><strong>Étape</strong></td><td><em>Intéressé → Négociation</em>, avec le temps passé dans l'étape quittée.</td></tr>
+      <tr><td><strong>Produit</strong> et <strong>Valeur</strong></td><td>Deux lignes voisines : changer de forfait change la commission, et les lire côte à côte est ce qui l'explique.</td></tr>
+      <tr><td><strong>Interlocuteur</strong></td><td>Avec qui on négociait au moment où la négociation a tourné.</td></tr>
+      <tr><td><strong>Pose</strong></td><td>La case « installation requise » cochée ou décochée — sans le journal, elle ne laissait rien.</td></tr>
+      <tr><td><strong>Essai</strong></td><td>Ouverture, prolongations et issue, <strong>dans le même fil</strong> que le reste plutôt que racontés à part.</td></tr>
+    </table></div>
+
+    <div class="callout tip">
+      <span class="lbl">Pourquoi ici et pas dans l'Historique du client</span>
+      <p>L'<strong>Historique</strong> (5d) raconte les <strong>passages</strong> : qui est allé chez le client, combien de temps, avec quelles photos. Y verser « étape changée » noierait le travail de terrain sous de la tenue de registre. Le journal reste donc sur l'affaire qu'il décrit.</p>
+    </div>
+    <div class="callout warn">
+      <span class="lbl">Ce que le journal ne peut pas dire</span>
+      <p>Il commence le jour où il a été mis en service. Les affaires plus anciennes n'affichent que deux repères — leur <strong>création</strong> et, le cas échéant, leur <strong>victoire</strong> — parce que ce sont les seuls faits qu'on pouvait retrouver sans les inventer. Le reste de leur passé est un trou assumé.</p>
+      <p>Le journal ne se modifie pas et ne s'efface pas, y compris par un administrateur : un registre qu'on peut réécrire ne vaut pas d'être tenu. Supprimer une affaire ne supprime pas son journal — la suppression y est même inscrite.</p>
+    </div>
+    <div class="callout tip">
+      <span class="lbl">L'assistant sait le lire</span>
+      <p>« Depuis combien de temps l'affaire de la Supérette est en négociation ? », « Où mes affaires s'enlisent ? », « Qui a changé le produit chez ce client ? » — l'<strong>Assistant Nimbaa</strong> (11) répond à partir de ce journal.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/31-journal-affaire.png" alt="Journal de l'affaire ouvert : barres du temps passé par étape, puis la liste des changements avec dates, auteurs et durées" />
+    <figcaption>Le temps passé par étape en haut, puis chaque changement avec son auteur.</figcaption>
   </figure>
 </section>
 
@@ -983,6 +1025,7 @@
       <li>« Rédige un message WhatsApp de relance pour la Supérette Le Panier. »</li>
       <li>« Combien de temps ai-je passé chez les clients cette semaine ? »</li>
       <li>« Qu'est-ce que j'ai en retard ? »</li>
+      <li>« Depuis combien de temps cette affaire est-elle en négociation ? »</li>
     </ul>
     <p>Les périodes <em>aujourd'hui / cette semaine / ce mois</em> sont comprises, avec la <strong>comparaison</strong> à la période précédente. Chacun n'obtient que ce que son rôle permet : un commercial interroge <strong>ses</strong> chiffres ; un manager, ceux de <strong>toute l'équipe</strong>, personne par personne.</p>
   </div>
