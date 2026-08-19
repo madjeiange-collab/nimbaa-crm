@@ -2,7 +2,16 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { Briefcase, Phone, Plus, Trash2, Wrench, ArrowRight, CheckCircle2 } from 'lucide-react';
+import {
+  Briefcase,
+  Phone,
+  Plus,
+  Trash2,
+  Wrench,
+  ArrowRight,
+  CheckCircle2,
+  ChevronDown,
+} from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
 import {
   createDeal,
@@ -34,6 +43,8 @@ import {
   type TrialRow,
 } from '@/lib/deals/trial';
 import { extendTrial, convertTrial, declineTrial } from '@/lib/deals/trial-actions';
+import { buildJournal, stageDwell, type JournalLine } from '@/lib/deals/journal';
+import type { DealEvent } from '@/lib/deals/events';
 
 export interface DealInstall {
   id: string;
@@ -56,6 +67,8 @@ export interface DealCard {
   needsInstallation: boolean;
   /** Every trial period this affaire has had, oldest first. */
   trials: TrialRow[];
+  /** Recorded changes, newest first. Empty on a pre-0034 database. */
+  events: DealEvent[];
   contactPersonId: string | null;
   businessType: string | null;
   tags: string[];
@@ -433,6 +446,128 @@ function TrialPanel({
   );
 }
 
+/**
+ * The life of one affaire, folded shut.
+ *
+ * Deliberately here and not in the customer's Historique: that one is about
+ * PASSAGES — who stood in the shop, for how long, with which photos. Pouring
+ * "étape changée" into it would bury the field work under record-keeping.
+ */
+function DealJournal({
+  deal,
+  names,
+  stageName,
+}: {
+  deal: DealCard;
+  names: Record<string, string>;
+  stageName: string | null;
+}) {
+  const t = useTranslations('deals');
+  const [open, setOpen] = useState(false);
+
+  const lines = buildJournal(deal.events, deal.trials);
+  if (lines.length === 0) return null;
+  const dwell = stageDwell(lines, stageName);
+
+  const when = (iso: string) =>
+    new Intl.DateTimeFormat('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Africa/Abidjan',
+    }).format(new Date(iso));
+
+  const say = (l: JournalLine) => {
+    const who = l.actorId ? (names[l.actorId] ?? null) : null;
+    const body =
+      l.kind === 'stage' && l.from
+        ? `${l.from} → ${l.to ?? '—'}`
+        : l.kind === 'stage'
+          ? (l.to ?? '—')
+          : l.kind === 'created'
+            ? t('evCreated')
+            : l.kind === 'deleted'
+              ? t('evDeleted')
+              : l.kind === 'renamed'
+                ? `${l.from ?? '—'} → ${l.to ?? '—'}`
+                : l.kind === 'install_flag'
+                  ? t('evInstallFlag', { v: l.to ?? '—' })
+                  : l.kind === 'trial_opened'
+                    ? t('evTrialOpened', { date: l.to ?? '—' })
+                    : l.kind === 'trial_extended'
+                      ? t('evTrialExtended', { date: l.to ?? '—' })
+                      : l.kind === 'trial_ended'
+                        ? t(`trialOutcome_${l.to}` as never)
+                        : `${l.from ?? '—'} → ${l.to ?? '—'}`;
+    return { who, body };
+  };
+
+  const max = Math.max(1, ...dwell.map((d) => d.days));
+
+  return (
+    <div className="rounded-md border">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-left text-xs text-muted-foreground"
+      >
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className="font-medium text-foreground">{t('journal')}</span>
+        <span className="ml-auto">{t('journalCount', { n: lines.length })}</span>
+      </button>
+
+      {open && (
+        <div className="space-y-3 border-t px-2.5 py-2">
+          {dwell.length > 1 && (
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                {t('journalDwell')}
+              </p>
+              {dwell.map((d) => (
+                <div key={d.stage} className="grid grid-cols-[92px_1fr_38px] items-center gap-2">
+                  <span className="truncate text-xs text-muted-foreground">{d.stage}</span>
+                  <span className="h-2 overflow-hidden rounded-sm bg-muted">
+                    <span
+                      className={`block h-full rounded-sm ${d.current ? 'bg-brand-amber' : 'bg-primary/60'}`}
+                      style={{ width: `${Math.round((d.days / max) * 100)}%` }}
+                    />
+                  </span>
+                  <span className="text-right text-xs [font-variant-numeric:tabular-nums]">
+                    {t('nDays', { n: d.days })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <ol className="ml-0.5 space-y-0 border-l-2 border-border pl-2.5">
+            {lines.map((l) => {
+              const { who, body } = say(l);
+              return (
+                <li key={l.key} className="py-0.5 text-xs">
+                  <span className="text-muted-foreground">{when(l.at)}</span>{' '}
+                  <span className="uppercase text-[10px] tracking-wide text-muted-foreground">
+                    {t(`ev_${l.kind}` as never)}
+                  </span>{' '}
+                  <span>{body}</span>
+                  {who && <span className="text-muted-foreground"> · {who}</span>}
+                  {l.note && <span className="text-muted-foreground"> — « {l.note} »</span>}
+                  {l.satDays != null && (
+                    <span className="block text-[11px] text-brand-brown">
+                      {t('journalSat', { n: l.satDays })}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DealRow({
   contactId,
   deal,
@@ -442,6 +577,7 @@ function DealRow({
   technicians,
   canInstall,
   isManager = false,
+  staff = {},
 }: {
   contactId: string;
   deal: DealCard;
@@ -451,6 +587,7 @@ function DealRow({
   technicians: { id: string; name: string }[];
   canInstall: boolean;
   isManager?: boolean;
+  staff?: Record<string, string>;
 }) {
   const t = useTranslations('deals');
   const tInstall = useTranslations('installation');
@@ -689,6 +826,12 @@ function DealRow({
         />
         {t('needsInstallation')}
       </label>
+      <DealJournal
+        deal={deal}
+        names={staff}
+        stageName={stages.find((s) => s.id === deal.pipelineStageId)?.name ?? null}
+      />
+
       {deal.trials.length > 0 ? (
         <TrialPanel deal={deal} isManager={!!isManager} isPending={isPending} run={run} />
       ) : (
@@ -732,6 +875,7 @@ export function DealsSection({
   technicians,
   canInstall,
   isManager = false,
+  staff = {},
 }: {
   contactId: string;
   deals: DealCard[];
@@ -741,6 +885,8 @@ export function DealsSection({
   technicians: { id: string; name: string }[];
   canInstall: boolean;
   isManager?: boolean;
+  /** user id → name, for the journal's actor column. */
+  staff?: Record<string, string>;
 }) {
   const t = useTranslations('deals');
   const router = useRouter();
@@ -794,6 +940,7 @@ export function DealsSection({
                 technicians={technicians}
                 canInstall={canInstall}
                 isManager={isManager}
+                staff={staff}
               />
             ))}
           </div>

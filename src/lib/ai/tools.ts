@@ -79,6 +79,21 @@ export const TOOL_DEFINITIONS: OpenAI.Responses.Tool[] = [
   {
     type: 'function' as const,
     strict: true,
+    name: 'deal_journal',
+    description:
+      "Journal d'une affaire : chaque changement d'étape avec le temps passé dans l'étape quittée, les changements de produit, de valeur et d'interlocuteur, et les essais. Utiliser pour répondre à « depuis quand cette affaire est en négociation », « où mes affaires s'enlisent », « qui a changé le produit ». Passer un contact_id (toutes ses affaires) ou un deal_id.",
+    parameters: {
+      type: 'object',
+      properties: {
+        contact_id: { type: 'string', description: 'ID du contact (uuid)' },
+        deal_id: { type: 'string', description: 'ID de l’affaire (uuid)' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
     name: 'contact_history',
     description:
       "Historique d'un contact : dernières visites (avec résultat et notes) et activités (appels, WhatsApp, notes). Utiliser avant un rendez-vous ou pour résumer la relation. Passer l'id retourné par search_contacts.",
@@ -581,6 +596,82 @@ async function myTodo(db: Db, user: AppUser) {
       phone: c.phone,
       dernier_contact: c.updated_at,
     })),
+  };
+}
+
+/**
+ * The recorded life of an affaire, in the words the fiche uses.
+ *
+ * The dwell time is the part worth having: an étape carries no duration
+ * anywhere else, so "how long has this been in négociation" was unanswerable
+ * before the journal existed.
+ */
+async function dealJournal(
+  db: SupabaseClient,
+  args: { contact_id?: string; deal_id?: string },
+) {
+  if (!args.contact_id && !args.deal_id) return { error: 'contact_id ou deal_id requis' };
+
+  let q = db
+    .from('deal_events')
+    .select('deal_id, deal_title, kind, from_label, to_label, actor_id, at')
+    .order('at', { ascending: true })
+    .limit(300);
+  if (args.deal_id) q = q.eq('deal_id', args.deal_id);
+  else q = q.eq('contact_id', args.contact_id!);
+
+  const [{ data: events, error }, { data: users }] = await Promise.all([
+    q,
+    db.from('users').select('id, full_name, username'),
+  ]);
+  if (error) return { error: 'journal indisponible' };
+  if (!events || events.length === 0) return { events: [], note: 'aucun changement enregistré' };
+
+  const nameOf = new Map(
+    ((users ?? []) as { id: string; full_name: string | null; username: string | null }[]).map((u) => [
+      u.id,
+      u.full_name ?? u.username ?? '—',
+    ]),
+  );
+
+  // Dwell per affaire: the gap from whatever put it in a stage to the move out.
+  const dwell: Record<string, Record<string, number>> = {};
+  const since: Record<string, { at: string; stage: string | null }> = {};
+  for (const e of events) {
+    const id = (e.deal_id as string) ?? '—';
+    if (e.kind === 'created') since[id] = { at: e.at as string, stage: null };
+    else if (e.kind === 'stage') {
+      const prev = since[id];
+      const leaving = (e.from_label as string | null) ?? prev?.stage ?? null;
+      if (prev && leaving) {
+        const d = Math.max(
+          0,
+          Math.round((new Date(e.at as string).getTime() - new Date(prev.at).getTime()) / 864e5),
+        );
+        dwell[id] ??= {};
+        dwell[id][leaving] = (dwell[id][leaving] ?? 0) + d;
+      }
+      since[id] = { at: e.at as string, stage: (e.to_label as string | null) ?? null };
+    }
+  }
+  const now = Date.now();
+  for (const [id, cur] of Object.entries(since)) {
+    if (!cur.stage) continue;
+    const d = Math.max(0, Math.round((now - new Date(cur.at).getTime()) / 864e5));
+    dwell[id] ??= {};
+    dwell[id][cur.stage] = (dwell[id][cur.stage] ?? 0) + d;
+  }
+
+  return {
+    events: events.map((e) => ({
+      affaire: e.deal_title,
+      quand: e.at,
+      quoi: e.kind,
+      de: e.from_label,
+      vers: e.to_label,
+      par: e.actor_id ? (nameOf.get(e.actor_id as string) ?? null) : null,
+    })),
+    jours_par_etape: dwell,
   };
 }
 
@@ -1804,6 +1895,8 @@ export async function executeTool(
         return await visitStats(db, user, args as { period: string });
       case 'my_todo':
         return await myTodo(db, user);
+      case 'deal_journal':
+        return await dealJournal(db, args as { contact_id?: string; deal_id?: string });
       case 'contact_history':
         return await contactHistory(db, args as { contact_id: string });
       case 'installations_list':

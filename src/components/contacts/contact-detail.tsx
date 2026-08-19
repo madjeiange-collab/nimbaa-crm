@@ -396,6 +396,7 @@ export function ContactDetail({
         technicians={technicians}
         canInstall={canInstall}
         isManager={isManager}
+        staff={Object.fromEntries(reps.map((r) => [r.id, r.name]))}
       />
 
       {/* Activity composer */}

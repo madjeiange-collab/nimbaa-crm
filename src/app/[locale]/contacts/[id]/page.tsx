@@ -6,6 +6,7 @@ import { requireUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { AppHeader } from '@/components/shared/app-header';
 import type { TrialRow } from '@/lib/deals/trial';
+import type { DealEvent } from '@/lib/deals/events';
 import { ContactDetail } from '@/components/contacts/contact-detail';
 import { TaskList } from '@/components/tasks/task-list';
 import { loadContactTasks } from '@/lib/tasks/queries';
@@ -286,6 +287,22 @@ export default async function ContactDetailPage({
     .select('id, deal_id, contact_id, seq, started_on, ends_on, ended_on, outcome, installation_id, extensions')
     .eq('contact_id', id)
     .order('seq', { ascending: true });
+  // Fetched separately like the trials: a pre-0034 database degrades to an
+  // empty journal instead of taking the fiche down.
+  const { data: eventRows } = await supabase
+    .from('deal_events')
+    .select('id, deal_id, contact_id, deal_title, kind, from_label, to_label, actor_id, at')
+    .eq('contact_id', id)
+    .order('at', { ascending: false })
+    .limit(400);
+  const eventsByDeal = new Map<string, DealEvent[]>();
+  for (const e of (eventRows ?? []) as unknown as DealEvent[]) {
+    if (!e.deal_id) continue;
+    const list = eventsByDeal.get(e.deal_id) ?? [];
+    list.push(e);
+    eventsByDeal.set(e.deal_id, list);
+  }
+
   const trialsByDeal = new Map<string, TrialRow[]>();
   for (const t of (trialRows ?? []) as unknown as TrialRow[]) {
     const list = trialsByDeal.get(t.deal_id) ?? [];
@@ -306,6 +323,7 @@ export default async function ContactDetailPage({
     tags: dealMeta.get(d.id)?.tags ?? [],
     subscription: subByDeal.get(d.id) ?? null,
     trials: trialsByDeal.get(d.id) ?? [],
+    events: eventsByDeal.get(d.id) ?? [],
     installs: (d.installations ?? []).map((i) => ({
       id: i.id,
       status: i.status,

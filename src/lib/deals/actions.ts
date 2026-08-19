@@ -6,6 +6,7 @@ import { ensurePendingInstallation } from '@/lib/installations/seed';
 import { ensureCommissionForWonDeal } from '@/lib/commissions/core';
 import { recomputeContactRollup } from '@/lib/deals/rollup';
 import { startTrial, convertTrial, declineTrial } from '@/lib/deals/trial-actions';
+import { logDealEvent, logDealDiff, fcfa, type DealEventKind } from '@/lib/deals/events';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -66,7 +67,9 @@ export async function createDeal(
   // renameable on the card afterwards.
   const title = fields.title?.trim() || `Projet ${(dealCount ?? 0) + 1}`;
 
-  const { error } = await supabase.from('deals').insert({
+  const { data: made, error } = await supabase
+    .from('deals')
+    .insert({
     contact_id: contactId,
     title,
     value_xof: fields.value ?? null,
@@ -79,8 +82,20 @@ export async function createDeal(
     tags: inherited?.tags ?? [],
     assigned_rep_id: inherited?.assigned_rep_id ?? user.id,
     created_by: user.id,
-  });
+    })
+    .select('id')
+    .maybeSingle();
   if (error) return { ok: false, error: 'save_failed' };
+
+  if (made?.id) {
+    await logDealEvent(supabase, {
+      dealId: made.id,
+      contactId,
+      dealTitle: title,
+      kind: 'created',
+      actorId: user.id,
+    });
+  }
 
   await recomputeContactRollup(supabase, contactId);
   revalidate(contactId);
@@ -100,7 +115,11 @@ export async function setDealStage(dealId: string, stageId: string): Promise<Act
 
   const [{ data: stage }, { data: deal }] = await Promise.all([
     supabase.from('pipeline_stages').select('is_won, is_lost, system_key').eq('id', stageId).maybeSingle(),
-    supabase.from('deals').select('contact_id, needs_installation, title, won_at').eq('id', dealId).maybeSingle(),
+    supabase
+      .from('deals')
+      .select('contact_id, needs_installation, title, won_at, pipeline_stages(name)')
+      .eq('id', dealId)
+      .maybeSingle(),
   ]);
   if (!deal) return { ok: false, error: 'not_found' };
 
@@ -114,6 +133,28 @@ export async function setDealStage(dealId: string, stageId: string): Promise<Act
 
   const { error } = await supabase.from('deals').update(patch).eq('id', dealId);
   if (error) return { ok: false, error: 'save_failed' };
+
+  // Written before the branches below: whatever else a move sets off, the move
+  // itself is the thing the journal exists to remember.
+  const wasStage =
+    (deal as unknown as { pipeline_stages?: { name: string | null } | null }).pipeline_stages?.name ??
+    null;
+  const { data: newStage } = await supabase
+    .from('pipeline_stages')
+    .select('name')
+    .eq('id', stageId)
+    .maybeSingle();
+  if (wasStage !== (newStage?.name ?? null)) {
+    await logDealEvent(supabase, {
+      dealId,
+      contactId: deal.contact_id,
+      dealTitle: deal.title,
+      kind: 'stage',
+      from: wasStage,
+      to: newStage?.name ?? null,
+      actorId: user?.id ?? null,
+    });
+  }
 
   // Picking "Essai" from the dropdown must do exactly what the button does:
   // put the equipment out, leave the contact a prospect, sell nothing.
@@ -208,7 +249,7 @@ export async function updateDeal(
   } = await supabase.auth.getUser();
   const { data: deal } = await supabase
     .from('deals')
-    .select('contact_id, status, title, needs_installation')
+    .select('contact_id, status, title, needs_installation, value_xof, product_id, products(name)')
     .eq('id', dealId)
     .maybeSingle();
   if (!deal) return { ok: false, error: 'not_found' };
@@ -239,6 +280,45 @@ export async function updateDeal(
   const { error } = await supabase.from('deals').update(patch).eq('id', dealId);
   if (error) return { ok: false, error: 'save_failed' };
 
+  // One fact per line. Choosing a product also moves the value, and reading
+  // "produit → Power Up" beside "valeur 6 500 → 15 000 F" is what explains a
+  // commission that changed.
+  const was = deal as unknown as {
+    value_xof: number | null;
+    product_id: string | null;
+    products: { name: string | null } | null;
+  };
+  const diff: { kind: DealEventKind; from?: string | null; to?: string | null }[] = [];
+  if (fields.productId !== undefined && fields.productId !== was.product_id) {
+    const { data: now } = fields.productId
+      ? await supabase.from('products').select('name').eq('id', fields.productId).maybeSingle()
+      : { data: null };
+    diff.push({ kind: 'product', from: was.products?.name ?? null, to: now?.name ?? null });
+    if (patch.value_xof !== was.value_xof) {
+      diff.push({ kind: 'value', from: fcfa(was.value_xof), to: fcfa(patch.value_xof as number) });
+    }
+  } else if (fields.value !== undefined && fields.value !== was.value_xof) {
+    diff.push({ kind: 'value', from: fcfa(was.value_xof), to: fcfa(fields.value) });
+  }
+  if (fields.needsInstallation !== undefined && fields.needsInstallation !== deal.needs_installation) {
+    diff.push({ kind: 'install_flag', to: fields.needsInstallation ? 'oui' : 'non' });
+  }
+  if (fields.title !== undefined && (fields.title?.trim() || null) !== deal.title) {
+    diff.push({ kind: 'renamed', from: deal.title, to: fields.title?.trim() || null });
+  }
+  if (diff.length > 0) {
+    await logDealDiff(
+      supabase,
+      {
+        dealId,
+        contactId: deal.contact_id,
+        dealTitle: (fields.title ?? deal.title) as string | null,
+        actorId: user?.id ?? null,
+      },
+      diff,
+    );
+  }
+
   // If a won deal is (now) flagged for installation, make sure it has a job.
   const needsInstall = fields.needsInstallation ?? deal.needs_installation;
   if (deal.status === 'won' && needsInstall) {
@@ -265,9 +345,12 @@ export async function updateDeal(
  */
 export async function deleteDeal(dealId: string): Promise<ActionResult> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { data: deal } = await supabase
     .from('deals')
-    .select('contact_id, status')
+    .select('contact_id, status, title')
     .eq('id', dealId)
     .maybeSingle();
   if (!deal) return { ok: false, error: 'not_found' };
@@ -288,6 +371,18 @@ export async function deleteDeal(dealId: string): Promise<ActionResult> {
       return { ok: false, error: 'forbidden' };
     }
   }
+
+  // Written BEFORE the row goes: afterwards there is nothing left to read the
+  // title from. The line survives the deletion because deal_id is
+  // ON DELETE SET NULL — the one case you would most want to be able to read.
+  await logDealEvent(supabase, {
+    dealId,
+    contactId: deal.contact_id,
+    dealTitle: deal.title,
+    kind: 'deleted',
+    from: deal.status,
+    actorId: user?.id ?? null,
+  });
 
   const { error } = await supabase.from('deals').delete().eq('id', dealId);
   if (error) return { ok: false, error: 'save_failed' };
