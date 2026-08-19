@@ -25,6 +25,9 @@ prerequisite.
 | Payment | **All three, phased.** Cash first; mobile money and online card plug into the same `payments` table without a rewrite. |
 | QR order routing | **Configurable per restaurant** (and overridable per table). |
 | Codebase | **New repo, new Supabase project**, same stack and conventions as the CRM. |
+| Staff accounts | **Provisioned by the owner or manager** — username + password. No self-signup, no email recovery. |
+| Customer accounts | **Self-served, verified by OTP** — phone/WhatsApp first, email as fallback. |
+| The login gate | **Menu is open to everyone. Confirming an order requires a verified account.** |
 
 ### Why a separate repo and a separate Supabase project
 
@@ -33,22 +36,24 @@ user (`create policy de_read … using (auth.uid() is not null)`, and the same
 pattern across the field tables). That is coherent for a single-company CRM
 where everyone signed in is a colleague. Put restaurant staff — hundreds of
 accounts across dozens of unrelated businesses — into that same Supabase
-project and every one of them lands inside `auth.uid() is not null`. Retro-
-fitting tenant scoping onto thirty-five existing migrations is a bigger job
-than starting clean, and a riskier one, because the failure is silent.
+project and every one of them lands inside `auth.uid() is not null`. Add
+*diners* on top and the set becomes the general public.
+
+Retrofitting tenant scoping onto thirty-five existing migrations is a bigger
+job than starting clean, and a riskier one, because the failure is silent.
 
 What gets **reused** (copied, not shared): the Next.js 14 App Router skeleton,
 `src/lib/supabase/*` client wrappers, the `next-intl` routing setup, the
 shadcn/ui kit and Tailwind config, the numbered-migration convention with
-prose comments explaining *why* a table exists, and `public/manuel.html` as the
-model for end-user documentation.
+prose comments explaining *why* a table exists, the CRM's username-login trick
+(§5), and `public/manuel.html` as the model for end-user documentation.
 
 Stack: Next.js 14 (App Router) · TypeScript · Tailwind + shadcn/ui ·
 Supabase (Postgres, Auth, Realtime, Storage) · Vercel · `zod` at every boundary.
 
 ---
 
-## 2. The one idea the whole schema hangs on
+## 2. The two ideas the whole schema hangs on
 
 **The table session is the spine, not the order.**
 
@@ -62,13 +67,16 @@ when it is paid. Orders are rounds appended to it. The bill is the session.
 
 ```
 service_session  (table 12, opened 19:42, 4 guests, waiter Fatou)
-├── order #1  channel=qr      19:42   [3 lines]
-├── order #2  channel=waiter  20:15   [1 line]
-└── order #3  channel=qr      20:58   [2 lines]
+├── order #1  channel=qr      19:42   [3 lines]   customer: Aïssatou
+├── order #2  channel=waiter  20:15   [1 line]    customer: —
+└── order #3  channel=qr      20:58   [2 lines]   customer: Aïssatou
 └── payments: 250 000 GNF cash  →  session closed 21:20
 ```
 
-**Second idea: routing is a property of the line, not the order.**
+Note that one session can mix orders from several diners and from the waiter.
+The session belongs to the *table*, not to a customer account.
+
+**Routing is a property of the line, not the order.**
 
 "Sent to the kitchen for preparation, or served directly by the waiter" is not
 an order-level choice a human makes each time — it falls out of *what was
@@ -88,24 +96,156 @@ Five surfaces, one codebase, one deployment.
 
 | Surface | Who | Auth | Route |
 |---|---|---|---|
-| **Diner** | anyone at a table | none — opaque cookie | `/t/<table_token>` |
-| **Waiter** | floor staff, phone | Supabase auth | `/service` |
-| **Kitchen (KDS)** | station screens, tablet | Supabase auth, kiosk | `/station/<id>` |
-| **Cashier** | till | Supabase auth | `/caisse` |
-| **Manager / Owner** | back office | Supabase auth | `/admin` |
+| **Diner** | anyone at a table | **none to browse · OTP account to order** | `/t/<table_token>` |
+| **Waiter** | floor staff, phone | username + password | `/r/<slug>/service` |
+| **Kitchen (KDS)** | station screens, tablet | username + password, kiosk | `/r/<slug>/station/<id>` |
+| **Cashier** | till | username + password | `/r/<slug>/caisse` |
+| **Manager / Owner** | back office | username + password | `/r/<slug>/admin` |
 
 Roles on `restaurant_members.role`: `owner`, `manager`, `waiter`, `kitchen`,
-`cashier`. One person can hold several roles, and can belong to several
-restaurants — a manager who owns two locations is one account, two memberships.
-A **platform admin** flag sits outside tenancy for support access, and every
-use of it is written to an audit table.
+`cashier`. A **platform admin** flag sits outside tenancy for support access,
+and every use of it is written to an audit table.
 
 ---
 
-## 4. Data model
+## 4. Identity — two doors
+
+Staff and diners are both Supabase Auth users, and that is the only thing they
+have in common. Everything else about the two doors is deliberately different.
+
+### 4.1 Staff: provisioned, never self-served
+
+The owner or manager creates the account — username, display name, role(s),
+initial password. There is **no signup page and no email recovery**, because
+staff have no email on file. A forgotten password is reset by the owner, which
+is also the correct human process: the person asking is standing in front of
+them.
+
+Supabase Auth requires an email, so we store a synthetic one the user never
+sees — the CRM's trick (`identifiant@crm.local`), made tenant-aware so that
+`fatou` is free at every restaurant:
+
+```
+username  fatou
+stored    fatou@le-bambou.staff.nimbaa.app
+shown     never
+```
+
+```sql
+staff_accounts (
+  user_id uuid primary key references auth.users,
+  home_restaurant_id uuid not null,     -- scopes the username
+  username text not null,
+  display_name text,
+  must_change_password bool default true,
+  disabled_at timestamptz null,
+  unique (home_restaurant_id, username)
+)
+```
+
+Staff sign in at a **restaurant-scoped URL**, `/r/<slug>/login`, bookmarked on
+the kitchen tablet and on each waiter's phone. Nobody types a restaurant name
+at 19:30 on a Friday.
+
+The username is scoped to one restaurant, so a waiter working two jobs has two
+logins. That is the deliberate trade: login stays trivial for the 99% case at
+the cost of the rare multi-site person. The escape hatch for a multi-site owner
+is extra `restaurant_members` rows on one account, and a restaurant switcher in
+the back office.
+
+`must_change_password` is enforced at the first authenticated request, not
+merely suggested — an owner handing out a password verbally is the normal
+onboarding path, so that password must not survive the first shift.
+
+### 4.2 Diners: self-served, verified by OTP
+
+Phone first, WhatsApp preferred, SMS second, email as the last resort. All
+three are native Supabase Auth (`signInWithOtp`) — no home-grown OTP, no
+home-grown session handling.
+
+```sql
+customers (
+  user_id uuid primary key references auth.users,
+  phone text, whatsapp_ok bool, email text null,
+  display_name text, locale text,
+  created_at, last_order_at
+)
+
+customer_blocks (
+  id, customer_id,
+  restaurant_id null,          -- null ⇒ platform-wide
+  reason, created_by, created_at
+)
+```
+
+Four rulings that are cheap now and expensive later:
+
+**Codes, never magic links.** A magic link opens in the device's *default*
+browser, which is not the in-app browser the QR scan opened. Different browser,
+different session, cart gone, order lost. A six-digit code entered in place,
+with `autocomplete="one-time-code"` so Android and iOS autofill it straight
+from the notification, keeps the diner on the page they were already on.
+
+**WhatsApp before SMS.** In West Africa WhatsApp is cheaper per message, more
+reliable than SMS across MTN and Orange, and already on the diner's phone.
+Twilio Verify (or an equivalent) carries both channels behind one API, so the
+fallback chain — WhatsApp → SMS → email — is configuration rather than code.
+
+**`app_metadata`, never `user_metadata`.** Mark the account kind at creation in
+`app_metadata.kind` (`'staff'` / `'customer'`). `user_metadata` is writable by
+the user via `supabase.auth.updateUser()` and can therefore never carry an
+authorization decision. Even `app_metadata` is only defence in depth: the
+authority for staff powers is a row in `restaurant_members`, full stop.
+
+**The account is platform-wide.** Scan any Nimbaa restaurant and you are
+already signed in — that is the network effect worth having. It also creates an
+obligation: restaurant A must never learn that this diner also eats at
+restaurant B. Staff reads stay scoped by `is_member(restaurant_id)`, and staff
+see a diner's name and phone only through an order of their own.
+
+### 4.3 Where the gate sits
+
+**The menu is open. Confirming an order is not.**
+
+```
+scan  →  menu  →  cart  →  [ CONFIRM ]  →  OTP  →  order sent
+        ↑─────── no account ────────↑     ↑── verified ──↑
+```
+
+A login wall over a menu costs orders from exactly the people most likely to
+leave — someone deciding whether to sit down at all. So the gate sits at the
+last possible moment, when the diner has already chosen what they want and the
+cost of the OTP round trip is obviously worth paying.
+
+Practically: the submit route handler rejects an unauthenticated POST; the UI
+raises the OTP sheet at that moment and replays the submit on success. The cart
+lives in `localStorage`, keyed by table token, so it survives the diner
+switching to WhatsApp to read the code and coming back.
+
+Calling the waiter and asking for the bill stay open too — those are not
+transactions, and making someone create an account to ask for water would be
+absurd.
+
+### 4.4 What the account changes elsewhere
+
+- **`qr_order_mode` default shifts to `auto`.** The original argument for
+  `confirm` was that any passerby could fire tickets. A verified phone number
+  makes a prank traceable and its author blockable, so the setting stays
+  configurable but stops needing to default to the cautious option.
+- **Order status reaches the diner directly.** With a real identity, RLS can
+  say `customer_id = auth.uid()`, which means the customer app can hold a
+  Supabase Realtime subscription of its own — "your order is being prepared",
+  "your order is ready" — instead of polling a route handler.
+- **Order history and reorder come nearly free** once orders carry a customer.
+- **M6 gets easier.** The mobile money number is usually the number that
+  received the OTP.
+
+---
+
+## 5. Data model
 
 Sketch, not final DDL. Amounts are `bigint` in the currency's minor unit; see
-§8 on money.
+§8 on money. Identity tables are in §4.
 
 ### Tenancy
 
@@ -160,14 +300,15 @@ service_sessions (
   status text,          -- open | bill_requested | settled | closed | cancelled
   guest_count int, waiter_id null,
   opened_at, closed_at,
-  subtotal, service_charge, tax, discount, total, paid  -- all bigint, denormalised
+  subtotal, service_charge, tax, discount, total, paid  -- all bigint
 )
 
 orders (
   id, restaurant_id, session_id,
   channel text,         -- 'qr' | 'waiter' | 'counter'
   status  text,         -- pending | accepted | rejected | cancelled
-  placed_by_staff null, placed_by_customer null,
+  customer_id null,     -- set on every 'qr' order, null on waiter orders
+  placed_by_staff null,
   note text, created_at, decided_at, decided_by null
 )
 
@@ -210,89 +351,103 @@ provider column. Mobile money and Stripe fill them in later — **no schema
 migration, no rewrite**, which is exactly what "phased" was meant to buy. A
 session can carry several payments: that is what a split bill *is*.
 
-### Customer identity and small asks
+### Pre-login device, and small asks
 
 ```sql
-customer_sessions (id, restaurant_id, table_id, session_id null,
-                   token_hash, created_at, last_seen_at, user_agent)
+device_sessions   (id, restaurant_id, table_id, token_hash,
+                   otp_sends int, created_at, last_seen_at, user_agent)
 
 service_requests  (id, restaurant_id, table_id, session_id null,
                    kind,           -- 'call_waiter' | 'bill' | 'water'
                    status, created_at, handled_at, handled_by)
 ```
 
-No diner account, ever. A diner is a cookie. `service_requests` is four hours
-of work and removes the single most common reason a diner gets up and goes
-looking for someone.
+`device_sessions` is not an identity — it is the anonymous browsing phase: the
+table binding before login, and the counter that stops one phone from burning
+forty OTP sends. `service_requests` is half a day of work and removes the
+single most common reason a diner gets up and goes looking for someone.
 
 ---
 
-## 5. The flows
+## 6. The flows
 
-### 5.1 Scan → order
+### 6.1 Scan → menu → account → order
 
 1. QR encodes `https://app/t/<qr_token>` — opaque token, never the table number.
-2. The page resolves restaurant + table, checks the effective `qr_order_mode`
-   (table override, else restaurant), and issues a customer-session cookie.
-3. Menu renders from the restaurant's categories, hiding `available = false`.
-4. Cart is local; submit posts to a server route handler.
-5. On submit, server-side and inside one transaction: re-check availability
+2. The page resolves restaurant + table and **renders the menu with no account
+   and no login**, server-side, so it is fast on a cheap phone. A device cookie
+   is issued for rate limiting and the table binding.
+3. Categories render from the restaurant's menu, hiding `available = false`.
+   Effective `qr_order_mode` (table override, else restaurant) decides whether
+   a cart exists at all.
+4. The cart is local — `localStorage`, keyed by table token.
+5. **Confirm** is the gate. If there is no session: phone → WhatsApp or SMS
+   code → verified → account created on first use. Display name is asked
+   *after* the first order, never before it. The submit replays automatically
+   on success and the cart is intact.
+6. Submit posts to a server route handler. Server-side, in one transaction:
+   check the customer is not blocked for this restaurant, re-check availability
    (an item 86'd while the diner browsed must fail *here*, not at the pass),
    recompute every price from the database — **never trust a client-sent
-   total** — open or reuse the table's session, write `orders` + `order_items`.
-6. Then, by mode:
+   total** — open or reuse the table's session, write `orders` (stamping
+   `customer_id`) and `order_items`.
+7. Then, by mode:
    - `auto` — order `accepted`; each line goes `queued` if it has a station,
      `to_serve` if not.
    - `confirm` — order `pending`; it appears in the waiter's confirmation
      queue. The waiter validates, corrects quantities, or rejects with a
      reason. Acceptance runs the same fan-out.
-   - `menu_only` — no cart at all: menu plus a "call the waiter" button.
-7. The diner keeps a live status view of their own session — their lines only,
-   scoped by the cookie.
+   - `menu_only` — no cart at all: menu plus a "call the waiter" button, and
+     no account required for anything.
+8. The diner watches their own lines live, over their own Realtime
+   subscription, scoped by RLS to `customer_id = auth.uid()`.
 
-### 5.2 Waiter takes the order directly
+### 6.2 Waiter takes the order directly
 
-Same cart, denser UI, no confirmation step — a waiter's input *is* the
-confirmation. Table map → pick table → add items → submit. Round 2 on an open
-session is one tap. This surface must be usable one-handed on a cheap Android
-phone standing up: large targets, no hover, no modal traps.
+Same cart, denser UI, no confirmation step and no customer account — a waiter's
+input *is* the confirmation, and `orders.customer_id` stays null. Table map →
+pick table → add items → submit. Round 2 on an open session is one tap. This
+surface must be usable one-handed on a cheap Android phone standing up: large
+targets, no hover, no modal traps.
 
-### 5.3 Kitchen
+### 6.3 Kitchen
 
-One screen per station at `/station/<id>`, subscribed to its own lines.
-Tickets grouped by order, oldest first, with an elapsed-time badge that turns
-amber then red past the item's target time. Two actions and no more: **start**
-(`queued → preparing`) and **ready** (`preparing → ready`). Bump-back for
-mistakes. Ready lines leave the station screen and land in the waiter's
-"to serve" list.
+One screen per station at `/r/<slug>/station/<id>`, subscribed to its own
+lines. Tickets grouped by order, oldest first, with an elapsed-time badge that
+turns amber then red past the item's target time. Two actions and no more:
+**start** (`queued → preparing`) and **ready** (`preparing → ready`).
+Bump-back for mistakes. Ready lines leave the station screen and land in the
+waiter's "to serve" list.
 
 `to_serve` lines from direct-service items never touch this screen — they
 appear in the waiter's list the instant the order is accepted. That is the
 "served directly by the waiter" path, and it costs no extra code because it is
 the *absence* of a station, not a special case.
 
-### 5.4 Serve
+### 6.4 Serve
 
 The waiter's "to serve" list is everything `ready` or `to_serve` on their
 tables. Marking served stamps `served_at`, which is what later gives us real
 service-time numbers instead of anecdotes.
 
-### 5.5 Pay and close
+### 6.5 Pay and close
 
 Open the session bill: lines, subtotal, service charge, tax, discount, total.
 Cash: enter tendered, the app computes change, `payments` row captured,
 session `settled` then `closed`, table freed. Split by amount or by line —
 several `payments` rows against one session, closing when the sum reaches the
-total. Receipt as printable HTML first; ESC/POS thermal printing in the
+total. Receipt as printable HTML first, and — because the diner's WhatsApp
+number is now verified — sendable to them; ESC/POS thermal printing in the
 hardening phase.
 
 ---
 
-## 6. Tenant isolation — the thing most likely to sink this
+## 7. Tenant isolation — the thing most likely to sink this
 
-Two different problems, deliberately solved two different ways.
+Three populations, one Postgres. **Reads through RLS, writes through route
+handlers.**
 
-**Staff** are real Supabase users. RLS everywhere, keyed on membership:
+**Staff** are keyed on membership:
 
 ```sql
 create or replace function is_member(rid uuid) returns boolean
@@ -311,40 +466,64 @@ Every tenant table carries `restaurant_id` **directly** — never "reachable by
 join". Denormalised on purpose: a policy that has to walk two joins to find the
 tenant is a policy nobody will get right at 2am, and Postgres plans it badly.
 
-**Diners** are not Supabase users and must not become one. Anonymous auth would
-mean encoding "this cookie may read these seven rows" into RLS, and the blast
-radius of getting it wrong is every bill in the platform. Instead: the diner
-app talks only to **Next.js route handlers**, which verify the table token and
-the session cookie server-side before touching the database. RLS on those
-tables stays deny-by-default for the anon key — defence in depth, not the
-primary control.
+**Diners** are keyed on themselves:
+
+```sql
+create policy orders_read_own on orders for select
+  using (customer_id = auth.uid());
+```
+
+> **This reverses an earlier recommendation, and the reversal is the point.**
+> The first draft of this plan argued that diners must *not* be Supabase Auth
+> users, because an anonymous cookie would have forced us to encode "this
+> cookie may read these seven rows" into RLS — with every bill on the platform
+> inside the blast radius. A durable, verified identity removes that problem
+> entirely: `customer_id = auth.uid()` is the boring, well-trodden Supabase
+> pattern, and it is *safer* than what it replaces. It also buys diner-side
+> Realtime, which a route-handler-only design could not have.
+
+What does **not** change: every **write** still goes through a Next.js route
+handler. Price recomputation, availability re-checks, block-list checks and
+idempotency are server concerns regardless of who is signed in, and an
+authenticated diner is still an untrusted client.
+
+**Anonymous** menu browsing touches only server-rendered pages and a narrow
+public read of active restaurants' menus. Nothing else is reachable without a
+session.
 
 Non-negotiables:
 
-- A seed-and-probe test suite: two restaurants, cross-tenant read/write
-  attempts on every table, asserted to return zero rows. It runs in CI.
+- A seed-and-probe test suite with **three** actors — restaurant A staff,
+  restaurant B staff, and a diner — attempting cross-tenant and cross-customer
+  reads and writes on every table, asserted to return zero rows. It runs in CI.
 - Every new table ships with its policies in the same migration. No exceptions.
 - The service-role key is server-only and never reaches a client bundle.
+- No authorization decision ever reads `user_metadata`.
 - Rotating a table's `qr_token` invalidates its printed code, for when a QR
   sheet ends up photographed and posted online.
 
 ---
 
-## 7. Realtime and weak connectivity
+## 8. Realtime and weak connectivity
 
 Assume the CRM's operating conditions: entry-level Android, patchy data.
 
 - Supabase Realtime per restaurant channel; staff screens subscribe to their
-  own slice. **Polling fallback** every 10s when the socket is down — a KDS
-  that silently stops receiving tickets is worse than one that is visibly slow.
+  own slice, diners to their own orders. **Polling fallback** every 10s when
+  the socket is down — a KDS that silently stops receiving tickets is worse
+  than one that is visibly slow.
 - Waiter mutations are optimistic with a local queue and retry. Sending an
   order must never be lost to a dead lift.
-- Idempotency keys on order submit: a retried POST must not double the round.
+- Idempotency keys on order submit: a retried POST must not double the round —
+  and the OTP replay in §4.3 makes a retried submit the *normal* path, not an
+  edge case.
 - KDS caches its ticket list; a reload mid-service reopens on the same state.
+- The diner's session token is refreshed silently, so a returning regular never
+  re-does the OTP.
 
 ---
 
-## 8. Money
+## 9. Money
 
 - **Integer minor units, `bigint`, always.** No floats anywhere near a total.
 - `restaurants.currency_decimals` because GNF and XOF have no subdivision while
@@ -357,46 +536,60 @@ Assume the CRM's operating conditions: entry-level Android, patchy data.
 
 ---
 
-## 9. Milestones
+## 10. Milestones
 
 Sized for one developer with AI assistance. Each milestone is a vertical slice
 that ends in something demonstrable.
 
 | # | Milestone | Ships | ~Size |
 |---|---|---|---|
-| **M0** | Foundations | Repo, Supabase project, auth, `restaurants` + `restaurant_members`, `is_member()`, role routing, fr/en i18n, base layout | 1w |
+| **M0** | Foundations & staff accounts | Repo, Supabase project, `restaurants` + `restaurant_members` + `staff_accounts`, `is_member()`, username login at `/r/<slug>/login`, owner-provisioned staff with forced password change, role routing, fr/en i18n | 1.5w |
 | **M1** | Menu & floor | Admin CRUD: categories, items, modifiers, stations, areas, tables. QR generation + printable sheet | 1w |
-| **M2** | **Scan → kitchen → serve** | Diner menu + cart + submit, three QR modes, waiter confirmation queue, KDS, to-serve list, realtime, `order_events` | 2w |
+| **M2** | **Scan → account → kitchen → serve** | Public menu with no login, cart, OTP account (WhatsApp/SMS/email), the confirm gate with submit replay, three QR modes, waiter confirmation queue, KDS, to-serve list, realtime both sides, `order_events` | 3w |
 | **M3** | Waiter entry | Table map, staff cart, rounds on an open session, `service_requests` | 1w |
 | **M4** | Bill & cash | Session bill, discounts, service charge, split, cash payment, close, HTML receipt | 1w |
 | **M5** | Numbers | Service-day dashboard, sales by item/category/waiter, service times, end-of-shift Z report | 1w |
 | **M6** | Mobile money | `payment_intents`, provider adapter (Orange Money / MTN MoMo), webhooks, reconciliation, pay-at-table QR | 1–2w |
 | **M7** | Card online | Stripe adapter behind the same interface | 1w |
-| **M8** | Hardening | Offline queue, abuse controls, ESC/POS printing, menu translation, allergens, `manuel.html` | ongoing |
+| **M8** | Hardening | Offline queue, abuse controls, ESC/POS printing, order history & reorder, WhatsApp receipts, menu translation, allergens, `manuel.html` | ongoing |
 
 **M0–M2 is the point of no return** — at the end of M2 a restaurant can take a
-QR order and cook it. **M0–M4 is a service that can actually run.** Everything
-after M4 makes it sellable rather than usable.
+QR order from a verified diner and cook it. **M0–M4 is a service that can
+actually run.** Everything after M4 makes it sellable rather than usable.
 
 ### The first week, concretely
 
-1. Create the repo and Supabase project; copy the CRM's `lib/supabase`, i18n
+1. **Open the Twilio (or equivalent) account and start WhatsApp sender
+   approval on day one.** The code that needs it does not land until M2, but
+   approval takes days to weeks and is the one dependency that can stall a
+   milestone while everything else is finished. SMS-only is the shippable
+   fallback if it is still pending.
+2. Create the repo and Supabase project; copy the CRM's `lib/supabase`, i18n
    config, Tailwind and shadcn setup.
-2. `0001_tenancy.sql`: `restaurants`, `restaurant_members`, `is_member()`, RLS
-   on both, and the cross-tenant probe test.
-3. Staff login + a `/` that routes by role.
-4. Owner onboarding: create a restaurant, become its `owner`.
-5. Deploy to Vercel on day 5, even empty. A pipeline that only gets exercised
+3. `0001_tenancy.sql`: `restaurants`, `restaurant_members`, `staff_accounts`,
+   `is_member()`, RLS on all four, and the three-actor probe test.
+4. Owner onboarding: create a restaurant, become its `owner`, create the first
+   waiter and kitchen accounts.
+5. Staff login at `/r/<slug>/login`, forced password change, role routing.
+6. Deploy to Vercel on day 5, even empty. A pipeline that only gets exercised
    at the end is a pipeline that fails at the end.
 
 ---
 
-## 10. Risks, and what each one forces
+## 11. Risks, and what each one forces
 
 | Risk | Forces |
 |---|---|
-| **Cross-tenant leak** — one restaurant reads another's orders | `restaurant_id` on every table, `is_member()` policies written with the table, automated probe suite in CI |
-| **QR abuse** — a passerby fires tickets, or the code is posted online | `confirm` mode by default, rotatable tokens, per-table rate limits, no prices accepted from the client |
+| **Cross-tenant leak** — one restaurant reads another's orders | `restaurant_id` on every table, `is_member()` policies written with the table, three-actor probe suite in CI |
+| **Cross-customer leak** — a diner reads another diner's bill | `customer_id = auth.uid()` policies, and the same probe suite |
+| **WhatsApp sender approval** stalls M2 | Start provisioning in week 1; keep SMS-only shippable; treat WhatsApp as an upgrade, not a prerequisite |
+| **OTP as a cost and abuse vector** — each send costs money | Per-phone, per-device and per-IP caps, exponential backoff, Turnstile after N attempts, a hard daily ceiling per restaurant, alerting on the spend |
+| **Magic-link trap** — link opens in a different browser, cart lost | Codes only, `autocomplete="one-time-code"`, cart in `localStorage` keyed by table token |
+| **Login wall depresses orders** | Gate at confirm, never at the menu; display name asked after the first order |
+| **Privilege confusion** — a diner treated as staff | `restaurant_members` is the sole authority; `app_metadata` for the kind flag; `user_metadata` never read for authorization |
+| **Staff password hygiene** — one password shared round the pass | Per-person accounts, `must_change_password` enforced server-side at first request, owner-driven reset, disable rather than delete |
+| **SIM churn** — the diner changes number and loses the account | Email as a recovery anchor on the profile, and a supported number change |
+| **QR abuse** — a passerby fires tickets | Verified accounts make it traceable and blockable; `customer_blocks`, rotatable tokens, per-table rate limits, no prices from the client |
 | **Price drift** — menu edited mid-service | Snapshot name, price and station onto the line at submit |
 | **Lost tickets** — connection dies between phone and pass | Idempotent submit, optimistic queue with retry, polling fallback, KDS state cached |
 | **86'd items** — sold out between render and submit | Availability re-checked server-side inside the submit transaction |
@@ -406,23 +599,29 @@ after M4 makes it sellable rather than usable.
 
 ---
 
-## 11. Explicitly out of scope for v1
+## 12. Explicitly out of scope for v1
 
 Named so they don't creep in: delivery and third-party aggregators, table
 reservations, stock and recipe costing, payroll, loyalty programmes, a native
-mobile app, multi-currency within one restaurant, accounting export beyond CSV.
+mobile app, multi-currency within one restaurant, accounting export beyond CSV,
+and social login for diners (phone is the identity that matters here).
 
 ---
 
-## 12. Open questions
+## 13. Open questions
 
-1. **Target market** — Guinea/West Africa (drives GNF, Orange Money, offline
-   tolerance) or Europe (EUR, card, VAT rules)? It changes M6 entirely.
-2. **Fiscal rules** — does the target market impose certified receipts or fiscal
-   printers? That is a hard constraint, cheap now and expensive later.
-3. **Takeaway / counter orders** — the `channel='counter'` value is reserved,
+1. **Target market** — Guinea/West Africa (drives GNF, Orange Money, WhatsApp
+   over SMS, offline tolerance) or Europe (EUR, card, VAT rules)? It changes
+   M6 entirely and decides the OTP provider.
+2. **OTP provider** — Twilio Verify is the fastest to integrate, but a local
+   aggregator is often cheaper and more reliable for MTN and Orange Guinea
+   traffic. Worth a deliverability test before committing, since it is the one
+   thing standing between a diner and their first order.
+3. **Fiscal rules** — does the target market impose certified receipts or
+   fiscal printers? A hard constraint, cheap now and expensive later.
+4. **Takeaway / counter orders** — the `channel='counter'` value is reserved,
    but is a no-table flow in v1 scope?
-4. **Menu photos** — is the owner uploading them, and do we need the CRM's
+5. **Menu photos** — is the owner uploading them, and do we need the CRM's
    `browser-image-compression` treatment for slow uploads?
-5. **Pricing model** — per restaurant per month, or a cut of throughput? It
+6. **Pricing model** — per restaurant per month, or a cut of throughput? It
    decides whether M5 needs platform-level billing metering.
