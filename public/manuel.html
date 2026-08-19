@@ -519,6 +519,7 @@
       <li><strong>Abonnement</strong> — sur un client gagné : le forfait actif, sa date de début et son statut. Le manager peut y déclarer une <strong>résiliation</strong>.</li>
       <li><strong>Historique</strong> — les passages commerciaux <em>et</em> techniques dans une seule liste, avec photos, durées et résultat (voir 5d).</li>
       <li><strong>Journal de l'affaire</strong> — au bas de chaque affaire, ce qui a changé et quand, avec le temps passé à chaque étape (voir 5i).</li>
+      <li><strong>Journal de la fiche</strong> — tout en bas, ce qui a été modifié sur le client lui-même : adresse, point GPS, attribution… (voir 5j).</li>
     </ul>
     <div class="callout tip">
       <span class="lbl">Astuce</span>
@@ -589,6 +590,43 @@
   <figure class="phone">
     <img src="/manuel/16-deal-stage.png" alt="Bloc Affaires : une affaire existante à barre ambre au-dessus du cadre en pointillés Nouvelle affaire" />
     <figcaption>Une affaire <strong>existante</strong> (barre ambre, « En cours ») au-dessus du cadre en pointillés qui sert à en <strong>créer</strong> une.</figcaption>
+  </figure>
+</section>
+
+<!-- ---- 5j. Le journal de la fiche ---- -->
+<section class="screen sub" id="journal-fiche">
+  <div class="txt">
+    <h3>Ce qui a été modifié sur la fiche</h3>
+    <p>Tout en bas de la fiche, un second bloc replié : <strong>Journal de la fiche</strong>. Il ne raconte pas ce qui s'est passé <em>chez</em> le client — c'est le rôle de l'Historique (5d) — mais ce qui a été changé <strong>sur la fiche elle-même</strong>, et par qui.</p>
+    <div class="tablewrap"><table>
+      <tr><th>Consigné</th><th>Pourquoi c'est utile</th></tr>
+      <tr><td><strong>Adresse</strong></td><td>Elle décide où l'on envoie les gens. Une correction malheureuse se retrouve.</td></tr>
+      <tr><td><strong>Point GPS</strong></td><td>Ligne séparée de l'adresse, volontairement : on peut corriger le texte sans toucher la carte, et l'inverse. C'est le point qui sert à la vérification « photo loin du client » — une alerte qui se met soudain à sonner s'explique ici.</td></tr>
+      <tr><td><strong>Attribution</strong></td><td>À qui appartient le client, et depuis quand.</td></tr>
+      <tr><td><strong>Téléphone</strong></td><td>C'est par lui que passe la relance.</td></tr>
+      <tr><td><strong>Type d'activité</strong> et <strong>tags</strong></td><td>Les modifier sur la fiche <strong>réécrit la copie portée par chacune de ses affaires</strong> (5b). Une seule saisie se propage : autant qu'elle laisse une trace.</td></tr>
+      <tr><td><strong>Nom</strong> et <strong>priorité</strong></td><td>Consignés aussi — la ligne est écrite de toute façon.</td></tr>
+    </table></div>
+
+    <h4>Ce qui n'y figure pas</h4>
+    <p>Les <strong>notes</strong> (Appel, WhatsApp, Note) et les <strong>passages</strong> restent dans l'Historique : ce sont des faits de terrain, pas des modifications de fiche. Un <strong>import CSV</strong> n'écrit qu'<strong>une seule ligne par client</strong> — « créée par import » — car un import de quatre cents lignes noierait sinon chaque fiche sous son propre arrivée.</p>
+
+    <div class="callout tip">
+      <span class="lbl">Enregistrer sans rien changer n'écrit rien</span>
+      <p>Ouvrir <span class="btn-ref">✎ Modifier</span> et enregistrer sans toucher à quoi que ce soit ne laisse aucune ligne. Seul un <strong>écart réel</strong> est consigné — un numéro réécrit avec un espace de plus reste le même numéro.</p>
+    </div>
+    <div class="callout warn">
+      <span class="lbl">Les mêmes limites que le journal de l'affaire</span>
+      <p>Il commence le jour de sa mise en service : les fiches plus anciennes n'affichent que leur <strong>création</strong>. Il ne se modifie pas et ne s'efface pas, y compris par un administrateur.</p>
+    </div>
+    <div class="callout tip">
+      <span class="lbl">L'assistant sait le lire</span>
+      <p>« Qui a changé l'adresse de la Supérette ? », « Depuis quand ce client est-il attribué à Awa ? » — l'<strong>Assistant Nimbaa</strong> (11) répond à partir de ce journal.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/32-journal-fiche.png" alt="Journal de la fiche ouvert : attribution, tags, adresse, point GPS, type, téléphone et création, chacun avec sa date et son auteur" />
+    <figcaption>Chaque modification de la fiche, avec sa date et son auteur. Le point GPS a sa propre ligne.</figcaption>
   </figure>
 </section>
 
@@ -1026,6 +1064,7 @@
       <li>« Combien de temps ai-je passé chez les clients cette semaine ? »</li>
       <li>« Qu'est-ce que j'ai en retard ? »</li>
       <li>« Depuis combien de temps cette affaire est-elle en négociation ? »</li>
+      <li>« Qui a changé l'adresse de ce client ? »</li>
     </ul>
     <p>Les périodes <em>aujourd'hui / cette semaine / ce mois</em> sont comprises, avec la <strong>comparaison</strong> à la période précédente. Chacun n'obtient que ce que son rôle permet : un commercial interroge <strong>ses</strong> chiffres ; un manager, ceux de <strong>toute l'équipe</strong>, personne par personne.</p>
   </div>
