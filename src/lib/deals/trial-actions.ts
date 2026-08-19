@@ -329,20 +329,39 @@ export async function declineTrial(dealId: string, reason: string): Promise<Acti
       .eq('id', trial.id);
   }
 
-  // Only if something actually went out. A trial with no pose has nothing to
-  // fetch back, and an empty dépose in the list is noise.
+  // A dépose is only owed if equipment actually reached the customer. A trial
+  // called off before anyone posed anything has nothing to fetch back, and
+  // sending a technician for it wastes a trip — the pose in that case is a
+  // plan that never happened, so it is cleared rather than left open.
   if (trial?.installation_id) {
-    const checklist = await getTemplateChecklist(c.supabase);
-    await c.supabase.from('installations').insert({
-      deal_id: dealId,
-      contact_id: deal.contact_id,
-      title: deal.title ?? null,
-      status: 'pending',
-      origin: 'retrieval',
-      reason: reason.trim() || null,
-      checklist,
-      created_by: c.userId,
-    });
+    const { data: pose } = await c.supabase
+      .from('installations')
+      .select('id, status')
+      .eq('id', trial.installation_id)
+      .maybeSingle();
+    const wentOut = !!pose && ['done', 'in_progress', 'needs_revisit'].includes(pose.status);
+
+    if (wentOut) {
+      const checklist = await getTemplateChecklist(c.supabase);
+      await c.supabase.from('installations').insert({
+        deal_id: dealId,
+        contact_id: deal.contact_id,
+        title: deal.title ?? null,
+        status: 'pending',
+        origin: 'retrieval',
+        reason: reason.trim() || null,
+        checklist,
+        created_by: c.userId,
+      });
+    } else if (pose) {
+      // Never delete a pose someone actually drove to: if any trip references
+      // it, it is history, however it was left.
+      const { count } = await c.supabase
+        .from('visits')
+        .select('id', { count: 'exact', head: true })
+        .eq('installation_id', pose.id);
+      if (!count) await c.supabase.from('installations').delete().eq('id', pose.id);
+    }
   }
 
   await closeTrialTask(c, dealId);
