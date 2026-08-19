@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 
-export type TaskKind = 'rdv' | 'revisit' | 'service' | 'manual';
+// 'trial_end' (0032) is the one kind born from a DATE rather than a passage.
+export type TaskKind = 'rdv' | 'revisit' | 'service' | 'manual' | 'trial_end';
 export type TaskStatus = 'open' | 'done' | 'cancelled';
 
 export interface TaskRow {

@@ -81,7 +81,15 @@ export async function summarizeCheckins(
     ),
   );
 
-  const alertes = { photos_eloignees: 0, visites_trop_courtes: 0, photo_loin_du_client: 0, decalage_horloge: 0 };
+  // sans_position added with the flag itself: the if-chain below simply
+  // dropped it, so the assistant reported fewer alerts than the manager's page.
+  const alertes = {
+    photos_eloignees: 0,
+    visites_trop_courtes: 0,
+    photo_loin_du_client: 0,
+    decalage_horloge: 0,
+    sans_position: 0,
+  };
   const visitDurations: number[] = [];
   const installDurations: number[] = [];
   let incompletePairs = 0;
@@ -97,6 +105,7 @@ export async function summarizeCheckins(
       else if (f === 'tooShort') alertes.visites_trop_courtes++;
       else if (f === 'farFromContact') alertes.photo_loin_du_client++;
       else if (f === 'clockDrift') alertes.decalage_horloge++;
+      else if (f === 'noFix') alertes.sans_position++;
     }
     if (durationMin == null) incompletePairs++;
     else if (isInstall) installDurations.push(durationMin);

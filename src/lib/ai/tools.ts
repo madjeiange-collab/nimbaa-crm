@@ -79,6 +79,45 @@ export const TOOL_DEFINITIONS: OpenAI.Responses.Tool[] = [
   {
     type: 'function' as const,
     strict: true,
+    name: 'trials_overview',
+    description:
+      "Les essais (étape Essai) : combien courent, lesquels finissent bientôt, lesquels sont ÉCHUS sans décision, le taux d'essais devenus clients, les jours de matériel sur place et la valeur prêtée. Utiliser pour « combien d'essais en cours », « quels essais sont en retard », « est-ce que les essais convertissent ».",
+    parameters: { type: 'object', properties: {}, required: [], additionalProperties: false },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'subscriptions_stats',
+    description:
+      "Les abonnements nés des ventes : actifs, résiliés, et le revenu mensuel récurrent (MRR). Les montants ne sont rendus qu'aux managers/admins. Utiliser pour « combien d'abonnements actifs », « quel est le MRR », « combien de résiliations ce mois ».",
+    parameters: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', description: 'jour | semaine | mois | trimestre | annee' },
+      },
+      required: ['period'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
+    name: 'dnk_check',
+    description:
+      "La liste « Ne pas frapper » : vérifier si une adresse ou un point est proche d'une entrée interdite, ou lister les entrées. Utiliser avant d'envoyer quelqu'un, ou pour « est-ce que cette adresse est sur la liste noire ».",
+    parameters: {
+      type: 'object',
+      properties: {
+        address: { type: 'string', description: 'Texte d’adresse à chercher (facultatif)' },
+        lat: { type: 'number', description: 'Latitude à vérifier (facultatif)' },
+        lng: { type: 'number', description: 'Longitude à vérifier (facultatif)' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function' as const,
+    strict: true,
     name: 'contact_journal',
     description:
       "Journal d'une fiche client/prospect : ce qui a été modifié et par qui — nom, téléphone, adresse, point GPS, type d'activité, tags, priorité, attribution. Utiliser pour « qui a changé l'adresse de ce client », « depuis quand est-il attribué à X », ou pour expliquer une alerte « photo loin du client ». Passer l'id retourné par search_contacts.",
@@ -433,7 +472,7 @@ export const TOOL_DEFINITIONS: OpenAI.Responses.Tool[] = [
     strict: true,
     name: 'flagged_visits_summary',
     description:
-      "RÉSERVÉ MANAGERS/ADMINS — visites suspectes (anti-fraude) : hors secteur, cadence invraisemblable (>40 portes/heure), enchaînement trop rapide (<3s). Retourne les comptes par commercial et les cas récents.",
+      "RÉSERVÉ MANAGERS/ADMINS — contrôles de PARCOURS uniquement : hors secteur, cadence invraisemblable (>40 portes/heure), enchaînement trop rapide (<3s). Ne couvre PAS les contrôles photo (écart entre les deux photos, visite trop courte, photo loin du client, décalage d'horloge, position absente) — ceux-là sont dans checkin_stats. Pour « les alertes » sans autre précision, appeler les deux.",
     parameters: { type: 'object', properties: {}, required: [], additionalProperties: false },
   },
   {
@@ -611,6 +650,177 @@ async function myTodo(db: Db, user: AppUser) {
       phone: c.phone,
       dernier_contact: c.updated_at,
     })),
+  };
+}
+
+/**
+ * The essai, which had no route to the assistant at all: it could describe the
+ * stage (it reads pipeline_stages) but knew nothing of the periods, so "how
+ * many trials are overdue" was unanswerable.
+ */
+async function trialsOverview(db: SupabaseClient, user: AppUser) {
+  const { data, error } = await db
+    .from('deal_trials')
+    .select('deal_id, seq, started_on, ends_on, ended_on, outcome, installation_id, extensions, contacts(name)')
+    .limit(1000);
+  if (error) return { error: 'essais indisponibles' };
+  type Row = {
+    deal_id: string;
+    seq: number;
+    started_on: string;
+    ends_on: string;
+    ended_on: string | null;
+    outcome: string | null;
+    installation_id: string | null;
+    extensions: unknown[] | null;
+    contacts: { name: string | null } | null;
+  };
+  const rows = (data ?? []) as unknown as Row[];
+  if (rows.length === 0) return { essais: [], note: 'aucun essai enregistré' };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const soon = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+  const days = (a: string, b: string) =>
+    Math.max(0, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 864e5));
+
+  const running = rows.filter((r) => r.outcome === null);
+  const closed = rows.filter((r) => r.outcome === 'converted' || r.outcome === 'declined');
+  const overdue = running.filter((r) => r.ends_on < today);
+
+  // Only affaires whose trial actually put equipment out can be "lent".
+  const lentIds = [...new Set(running.filter((r) => r.installation_id).map((r) => r.deal_id))];
+  let valeur_pretee: number | null = null;
+  if (isManagerRole(user) && lentIds.length > 0) {
+    const { data: deals } = await db.from('deals').select('value_xof').in('id', lentIds);
+    valeur_pretee = (deals ?? []).reduce(
+      (n, d) => n + ((d as { value_xof: number | null }).value_xof ?? 0),
+      0,
+    );
+  }
+
+  return {
+    en_cours: running.length,
+    finissent_sous_7_jours: running.filter((r) => r.ends_on >= today && r.ends_on <= soon).length,
+    echus_sans_decision: overdue.length,
+    convertis: closed.filter((r) => r.outcome === 'converted').length,
+    sans_suite: closed.filter((r) => r.outcome === 'declined').length,
+    taux_conversion_pct:
+      closed.length > 0
+        ? Math.round((closed.filter((r) => r.outcome === 'converted').length / closed.length) * 100)
+        : null,
+    ...(valeur_pretee != null ? { valeur_pretee_fcfa: valeur_pretee } : {}),
+    en_retard: overdue.map((r) => ({
+      client: r.contacts?.name ?? null,
+      essai: r.seq,
+      finissait_le: r.ends_on,
+      jours_de_retard: days(r.ends_on, today),
+      jours_sur_place: r.installation_id ? days(r.started_on, today) : 0,
+      prolongations: (r.extensions ?? []).length,
+    })),
+  };
+}
+
+/**
+ * Abonnements and MRR. The commission ledger was reachable, the subscriptions
+ * behind it were not — so "how many active subscriptions" had no answer even
+ * though the manager dashboard shows it.
+ */
+async function subscriptionsStats(db: SupabaseClient, user: AppUser, args: { period: string }) {
+  const since = periodStart(args.period, new Date());
+  let q = db
+    .from('subscriptions')
+    .select('status, monthly_price_xof, start_date, cancelled_at, rep_id, products(name)')
+    .limit(5000);
+  // A rep sees their own book; money stays manager-side as everywhere else.
+  if (!isManagerRole(user)) q = q.eq('rep_id', user.id);
+  const { data, error } = await q;
+  if (error) return { error: 'abonnements indisponibles' };
+
+  type Row = {
+    status: string;
+    monthly_price_xof: number | null;
+    start_date: string;
+    cancelled_at: string | null;
+    products: { name: string | null } | null;
+  };
+  const rows = (data ?? []) as unknown as Row[];
+  const active = rows.filter((r) => r.status === 'active');
+  const cancelled = rows.filter((r) => r.status === 'cancelled');
+  const inPeriod = (d: string | null) => !!d && new Date(d) >= since;
+
+  const byProduct = new Map<string, number>();
+  for (const r of active) {
+    const k = r.products?.name ?? '—';
+    byProduct.set(k, (byProduct.get(k) ?? 0) + 1);
+  }
+
+  return {
+    periode: args.period,
+    actifs: active.length,
+    resilies_total: cancelled.length,
+    nouveaux_sur_la_periode: rows.filter((r) => inPeriod(r.start_date)).length,
+    resilies_sur_la_periode: cancelled.filter((r) => inPeriod(r.cancelled_at)).length,
+    par_produit: Object.fromEntries(byProduct),
+    ...(isManagerRole(user)
+      ? { mrr_fcfa: active.reduce((n, r) => n + (r.monthly_price_xof ?? 0), 0) }
+      : {}),
+  };
+}
+
+/**
+ * The do-not-knock list, which nothing could reach. Distances are computed in
+ * JS rather than in PostGIS: the list is short, and this avoids adding an RPC
+ * for one lookup.
+ */
+async function dnkCheck(
+  db: SupabaseClient,
+  args: { address?: string; lat?: number; lng?: number },
+) {
+  const { data, error } = await db
+    .from('do_not_knock_list')
+    .select('address, lat, lng, reason, added_at')
+    .limit(1000);
+  if (error) return { error: 'liste indisponible' };
+  type Row = { address: string | null; lat: number; lng: number; reason: string | null; added_at: string };
+  const rows = (data ?? []) as Row[];
+  if (rows.length === 0) return { entrees: 0, note: 'la liste est vide' };
+
+  if (args.lat != null && args.lng != null) {
+    const R = 6371000;
+    const rad = (d: number) => (d * Math.PI) / 180;
+    const near = rows
+      .map((r) => {
+        const dLat = rad(r.lat - args.lat!);
+        const dLon = rad(r.lng - args.lng!);
+        const x =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos(rad(args.lat!)) * Math.cos(rad(r.lat)) * Math.sin(dLon / 2) ** 2;
+        return { ...r, metres: Math.round(2 * R * Math.asin(Math.sqrt(x))) };
+      })
+      .filter((r) => r.metres <= 200)
+      .sort((a, b) => a.metres - b.metres);
+    return {
+      entrees: rows.length,
+      interdit: near.length > 0,
+      // 200 m, not 0: the pin on a blacklisted doorway and the pin taken in
+      // front of it are never the same point.
+      proches: near.slice(0, 5).map((r) => ({ adresse: r.address, metres: r.metres, motif: r.reason })),
+    };
+  }
+
+  if (args.address?.trim()) {
+    const needle = args.address.trim().toLowerCase();
+    const hits = rows.filter((r) => (r.address ?? '').toLowerCase().includes(needle));
+    return {
+      entrees: rows.length,
+      interdit: hits.length > 0,
+      correspondances: hits.slice(0, 10).map((r) => ({ adresse: r.address, motif: r.reason })),
+    };
+  }
+
+  return {
+    entrees: rows.length,
+    liste: rows.slice(0, 20).map((r) => ({ adresse: r.address, motif: r.reason, ajoutee_le: r.added_at })),
   };
 }
 
@@ -1683,7 +1893,16 @@ async function myTasks(db: Db, user: AppUser, args: { scope: string }) {
   const nowMs = Date.now();
   const line = (t: (typeof rows)[number]) => ({
     quoi: t.title,
-    type: t.kind === 'rdv' ? 'rendez-vous' : t.kind === 'revisit' ? 'retour chantier' : 'suivi',
+    type:
+      t.kind === 'rdv'
+        ? 'rendez-vous'
+        : t.kind === 'revisit'
+          ? 'retour chantier'
+          : t.kind === 'trial_end'
+            ? "fin d'essai"
+            : t.kind === 'service'
+              ? 'intervention signalée'
+              : 'suivi',
     client: t.contactName,
     pour_le: t.dueAt,
     reste_a_faire: t.details ?? undefined,
@@ -1719,6 +1938,10 @@ const ORIGIN_LABEL: Record<string, string> = {
   service: 'SAV',
   warranty: 'garantie',
   maintenance: 'entretien',
+  // 0032. Without these two, interventions_stats — which excludes only
+  // 'sale' — listed them under their raw English keys next to the SAV count.
+  trial: "pose d'essai",
+  retrieval: 'dépose après essai',
 };
 
 /**
@@ -1945,6 +2168,12 @@ export async function executeTool(
         return await visitStats(db, user, args as { period: string });
       case 'my_todo':
         return await myTodo(db, user);
+      case 'trials_overview':
+        return await trialsOverview(db, user);
+      case 'subscriptions_stats':
+        return await subscriptionsStats(db, user, args as { period: string });
+      case 'dnk_check':
+        return await dnkCheck(db, args as { address?: string; lat?: number; lng?: number });
       case 'contact_journal':
         return await contactJournal(db, args as { contact_id: string });
       case 'deal_journal':

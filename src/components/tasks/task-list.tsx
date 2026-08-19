@@ -2,12 +2,19 @@
 
 import { useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { CalendarClock, Check, Play, Undo2, Wrench } from 'lucide-react';
+import { CalendarClock, Check, Hourglass, Play, Undo2, Wrench } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { completeTask, reopenTask, type TaskRow } from '@/lib/tasks/actions';
 import { Card, CardContent } from '@/components/ui/card';
 
-const KIND_ICON = { rdv: CalendarClock, revisit: Wrench, service: Wrench, manual: Check } as const;
+// trial_end has its own: a trial deadline is a date arriving, not a place to go.
+const KIND_ICON = {
+  rdv: CalendarClock,
+  revisit: Wrench,
+  service: Wrench,
+  manual: Check,
+  trial_end: Hourglass,
+} as const;
 
 /**
  * Where "Commencer" leads: the form that produces the fact this task planned,
