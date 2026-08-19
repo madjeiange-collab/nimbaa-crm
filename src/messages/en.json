@@ -419,7 +419,9 @@
     "wonWeek": "This week",
     "wonMonth": "This month",
     "deleteConfirm": "Delete this deal? Its jobs and their trips will be deleted with it.",
-    "fromContact": "· set on the customer record"
+    "fromContact": "· set on the customer record",
+    "saveFailed": "Change not saved. Try again, or ask a manager.",
+    "installOnWin": "The job is created when the deal reaches \"Won (Customer)\"."
   },
   "installation": {
     "title": "Installation",

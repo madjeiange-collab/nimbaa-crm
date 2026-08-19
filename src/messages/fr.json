@@ -419,7 +419,9 @@
     "wonWeek": "Cette semaine",
     "wonMonth": "Ce mois",
     "deleteConfirm": "Supprimer cette affaire ? Les chantiers et leurs passages seront supprimés avec elle.",
-    "fromContact": "· défini sur la fiche client"
+    "fromContact": "· défini sur la fiche client",
+    "saveFailed": "Modification non enregistrée. Réessayez, ou demandez à un manager.",
+    "installOnWin": "Le chantier sera créé lorsque l’affaire passera à « Gagné (Client) »."
   },
   "installation": {
     "title": "Installation",

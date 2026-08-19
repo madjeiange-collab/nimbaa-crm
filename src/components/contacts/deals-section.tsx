@@ -295,10 +295,15 @@ function DealRow({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState(deal.title ?? '');
+  const [failed, setFailed] = useState(false);
 
+  // Every action on this card returns ActionResult. Discarding it meant a
+  // refusal — no rights, row gone, save failed — was indistinguishable from a
+  // dead control: the value simply snapped back on refresh with no message.
   function run(fn: () => Promise<unknown>) {
     startTransition(async () => {
-      await fn();
+      const res = (await fn()) as { ok?: boolean } | undefined;
+      setFailed(res?.ok === false);
       router.refresh();
     });
   }
@@ -337,6 +342,8 @@ function DealRow({
           </button>
         )}
       </div>
+
+      {failed && <p className="text-xs text-destructive">{t('saveFailed')}</p>}
 
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
@@ -510,6 +517,9 @@ function DealRow({
         />
         {t('needsInstallation')}
       </label>
+      {deal.needsInstallation && deal.status !== 'won' && (
+        <p className="pl-6 text-xs text-muted-foreground">{t('installOnWin')}</p>
+      )}
 
       {/* Installation(s) for a won + installable deal */}
       {deal.status === 'won' && deal.needsInstallation && (
