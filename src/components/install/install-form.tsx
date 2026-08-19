@@ -281,7 +281,11 @@ export function InstallForm({
         installationId,
         contactId: (isNew ? pickedContact : contactId) as string,
         newIntervention: isNew
-          ? { origin, title: t(`origin_${origin}` as never), reason: reason.trim() || null }
+          ? // tInt, not t: the origin labels live in the 'intervention'
+            // namespace. Asking the 'installation' one returned the unresolved
+            // key, and that string was then written to the job as its title —
+            // "installation.origin_maintenance" showed up in the queue.
+            { origin, title: tInt(`origin_${origin}` as never), reason: reason.trim() || null }
           : null,
         lat: hasFix ? geo.lat : null,
         lng: hasFix ? geo.lng : null,
