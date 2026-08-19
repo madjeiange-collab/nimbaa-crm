@@ -27,6 +27,8 @@ prerequisite.
 | Codebase | **New repo, new Supabase project**, same stack and conventions as the CRM. |
 | Staff accounts | **Provisioned by the owner or manager** — username + password. No self-signup, no email recovery. |
 | Customer accounts | **Self-served, verified by OTP** — phone/WhatsApp first, email as fallback. |
+| Owner accounts | **Claimed by invite, never handed over.** Password chosen by the owner; OTP proves the contact at claim and at recovery. |
+| Platform admin | **Separate door, TOTP always**, every tenant access logged and shown to the owner. |
 | The login gate | **Menu is open to everyone. Confirming an order requires a verified account.** |
 
 ### Why a separate repo and a separate Supabase project
@@ -100,7 +102,8 @@ Five surfaces, one codebase, one deployment.
 | **Waiter** | floor staff, phone | username + password | `/r/<slug>/service` |
 | **Kitchen (KDS)** | station screens, tablet | username + password, kiosk | `/r/<slug>/station/<id>` |
 | **Cashier** | till | username + password | `/r/<slug>/caisse` |
-| **Manager / Owner** | back office | username + password | `/r/<slug>/admin` |
+| **Manager / Owner** | back office | username + password (+OTP step-up) | `/r/<slug>/admin` |
+| **Platform admin** | Nimbaa support | username + password + **TOTP** | `/platform` |
 
 Roles on `restaurant_members.role`: `owner`, `manager`, `waiter`, `kitchen`,
 `cashier`. A **platform admin** flag sits outside tenancy for support access,
@@ -108,12 +111,143 @@ and every use of it is written to an audit table.
 
 ---
 
-## 4. Identity — two doors
+## 4. Identity — three doors
 
-Staff and diners are both Supabase Auth users, and that is the only thing they
-have in common. Everything else about the two doors is deliberately different.
+Platform admins, restaurant staff and diners are all Supabase Auth users, and
+that is the only thing they have in common. Everything else about the three
+doors is deliberately different — and the owner, sitting at the top of the
+staff tree, is the account the whole restaurant's security rests on.
 
-### 4.1 Staff: provisioned, never self-served
+### 4.1 The chain of trust
+
+```
+Nimbaa platform admin
+   │   creates the restaurant, invites the first owner
+   ▼
+Owner ─────────────── recovery: OTP to a contact verified at claim
+   │   creates managers, and any staff role
+   ▼
+Manager
+   │   creates waiters, kitchen, cashiers
+   ▼
+Waiter · Kitchen · Cashier ─── recovery: the owner or manager resets it
+
+Diner ─── outside the tree entirely. Self-served, OTP, no password.
+```
+
+Every account except the diner is created by someone one level up. That is
+deliberate: there is always a human accountable for an account existing, and
+"who can reset this password" has an obvious answer at every level — except at
+the very top, which is precisely the problem the owner's design has to solve.
+
+Only an owner may create a manager or another owner. A manager may create
+waiters, kitchen and cashier accounts, but cannot mint their own peers.
+
+### 4.2 The owner: claimed, not handed over
+
+The owner is never *given* a password. Nimbaa creates the restaurant and
+records the owner's name, email and phone; the system sends a **single-use
+invite link, valid 72 hours**, over WhatsApp or email. The owner opens it,
+proves control of that contact with a **one-time code**, and only then chooses
+their own username and password.
+
+```sql
+staff_invites (
+  id, restaurant_id, role,
+  email text null, phone text null,
+  token_hash text, expires_at, consumed_at null,
+  created_by, created_at
+)
+```
+
+Nobody at Nimbaa ever knows the owner's password, and no initial password
+travels over WhatsApp or gets read out on a phone call. For the account that
+can change every price, read every franc of revenue and create every other
+account, "here is your temporary password" is not good enough.
+
+#### Why the owner does not sign in with OTP
+
+The owner *could* sign in with a code every time, like a diner. They should
+not, for three reasons:
+
+- **It costs money and depends on a network.** Every login would be a paid
+  message over a network that is not always there. An owner doing the cash-out
+  at midnight cannot be locked out of their own till because Orange is having
+  a bad night.
+- **In a small restaurant the owner also works the floor.** They should not
+  have a different login ritual depending on whether they are about to take an
+  order or read the day's takings.
+- **The password is not the weak part.** Recovery is. OTP is what we use to
+  make *recovery* strong, and spending it on the front door buys nothing.
+
+So OTP appears at exactly the two moments where the question is *"does this
+human control this contact?"* — first claim and recovery — plus a third where
+the question is *"is this really them, right now?"* — step-up on the handful of
+actions that cannot be undone.
+
+#### Recovery, which is the real attack surface
+
+The owner is the root of the reset chain: there is nobody above them at the
+restaurant.
+
+- Recovery sends a code **only to the contact already verified on the
+  account** — never to one typed at recovery time. A recovery flow that accepts
+  a new address is not recovery, it is account takeover with extra steps.
+- **Changing the recovery contact** requires the current password *and* a code
+  to the *old* contact.
+- If both are genuinely lost it goes to platform admin, behind an out-of-band
+  identity check, logged, and notified to every other owner of that restaurant.
+- **Nudge every restaurant towards a second owner account.** It costs nothing
+  and means the recovery path does not always run through Nimbaa. It is the
+  cheapest resilience measure in this plan.
+
+#### Step-up: the short list
+
+A code is demanded again, mid-session, only for actions that move money or hand
+out power:
+
+| Action | Why |
+|---|---|
+| Changing mobile money or bank settlement details | The most attacked action in any payments system — an attacker who gets in does not steal data, they redirect the takings |
+| Creating or promoting an owner or manager | Privilege escalation turns a small compromise into a total one |
+| Exporting customer data | Bulk export is the difference between an incident and a breach |
+| Deleting the restaurant | Irreversible |
+
+Settlement changes get one more control, because SMS OTP does not survive a SIM
+swap: a **24-hour hold plus a notice to every owner**, so the legitimate owner
+finds out before the money moves.
+
+Everything else — prices, menu, staff accounts, voids, closing a session — runs
+on the session the owner already has. Step-up on everything just trains people
+to tap through it.
+
+### 4.3 Platform admin: the highest-value target on the platform
+
+Our own accounts, and the ones an attacker actually wants, because one of them
+reaches every restaurant.
+
+- **Separate door** (`/platform`), separate account kind, never reachable from
+  a restaurant login page.
+- **TOTP mandatory — an authenticator app, not SMS.** SMS OTP is SIM-swappable,
+  and this is precisely the account worth swapping a SIM for. It is the one
+  place in this plan where SMS is not good enough.
+- **Every tenant access is logged with a reason**, append-only, and **shown to
+  the restaurant owner** in their own back office: *"Nimbaa support opened your
+  orders on 3 September at 14:20 — ticket #412."* We are asking restaurants to
+  trust us with their revenue; the honest way to earn that is to make our
+  access visible rather than invisible.
+- **Impersonation is read-only by default and time-boxed.** Acting as a tenant
+  with write access needs a second admin's approval, and says so in the log.
+
+```sql
+platform_admins     (user_id primary key, display_name,
+                     totp_enrolled_at, disabled_at)
+
+platform_access_log (id, admin_id, restaurant_id, action, reason,
+                     ticket_ref, at)   -- append-only, readable by the owner
+```
+
+### 4.4 Staff: provisioned, never self-served
 
 The owner or manager creates the account — username, display name, role(s),
 initial password. There is **no signup page and no email recovery**, because
@@ -138,6 +272,9 @@ staff_accounts (
   username text not null,
   display_name text,
   must_change_password bool default true,
+  -- Recovery contact lives HERE, not in auth.users — see §4.7.
+  recovery_email text null, recovery_phone text null,
+  recovery_verified_at timestamptz null,
   disabled_at timestamptz null,
   unique (home_restaurant_id, username)
 )
@@ -157,7 +294,7 @@ the back office.
 merely suggested — an owner handing out a password verbally is the normal
 onboarding path, so that password must not survive the first shift.
 
-### 4.2 Diners: self-served, verified by OTP
+### 4.5 Diners: self-served, verified by OTP
 
 Phone first, WhatsApp preferred, SMS second, email as the last resort. All
 three are native Supabase Auth (`signInWithOtp`) — no home-grown OTP, no
@@ -203,7 +340,7 @@ obligation: restaurant A must never learn that this diner also eats at
 restaurant B. Staff reads stay scoped by `is_member(restaurant_id)`, and staff
 see a diner's name and phone only through an order of their own.
 
-### 4.3 Where the gate sits
+### 4.6 Where the gate sits
 
 **The menu is open. Confirming an order is not.**
 
@@ -226,7 +363,39 @@ Calling the waiter and asking for the bill stay open too — those are not
 transactions, and making someone create an account to ask for water would be
 absurd.
 
-### 4.4 What the account changes elsewhere
+### 4.7 One collision worth knowing before week two
+
+A restaurant owner also eats out. If a staff account's recovery phone were
+written into `auth.users.phone`, and that same person held a diner account on
+that number, Supabase's uniqueness constraint on phone means one of the two
+accounts simply cannot be created.
+
+So: **staff `auth.users` rows carry only the synthetic email.** The recovery
+contact lives in `staff_accounts`, verified by our own OTP flow and never by
+Supabase's phone-auth path.
+
+This is also the right privacy answer. The owner of one restaurant ordering
+dinner at another is not something the platform should be able to join up.
+
+### 4.8 Where OTP appears — and where it deliberately does not
+
+| Who | Signs in with | Recovers with | Second factor |
+|---|---|---|---|
+| Platform admin | username + password | two-person platform process | **TOTP, always** |
+| Owner | username + password | OTP to a contact verified at claim | OTP on the short list in §4.2 |
+| Manager | username + password | OTP to verified contact, or owner reset | OTP on staff promotion |
+| Waiter · Kitchen · Cashier | username + password | owner or manager reset — no contact needed | none |
+| Diner | **OTP, no password at all** | the OTP itself | none |
+
+Read down the *signs in with* column: OTP is the diner's front door and nobody
+else's. Everywhere else it proves control of a contact — it is not a way in.
+
+Lockouts follow the same logic. Repeated password failures lock an account for
+fifteen minutes, per account and per IP, but an owner or manager can clear a
+waiter's lockout instantly: a lockout that survives into the middle of a
+service is a worse outcome than the attack it prevents.
+
+### 4.9 What the account changes elsewhere
 
 - **`qr_order_mode` default shifts to `auto`.** The original argument for
   `confirm` was that any passerby could fire tickets. A verified phone number
@@ -543,7 +712,7 @@ that ends in something demonstrable.
 
 | # | Milestone | Ships | ~Size |
 |---|---|---|---|
-| **M0** | Foundations & staff accounts | Repo, Supabase project, `restaurants` + `restaurant_members` + `staff_accounts`, `is_member()`, username login at `/r/<slug>/login`, owner-provisioned staff with forced password change, role routing, fr/en i18n | 1.5w |
+| **M0** | Foundations, platform console & accounts | Repo, Supabase project, `restaurants` + `restaurant_members` + `staff_accounts`, `is_member()`, platform console with TOTP (create restaurant, invite owner, access log), owner claim-by-invite, username login at `/r/<slug>/login`, owner-provisioned staff with forced password change, recovery, role routing, fr/en i18n | 2w |
 | **M1** | Menu & floor | Admin CRUD: categories, items, modifiers, stations, areas, tables. QR generation + printable sheet | 1w |
 | **M2** | **Scan → account → kitchen → serve** | Public menu with no login, cart, OTP account (WhatsApp/SMS/email), the confirm gate with submit replay, three QR modes, waiter confirmation queue, KDS, to-serve list, realtime both sides, `order_events` | 3w |
 | **M3** | Waiter entry | Table map, staff cart, rounds on an open session, `service_requests` | 1w |
@@ -567,11 +736,15 @@ actually run.** Everything after M4 makes it sellable rather than usable.
 2. Create the repo and Supabase project; copy the CRM's `lib/supabase`, i18n
    config, Tailwind and shadcn setup.
 3. `0001_tenancy.sql`: `restaurants`, `restaurant_members`, `staff_accounts`,
-   `is_member()`, RLS on all four, and the three-actor probe test.
-4. Owner onboarding: create a restaurant, become its `owner`, create the first
-   waiter and kitchen accounts.
-5. Staff login at `/r/<slug>/login`, forced password change, role routing.
-6. Deploy to Vercel on day 5, even empty. A pipeline that only gets exercised
+   `staff_invites`, `platform_admins`, `platform_access_log`, `is_member()`,
+   RLS on all of them, and the three-actor probe test.
+4. The platform console: enrol the first platform admin with TOTP, create a
+   restaurant, send an owner invite. This is the bootstrap — nothing downstream
+   can be tested until an owner exists.
+5. Owner claim: invite link → OTP → username and password chosen by the owner.
+   Then the owner creates the first waiter and kitchen accounts.
+6. Staff login at `/r/<slug>/login`, forced password change, role routing.
+7. Deploy to Vercel on day 5, even empty. A pipeline that only gets exercised
    at the end is a pipeline that fails at the end.
 
 ---
@@ -586,8 +759,13 @@ actually run.** Everything after M4 makes it sellable rather than usable.
 | **OTP as a cost and abuse vector** — each send costs money | Per-phone, per-device and per-IP caps, exponential backoff, Turnstile after N attempts, a hard daily ceiling per restaurant, alerting on the spend |
 | **Magic-link trap** — link opens in a different browser, cart lost | Codes only, `autocomplete="one-time-code"`, cart in `localStorage` keyed by table token |
 | **Login wall depresses orders** | Gate at confirm, never at the menu; display name asked after the first order |
+| **Owner account takeover** — the account that can redirect the takings | Claim by invite so no password is ever transmitted, recovery only to a contact verified at claim, step-up on the §4.2 short list, a 24h hold plus all-owner notice on settlement changes |
+| **SIM swap on owner recovery** | The 24h hold is the real defence, not the OTP; settlement changes are never instant, and every owner is told |
+| **Platform admin compromise** — one account reaches every restaurant | TOTP mandatory and never SMS, read-only time-boxed impersonation, second-admin approval for tenant writes, an access log the owner can read |
+| **Phone uniqueness collision** — owner also has a diner account | Staff recovery contact lives in `staff_accounts`, never in `auth.users.phone` |
+| **Lockout mid-service** | Time-boxed to fifteen minutes, and an owner or manager can clear a waiter's lockout instantly |
 | **Privilege confusion** — a diner treated as staff | `restaurant_members` is the sole authority; `app_metadata` for the kind flag; `user_metadata` never read for authorization |
-| **Staff password hygiene** — one password shared round the pass | Per-person accounts, `must_change_password` enforced server-side at first request, owner-driven reset, disable rather than delete |
+| **Staff password hygiene** — one password shared round the pass | Per-person accounts, `must_change_password` enforced server-side at first request, owner-driven reset, disable rather than delete. Only an owner may create a manager or another owner |
 | **SIM churn** — the diner changes number and loses the account | Email as a recovery anchor on the profile, and a supported number change |
 | **QR abuse** — a passerby fires tickets | Verified accounts make it traceable and blockable; `customer_blocks`, rotatable tokens, per-table rate limits, no prices from the client |
 | **Price drift** — menu edited mid-service | Snapshot name, price and station onto the line at submit |
@@ -617,11 +795,17 @@ and social login for diners (phone is the identity that matters here).
    aggregator is often cheaper and more reliable for MTN and Orange Guinea
    traffic. Worth a deliverability test before committing, since it is the one
    thing standing between a diner and their first order.
-3. **Fiscal rules** — does the target market impose certified receipts or
+3. **Onboarding: hands-on or self-serve?** This plan assumes Nimbaa creates the
+   restaurant and invites the owner — right for a market where selling is done
+   in person, and it keeps a human in the loop on who gets an account. Going
+   self-serve later means adding billing, a "are you really a restaurant"
+   check, and an abuse story for free tenants. Worth deciding before M0, since
+   it is the shape of the platform console.
+4. **Fiscal rules** — does the target market impose certified receipts or
    fiscal printers? A hard constraint, cheap now and expensive later.
-4. **Takeaway / counter orders** — the `channel='counter'` value is reserved,
+5. **Takeaway / counter orders** — the `channel='counter'` value is reserved,
    but is a no-table flow in v1 scope?
-5. **Menu photos** — is the owner uploading them, and do we need the CRM's
+6. **Menu photos** — is the owner uploading them, and do we need the CRM's
    `browser-image-compression` treatment for slow uploads?
-6. **Pricing model** — per restaurant per month, or a cut of throughput? It
+7. **Pricing model** — per restaurant per month, or a cut of throughput? It
    decides whether M5 needs platform-level billing metering.
