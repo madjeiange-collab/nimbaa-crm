@@ -105,7 +105,13 @@ export function contactDiff(
   if (fields.name !== undefined && t(fields.name) !== t(before.name)) {
     out.push({ kind: 'name', from: before.name, to: t(fields.name) });
   }
-  if (fields.phone !== undefined && t(fields.phone) !== t(before.phone)) {
+  // Compared without spaces on purpose. The phone field recomposes what it
+  // was given — "+2250700111222" comes back as "+225 0700111222" — so a
+  // literal comparison logged a change on every fiche whose number happened to
+  // be stored unspaced, the first time anyone opened the form. A journal that
+  // records edits nobody made stops being worth reading.
+  const digits = (v: string | null | undefined) => v?.replace(/[\s.\-()]/g, '') || null;
+  if (fields.phone !== undefined && digits(fields.phone) !== digits(before.phone)) {
     out.push({ kind: 'phone', from: before.phone, to: t(fields.phone) });
   }
   if (fields.address !== undefined && t(fields.address) !== t(before.address)) {
