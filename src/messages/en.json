@@ -1126,6 +1126,16 @@
     "f_business_type": "type",
     "f_tags": "tags",
     "f_priority": "priority",
-    "f_assigned": "owner"
+    "f_assigned": "owner",
+    "f_removedDeal": "deleted deal",
+    "onRemoved": "on “{name}”, since deleted",
+    "d_created": "deal created",
+    "d_deleted": "deal deleted",
+    "d_stage": "stage",
+    "d_product": "product",
+    "d_value": "value",
+    "d_person": "contact",
+    "d_install_flag": "install",
+    "d_renamed": "title"
   }
 }

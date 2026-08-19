@@ -1126,6 +1126,16 @@
     "f_business_type": "type",
     "f_tags": "tags",
     "f_priority": "priorité",
-    "f_assigned": "attribution"
+    "f_assigned": "attribution",
+    "f_removedDeal": "affaire supprimée",
+    "onRemoved": "sur « {name} », supprimée depuis",
+    "d_created": "affaire créée",
+    "d_deleted": "affaire supprimée",
+    "d_stage": "étape",
+    "d_product": "produit",
+    "d_value": "valeur",
+    "d_person": "interlocuteur",
+    "d_install_flag": "pose",
+    "d_renamed": "titre"
   }
 }

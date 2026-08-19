@@ -298,8 +298,16 @@ export default async function ContactDetailPage({
     .order('at', { ascending: false })
     .limit(400);
   const eventsByDeal = new Map<string, DealEvent[]>();
+  // An affaire that has been deleted leaves its journal behind with a null
+  // deal_id (0034). Skipping those made the record invisible — which defeats
+  // the reason it was kept. They belong to the customer now, so the fiche
+  // journal shows them.
+  const removedDealEvents: DealEvent[] = [];
   for (const e of (eventRows ?? []) as unknown as DealEvent[]) {
-    if (!e.deal_id) continue;
+    if (!e.deal_id) {
+      removedDealEvents.push(e);
+      continue;
+    }
     const list = eventsByDeal.get(e.deal_id) ?? [];
     list.push(e);
     eventsByDeal.set(e.deal_id, list);
@@ -382,6 +390,7 @@ export default async function ContactDetailPage({
 
         <ContactJournal
           events={contactEvents}
+          removed={removedDealEvents}
           names={Object.fromEntries(nameOf)}
         />
 
