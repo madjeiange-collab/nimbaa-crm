@@ -1030,7 +1030,9 @@
     "rep": "Rep",
     "unknownRep": "—",
     "hourly": "Day in progress",
-    "hourlyHint": "Hourly tracking of reps and technicians"
+    "hourlyHint": "Hourly tracking of reps and technicians",
+    "flag_noFix": "no GPS position",
+    "flagNoFix": "No GPS position"
   },
   "address": {
     "placeholder": "Search a place, or use the buttons below…",

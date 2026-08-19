@@ -21,6 +21,9 @@ import {
   MIN_ENGAGED_VISIT_MIN,
   MIN_INSTALL_MIN,
   CLOCK_DRIFT_MIN,
+  visitFlags,
+  type JournalFlag,
+  type JournalVisit,
 } from '@/lib/checkin/journal';
 
 
@@ -82,7 +85,7 @@ export default async function ControlsPage({
   // Only photos carrying forensics (0024+) — legacy rows have no captured_at.
   const photosQ = supabase
     .from('visit_photos')
-    .select('visit_id, kind, lat, lng, captured_at, phash')
+    .select('visit_id, kind, lat, lng, accuracy, captured_at, phash')
     .not('captured_at', 'is', null)
     .limit(6000);
   const installsQ = supabase
@@ -163,7 +166,7 @@ export default async function ControlsPage({
   }
 
   // ---- per-visit checks -----------------------------------------------------
-  type Flag = 'pairFar' | 'tooShort' | 'farFromContact' | 'clockDrift';
+  type Flag = JournalFlag;
   const flagged: {
     visit: VisitRow;
     flags: Flag[];
@@ -174,50 +177,10 @@ export default async function ControlsPage({
 
   for (const v of visits) {
     const ph = photosByVisit.get(v.id) ?? [];
-    const arrival = ph.find((p) => p.kind === 'arrival');
-    const completion = ph.find((p) => p.kind === 'completion');
-    const flags: Flag[] = [];
-
-    let pairMeters: number | null = null;
-    if (arrival?.lat != null && arrival.lng != null && completion?.lat != null && completion.lng != null) {
-      pairMeters = Math.round(
-        haversineMeters(arrival.lat, arrival.lng, completion.lat, completion.lng),
-      );
-      if (pairMeters > PAIR_DISTANCE_M) flags.push('pairFar');
-    }
-
-    const durationMin = v.started_at
-      ? Math.round(minutesBetween(v.started_at, v.visited_at))
-      : null;
-    const engaged =
-      v.visit_type !== 'installation' &&
-      !!(v.disposition && DISPOSITION_BY_KEY[v.disposition as KnockDisposition]?.createsContact);
-    if (engaged && durationMin != null && durationMin < MIN_ENGAGED_VISIT_MIN) {
-      flags.push('tooShort');
-    }
-
-    let contactMeters: number | null = null;
-    const photoFix = arrival ?? completion;
-    if (
-      v.contacts?.lat != null &&
-      v.contacts.lng != null &&
-      photoFix?.lat != null &&
-      photoFix.lng != null
-    ) {
-      contactMeters = Math.round(
-        haversineMeters(photoFix.lat, photoFix.lng, v.contacts.lat, v.contacts.lng),
-      );
-      if (contactMeters > CONTACT_DISTANCE_M) flags.push('farFromContact');
-    }
-
-    // Device clock vs server receipt. Only for visits carrying photo
-    // forensics (0024+) — legacy/seeded rows have backdated visited_at and
-    // would drown the list. Offline-queued saves legitimately drift, so this
-    // is a review signal, not proof.
-    if (ph.length > 0 && minutesBetween(v.visited_at, v.created_at) > CLOCK_DRIFT_MIN) {
-      flags.push('clockDrift');
-    }
-
+    const { flags, durationMin, pairMeters, contactMeters } = visitFlags(
+      v as unknown as JournalVisit,
+      ph,
+    );
     if (flags.length > 0) flagged.push({ visit: v, flags, durationMin, pairMeters, contactMeters });
   }
 
@@ -362,6 +325,7 @@ export default async function ControlsPage({
 
   const counts = {
     pairFar: flagged.filter((f) => f.flags.includes('pairFar')).length,
+    noFix: flagged.filter((f) => f.flags.includes('noFix')).length,
     tooShort: flagged.filter((f) => f.flags.includes('tooShort')).length,
     farFromContact: flagged.filter((f) => f.flags.includes('farFromContact')).length,
     clockDrift: flagged.filter((f) => f.flags.includes('clockDrift')).length,
@@ -376,6 +340,9 @@ export default async function ControlsPage({
 
   const FLAG_STYLE: Record<Flag, string> = {
     pairFar: 'bg-destructive/10 text-destructive',
+    // Absence of evidence, not evidence of distance — so it does not wear the
+    // colour of a refusal.
+    noFix: 'bg-muted text-muted-foreground',
     tooShort: 'bg-brand-amber/20 text-brand-brown',
     farFromContact: 'bg-destructive/10 text-destructive',
     clockDrift: 'bg-secondary text-secondary-foreground',
@@ -505,6 +472,9 @@ export default async function ControlsPage({
             value={counts.clockDrift}
             accent={counts.clockDrift ? 'amber' : 'muted'}
           />
+          {/* Always muted, even when it counts: a passage nobody could place is
+              worth knowing about, but it is not an accusation. */}
+          <StatTile label={t('flagNoFix')} value={counts.noFix} accent="muted" />
           <StatTile
             label={t('flagDuplicates')}
             value={counts.duplicates}

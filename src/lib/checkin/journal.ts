@@ -7,13 +7,28 @@ import { DISPOSITION_BY_KEY, type KnockDisposition } from '@/lib/visits/disposit
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
 
 /** Shared thresholds for the Check-In and -Out checks. */
-export const PAIR_DISTANCE_M = 150; // arrival vs end photo
+/**
+ * Arrival vs end photo — the two are taken at the same doorway, so any gap
+ * between them is GPS disagreement, not travel.
+ *
+ * A flat radius is wrong in both directions: two fixes each claiming ±8 m that
+ * land 140 m apart is a real signal, while two taken inside a concrete-walled
+ * maquis reporting ±85 m can land that far apart with nobody moving. So the
+ * allowance follows what the phone said about itself — two independent fixes
+ * at one spot can separate by roughly the sum of their errors — with a floor
+ * so an optimistic ±3 m does not make the check hair-trigger, and a ceiling
+ * that fires whatever the phone claims, since claiming terrible accuracy is
+ * precisely what someone gaming it would arrange.
+ */
+export const PAIR_DISTANCE_M = 150; // absolute ceiling
+export const PAIR_FLOOR_M = 40;
+export const PAIR_ACCURACY_K = 2;
 export const CONTACT_DISTANCE_M = 250; // photo vs the customer's pin
 export const MIN_ENGAGED_VISIT_MIN = 3;
 export const MIN_INSTALL_MIN = 10;
 export const CLOCK_DRIFT_MIN = 10;
 
-export type JournalFlag = 'pairFar' | 'tooShort' | 'farFromContact' | 'clockDrift';
+export type JournalFlag = 'pairFar' | 'tooShort' | 'farFromContact' | 'clockDrift' | 'noFix';
 
 export interface JournalRow {
   id: string;
@@ -117,7 +132,7 @@ export async function buildJournalRows(
   // Photos of exactly these visits (arrival + end carry the forensics).
   const { data: photoRows } = await supabase
     .from('visit_photos')
-    .select('visit_id, kind, lat, lng, captured_at, storage_path')
+    .select('visit_id, kind, lat, lng, accuracy, captured_at, storage_path')
     .in(
       'visit_id',
       visits.map((v) => v.id),
@@ -128,6 +143,7 @@ export async function buildJournalRows(
     kind: string | null;
     lat: number | null;
     lng: number | null;
+    accuracy: number | null;
     captured_at: string | null;
     storage_path: string;
   }[];
@@ -181,6 +197,8 @@ export interface CheckinPhoto {
   kind: string | null;
   lat: number | null;
   lng: number | null;
+  /** Metres the phone claimed for this fix. Null on legacy rows. */
+  accuracy?: number | null;
 }
 
 /**
@@ -199,7 +217,16 @@ export function visitFlags(
   let pairMeters: number | null = null;
   if (arrival?.lat != null && arrival.lng != null && completion?.lat != null && completion.lng != null) {
     pairMeters = Math.round(haversineMeters(arrival.lat, arrival.lng, completion.lat, completion.lng));
-    if (pairMeters > PAIR_DISTANCE_M) flags.push('pairFar');
+    // Unknown accuracy falls back to the floor rather than to nothing: a
+    // legacy row should not become unflaggable.
+    const claimed = (arrival.accuracy ?? 0) + (completion.accuracy ?? 0);
+    const allowed = Math.min(PAIR_DISTANCE_M, Math.max(PAIR_FLOOR_M, PAIR_ACCURACY_K * claimed));
+    if (pairMeters > allowed) flags.push('pairFar');
+  } else if (arrival || completion) {
+    // Photos taken, position missing. Quieter than pairFar and kept separate:
+    // it is not evidence of distance, it is the absence of evidence — and a
+    // passage that cannot be placed at all is worth its own line.
+    flags.push('noFix');
   }
 
   const durationMin = v.started_at ? Math.round(minutesBetween(v.started_at, v.visited_at)) : null;

@@ -1030,7 +1030,9 @@
     "rep": "Commercial",
     "unknownRep": "—",
     "hourly": "Journée en cours",
-    "hourlyHint": "Suivi horaire des commerciaux et techniciens"
+    "hourlyHint": "Suivi horaire des commerciaux et techniciens",
+    "flag_noFix": "position GPS absente",
+    "flagNoFix": "Sans position GPS"
   },
   "address": {
     "placeholder": "Cherchez un lieu, ou utilisez les boutons ci-dessous…",

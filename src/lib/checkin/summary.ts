@@ -59,7 +59,7 @@ export async function summarizeCheckins(
 
   const { data: photoRows } = await db
     .from('visit_photos')
-    .select('visit_id, kind, lat, lng, phash')
+    .select('visit_id, kind, lat, lng, accuracy, phash')
     .in(
       'visit_id',
       visits.map((v) => v.id),
