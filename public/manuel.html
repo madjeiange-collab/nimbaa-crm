@@ -438,7 +438,7 @@
     <ol>
       <li><strong>Photo d'arrivée.</strong> En arrivant, touchez la case verte <span class="btn-ref">ARRIVÉE</span>. La photo est horodatée et géolocalisée automatiquement ; l'adresse détectée s'affiche plus bas.</li>
       <li><strong>Résultat.</strong> Choisissez l'issue de la visite : <em>Pas de réponse</em>, <em>Absent</em>, <em>Refus</em>, <em>Intéressé</em>, <em>Rendez-vous</em> ou <em>Vendu</em>.</li>
-      <li><strong>Qui vous visitez.</strong> Deux chemins côte à côte, en haut du formulaire : <span class="btn-ref">Lier à un contact existant</span> pour une fiche déjà créée, ou <strong>ou nommez un nouveau prospect</strong> — son nom, et son <strong>téléphone</strong> pendant que vous êtes devant lui. Le contact et son affaire sont créés à l'enregistrement si le résultat est <em>Vendu</em>, <em>Rendez-vous</em> ou <em>Intéressé</em>.</li>
+      <li><strong>Qui vous visitez.</strong> Deux chemins côte à côte, en haut du formulaire : <span class="btn-ref">Lier à un contact existant</span> pour une fiche déjà créée, ou <strong>ou nommez un nouveau prospect</strong>, qui ouvre la fiche complète pendant que vous êtes devant le gérant (4c). Le contact et son affaire sont créés à l'enregistrement si le résultat est <em>Vendu</em>, <em>Rendez-vous</em> ou <em>Intéressé</em>.</li>
       <li><strong>Notes.</strong> Tapez, ou touchez <span class="btn-ref">🎤 Dicter</span> et parlez : <strong>les mots s'écrivent pendant que vous parlez</strong> (voir juste après).</li>
       <li><strong>Photo de fin.</strong> Au moment de repartir, touchez la case orange <span class="btn-ref">FIN</span>. C'est elle qui referme la visite.</li>
       <li><span class="btn-ref">Enregistrer</span>.</li>
@@ -457,10 +457,6 @@
     <div class="callout warn">
       <span class="lbl">Un prospect a toujours un nom</span>
       <p>Sur un résultat <em>Vendu</em>, <em>Rendez-vous</em> ou <em>Intéressé</em>, l'enregistrement est <strong>bloqué</strong> tant que la visite ne dit pas chez qui elle a eu lieu : liez un contact, ou saisissez un nom. Sans cela on créait des fiches « (sans nom) » que personne ne pouvait identifier ensuite. Les autres résultats — porte sans réponse, absent, refus — n'ont besoin de rien.</p>
-    </div>
-    <div class="callout tip">
-      <span class="lbl">Le téléphone se demande sur place</span>
-      <p>Le numéro est <strong>facultatif</strong> — un gérant absent ne doit pas empêcher d'enregistrer la visite — mais c'est par lui que passe la relance, et y revenir plus tard ne se fait jamais. Demandez-le pendant que vous y êtes.</p>
     </div>
     <div class="callout tip">
       <span class="lbl">Pourquoi deux photos</span>
@@ -504,6 +500,38 @@
   </figure>
 </section>
 
+<!-- ---- 4c. Nommer un prospect sur le pas de porte ---- -->
+<section class="screen sub" id="prospect-visite">
+  <div class="txt">
+    <h3>Nommer un prospect pendant la visite</h3>
+    <p>C'est ainsi que naissent la plupart des fiches. Le bloc est <strong>replié</strong> tant que vous n'écrivez rien : si vous rattachez un contact existant, il n'y a qu'un champ à l'écran. Dès que vous tapez un <strong>nom d'enseigne</strong>, le reste s'ouvre.</p>
+    <div class="tablewrap"><table>
+      <tr><th>Ce qu'on saisit</th><th>Pourquoi ici</th></tr>
+      <tr><td><strong>Nom de l'enseigne</strong></td><td>Le seul champ obligatoire.</td></tr>
+      <tr><td><strong>Téléphone</strong></td><td>Facultatif — un gérant absent ne doit pas empêcher d'enregistrer la visite — mais c'est par lui que passe la relance, et y revenir plus tard ne se fait jamais.</td></tr>
+      <tr><td><strong>Qui vous a reçu</strong></td><td>Le nom et le rôle de la personne. Un numéro sans nom ne sert qu'à moitié : au rappel, on ne sait pas qui demander.</td></tr>
+      <tr><td><strong>Type d'activité</strong></td><td>Vous êtes <em>dans</em> le maquis : c'est le seul moment où personne n'a à deviner. Toutes ses affaires en hériteront (5b), et sans lui le client sort de tous les comptages par type.</td></tr>
+      <tr><td><strong>Tags</strong></td><td>Les mêmes que sur la fiche.</td></tr>
+    </table></div>
+
+    <h4>L'adresse ne se saisit pas</h4>
+    <p>Pas de champ de recherche ni de carte ici, contrairement à la page <span class="btn-ref">+ Nouveau prospect</span> (5e) : la <strong>photo d'arrivée vient de relever la position</strong>. Le bloc affiche l'adresse trouvée pour que vous voyiez ce qui sera enregistré. Si le GPS s'est trompé de rue, corrigez-la ensuite sur la fiche.</p>
+
+    <div class="callout tip">
+      <span class="lbl">La personne existe à part entière</span>
+      <p>Le nom que vous saisissez ne devient pas un champ de la fiche : il crée une <strong>personne</strong>, rattachée à ce commerce (5f). Si ce gérant tient trois kiosques, c'est la même personne partout dès le premier passage, au lieu de trois copies à réunir plus tard.</p>
+    </div>
+    <div class="callout warn">
+      <span class="lbl">Rien n'est créé sans un résultat engagé</span>
+      <p>Tout cela n'est enregistré que si la visite se conclut par <em>Vendu</em>, <em>Rendez-vous</em> ou <em>Intéressé</em>. Une porte sans réponse ne laisse pas de fiche derrière elle.</p>
+    </div>
+  </div>
+  <figure class="phone">
+    <img src="/manuel/33-prospect-visite.png" alt="Bloc « ou nommez un nouveau prospect » ouvert : nom, téléphone, qui vous a reçu, type d'activité, tags, et l'adresse relevée par la photo d'arrivée" />
+    <figcaption>Une fois le nom saisi : la fiche entière, et l'adresse que la photo d'arrivée a relevée.</figcaption>
+  </figure>
+</section>
+
 <!-- ============ 5. CONTACTS ============ -->
 <section class="screen" id="contacts">
   <div class="txt">
@@ -523,7 +551,7 @@
     </ul>
     <div class="callout tip">
       <span class="lbl">Astuce</span>
-      <p>Renseignez toujours le <strong>type d'activité</strong> et quelques <strong>tags</strong> : ils alimentent les briefs IA, les filtres de statistiques et le pipeline. Ils se saisissent <strong>une seule fois, sur la fiche</strong> (<span class="btn-ref">✎ Modifier</span>) ou à la création du prospect — un maquis reste un maquis quel que soit le forfait qu'on lui vend. Toutes ses affaires en héritent.</p>
+      <p>Renseignez toujours le <strong>type d'activité</strong> et quelques <strong>tags</strong> : ils alimentent les briefs IA, les filtres de statistiques et le pipeline. Ils se saisissent <strong>une seule fois</strong> — sur la fiche (<span class="btn-ref">✎ Modifier</span>), à la création du prospect, ou directement pendant la visite qui le fait naître (4c) — un maquis reste un maquis quel que soit le forfait qu'on lui vend. Toutes ses affaires en héritent.</p>
       <p>Quand le type manque, la fiche l'affiche en pastille en pointillés : touchez-la pour le renseigner. Ce n'est pas un détail — sans lui, ce client est absent de tous les comptages par type.</p>
     </div>
   </div>
