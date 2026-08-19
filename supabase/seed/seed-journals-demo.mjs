@@ -6,20 +6,30 @@
  * corrected badly, a customer that changed hands, an affaire that was deleted.
  * Each fiche below is one of those.
  *
- * Everything is stamped source = 'journal-demo', so
+ * Purged by name rather than by a marker column: contacts.source is an enum
+ * ('d2d_knock' | 'b2b_field' | 'referral' | 'walk_in' | 'import' | 'manual')
+ * with no room for a custom tag, and a visible tag would show up on the fiche
+ * itself. The five names below are the key.
+ *
  *   node supabase/seed/seed-journals-demo.mjs --purge
- * removes exactly this and nothing else.
+ * removes exactly these and nothing else.
  */
 import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 
-const SOURCE = 'journal-demo';
+const NAMES = [
+  'Supérette Adjamé Centre',
+  'Maquis Le Baobab',
+  'Boutique Cocody Nord',
+  'Kiosque Riviera 3',
+  'Pharmacie Les Palmiers',
+];
 const env = readFileSync('.env.local', 'utf8');
 const get = (k) => env.match(new RegExp(`^${k}=(.*)$`, 'm'))?.[1]?.trim();
 const db = createClient(get('NEXT_PUBLIC_SUPABASE_URL'), get('SUPABASE_SERVICE_ROLE_KEY'));
 
 // ---------------------------------------------------------------- purge -----
-const { data: mine } = await db.from('contacts').select('id').eq('source', SOURCE);
+const { data: mine } = await db.from('contacts').select('id').in('name', NAMES);
 for (const c of mine ?? []) {
   const dealIds = ((await db.from('deals').select('id').eq('contact_id', c.id)).data ?? []).map((d) => d.id);
   for (const id of dealIds) {
@@ -58,7 +68,7 @@ async function fiche({ name, phone, address, lat, lng, type, tags, rep, lifecycl
     .from('contacts')
     .insert({
       name, phone, address, lat, lng, business_type: type, tags: tags ?? [],
-      lifecycle, source: SOURCE, priority: 'medium',
+      lifecycle, source: 'manual', priority: 'medium',
       assigned_rep_id: rep.id, created_by: admin.id,
     })
     .select('id')
@@ -212,7 +222,7 @@ const made = [];
     address: 'Marcory Zone 4, Abidjan', lat: 5.2951, lng: -3.9977,
     type: 'Pharmacie', tags: [], rep: rep1,
   });
-  await db.from('contacts').update({ source: SOURCE }).eq('id', id);
+  await db.from('contacts').update({ source: 'import' }).eq('id', id);
   await db.from('contact_events').insert([
     cEv(id, 'Pharmacie Les Palmiers', 'imported', null, null, 60, admin),
     cEv(id, 'Pharmacie Les Palmiers', 'assigned', null, nm(rep1), 58, admin),

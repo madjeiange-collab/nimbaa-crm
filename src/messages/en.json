@@ -555,7 +555,13 @@
       "in_progress": "In progress",
       "done": "Done",
       "needs_revisit": "Revisit needed"
-    }
+    },
+    "queueSearch": "Search a customer, a job, an address…",
+    "queueClear": "Clear the search",
+    "queueAllReps": "All sales reps",
+    "queueAllTerritories": "All territories",
+    "queueShowing": "{n} of {total}",
+    "queueNoMatch": "No job matches."
   },
   "adminProducts": {
     "title": "Products",

@@ -555,7 +555,13 @@
       "in_progress": "En cours",
       "done": "Terminée",
       "needs_revisit": "Retour requis"
-    }
+    },
+    "queueSearch": "Chercher un client, un chantier, une adresse…",
+    "queueClear": "Effacer la recherche",
+    "queueAllReps": "Tous les commerciaux",
+    "queueAllTerritories": "Tous les secteurs",
+    "queueShowing": "{n} sur {total}",
+    "queueNoMatch": "Aucun chantier ne correspond."
   },
   "adminProducts": {
     "title": "Produits",
