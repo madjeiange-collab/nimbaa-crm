@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { ensurePendingInstallation } from '@/lib/installations/seed';
 import { ensureCommissionForWonDeal } from '@/lib/commissions/core';
 import { recomputeContactRollup } from '@/lib/deals/rollup';
+import { startTrial, convertTrial, declineTrial } from '@/lib/deals/trial-actions';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -98,7 +99,7 @@ export async function setDealStage(dealId: string, stageId: string): Promise<Act
   } = await supabase.auth.getUser();
 
   const [{ data: stage }, { data: deal }] = await Promise.all([
-    supabase.from('pipeline_stages').select('is_won, is_lost').eq('id', stageId).maybeSingle(),
+    supabase.from('pipeline_stages').select('is_won, is_lost, system_key').eq('id', stageId).maybeSingle(),
     supabase.from('deals').select('contact_id, needs_installation, title, won_at').eq('id', dealId).maybeSingle(),
   ]);
   if (!deal) return { ok: false, error: 'not_found' };
@@ -114,6 +115,15 @@ export async function setDealStage(dealId: string, stageId: string): Promise<Act
   const { error } = await supabase.from('deals').update(patch).eq('id', dealId);
   if (error) return { ok: false, error: 'save_failed' };
 
+  // Picking "Essai" from the dropdown must do exactly what the button does:
+  // put the equipment out, leave the contact a prospect, sell nothing.
+  if (stage?.system_key === 'trial') {
+    const res = await startTrial(dealId);
+    if (!res.ok) return res;
+    revalidate(deal.contact_id);
+    return { ok: true };
+  }
+
   if (status === 'won' && deal.needs_installation) {
     await ensurePendingInstallation(supabase, {
       dealId,
@@ -123,6 +133,27 @@ export async function setDealStage(dealId: string, stageId: string): Promise<Act
     });
   }
   if (status === 'won') await ensureCommissionForWonDeal(supabase, dealId);
+
+  // Leaving a running trial by the dropdown settles it the same way the two
+  // buttons do — including the dépose, so equipment never stays out silently.
+  const { data: running } = await supabase
+    .from('deal_trials')
+    .select('id')
+    .eq('deal_id', dealId)
+    .is('outcome', null)
+    .limit(1)
+    .maybeSingle();
+  if (running) {
+    if (status === 'won') await convertTrial(dealId);
+    else if (status === 'lost') await declineTrial(dealId, '');
+    else {
+      // Back to Négociation and such: the period is over without a verdict.
+      await supabase
+        .from('deal_trials')
+        .update({ outcome: 'superseded', ended_on: new Date().toISOString().slice(0, 10) })
+        .eq('id', running.id);
+    }
+  }
 
   await recomputeContactRollup(supabase, deal.contact_id);
   revalidate(deal.contact_id);

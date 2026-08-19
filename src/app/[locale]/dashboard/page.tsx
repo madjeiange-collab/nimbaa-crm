@@ -8,6 +8,7 @@ import {
   type DashboardOverviewProps,
 } from '@/components/dashboard/dashboard-overview';
 import { DashboardTabs } from '@/components/dashboard/dashboard-tabs';
+import { TrialTiles } from '@/components/dashboard/trial-tiles';
 import { TechnicianTeamStats } from '@/components/stats/technician-team-stats';
 import { loadInstallManagerData } from '@/lib/installations/manager-data';
 
@@ -109,6 +110,9 @@ export default async function DashboardPage({
   return (
     <>
       <AppHeader title={t('title')} />
+      <div className="mx-auto max-w-[1400px] px-4 pt-4">
+        <TrialTiles showMoney />
+      </div>
       <DashboardTabs
         commercial={
           <DashboardOverview

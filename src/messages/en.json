@@ -299,7 +299,10 @@
     "installDone": "Installation completed",
     "revisit": "Revisit",
     "saved": "Points saved",
-    "error": "Invalid values (0 to 1000)"
+    "error": "Invalid values (0 to 1000)",
+    "trialStarted": "Trial started",
+    "trialInstallDone": "Trial pose finished",
+    "retrievalDone": "Retrieval done"
   },
   "leaderboard": {
     "title": "Leaderboard",
@@ -421,7 +424,29 @@
     "deleteConfirm": "Delete this deal? Its jobs and their trips will be deleted with it.",
     "fromContact": "· set on the customer record",
     "saveFailed": "Change not saved. Try again, or ask a manager.",
-    "installOnWin": "The job is created when the deal reaches \"Won (Customer)\"."
+    "installOnWin": "The job is created when the deal reaches \"Won (Customer)\".",
+    "trialTitle": "Trial running",
+    "trialLeft": "{n} d left",
+    "trialOverdue": "overdue by {n, plural, one {# day} other {# days}}",
+    "trialNo": "Trial {n}",
+    "trialDays": "{n, plural, one {# day} other {# days}}",
+    "trialOutcome_converted": "became a customer",
+    "trialOutcome_declined": "no follow-up",
+    "trialOutcome_superseded": "interrupted",
+    "trialExtendedTo": "extended to {date}",
+    "trialOnSite": "{n, plural, one {# day} other {# days}} of equipment on site in total",
+    "trialConvert": "The trial convinced",
+    "trialDecline": "Not convinced",
+    "trialDeclineWhy": "Why did the trial not convince?",
+    "trialExtend": "Extend",
+    "trialExtendLocked": "A second extension needs a manager.",
+    "trialExtendNote": "Reason for the extension",
+    "trialExtendSave": "Extend the trial",
+    "trialExtendCancel": "Cancel",
+    "err_manager_only_second_trial": "Only a manager can open a second trial.",
+    "err_manager_only_extension": "A second extension needs a manager.",
+    "err_date_must_move_forward": "The new date must be later than the current one.",
+    "err_no_open_trial": "No trial is running on this deal."
   },
   "installation": {
     "title": "Installation",
@@ -1053,5 +1078,15 @@
     "legendBaseline": "+3 / −2 · gap to the person’s own 14-day average",
     "baselineTip": "average {n} passages over {days} days worked",
     "loggedNothingMany": "{n, plural, one {# person} other {# people}} logged nothing"
+  },
+  "trials": {
+    "title": "Trials running",
+    "running": "trials running",
+    "endingSoon": "ending this week",
+    "overdue": "overdue, no decision",
+    "convertedRate": "trials → customers",
+    "lentOut": "equipment on loan",
+    "overdueHint": "An overdue trial is equipment lent out by oversight.",
+    "overdueLink": "Open the pipeline"
   }
 }

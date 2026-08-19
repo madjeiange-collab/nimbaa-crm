@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { TECH_BACKSTOP_DAYS } from '@/lib/deals/trial';
 
 /**
  * Commission engine (deal-based, no payment import).
@@ -129,7 +130,13 @@ export async function ensureTechCommissionForInstall(
       status: string;
       products: { price_xof: number | null; tech_commission_pct: number | null } | null;
     } | null } | null)?.deals;
-    if (!inst || inst.status !== 'done' || !deal || deal.status !== 'won') return;
+    if (!inst || inst.status !== 'done' || !deal) return;
+    // Not "only when won" any more. A trial pose happens with the affaire
+    // still open; writing the entry now — pending — is what guarantees the
+    // technician is paid at all, and freezes the rate at the day of the work
+    // rather than the day the customer makes up their mind.
+    if (deal.status === 'lost') return;
+    const won = deal.status === 'won';
     const pct = Number(deal.products?.tech_commission_pct ?? 0);
     const price = Number(deal.value_xof ?? deal.products?.price_xof ?? 0);
     if (pct <= 0 || price <= 0 || !installerId) return;
@@ -153,11 +160,73 @@ export async function ensureTechCommissionForInstall(
       amount_xof: Math.round((price * pct) / 100),
       base_xof: price,
       rate_pct: pct,
-      status: 'earned',
-      earned_at: new Date().toISOString(),
+      status: won ? 'earned' : 'pending',
+      earned_at: won ? new Date().toISOString() : null,
     });
   } catch {
     // pre-0022 DB or lookup failure — never break the installation save
+  }
+}
+
+/**
+ * Ripen or write off the technician lines of one affaire.
+ *
+ * 'earned' when the trial converts — the sale exists, so the work is payable.
+ * 'expired' when it does not, which is the same word a cancelled subscription
+ * uses for its remaining slices, so nothing new has to be explained.
+ */
+export async function settleTrialCommissions(
+  db: SupabaseClient,
+  dealId: string,
+  to: 'earned' | 'expired',
+): Promise<void> {
+  try {
+    await db
+      .from('commission_entries')
+      .update(
+        to === 'earned'
+          ? { status: 'earned', earned_at: new Date().toISOString() }
+          : { status: 'expired' },
+      )
+      .eq('deal_id', dealId)
+      .eq('kind', 'install')
+      .eq('status', 'pending');
+  } catch {
+    // pre-0022 DB — never break the conversion over the ledger
+  }
+}
+
+/**
+ * The backstop: a technician's line ripens once the equipment has been on site
+ * past TECH_BACKSTOP_DAYS, whatever the customer has decided.
+ *
+ * With 30-day trials, an extension and possibly a second period, waiting for
+ * the sale can mean waiting a quarter for work finished on day one — a delay
+ * the technician cannot influence. Runs with the daily accrual.
+ */
+export async function accrueBackstopTechCommissions(db: SupabaseClient): Promise<number> {
+  try {
+    const cutoff = new Date(Date.now() - TECH_BACKSTOP_DAYS * 864e5).toISOString().slice(0, 10);
+    const { data: due } = await db
+      .from('deal_trials')
+      .select('deal_id, started_on, installation_id')
+      .not('installation_id', 'is', null)
+      .lte('started_on', cutoff)
+      .limit(500);
+    const dealIds = [...new Set((due ?? []).map((t) => t.deal_id as string))];
+    if (dealIds.length === 0) return 0;
+
+    const { data: ripened } = await db
+      .from('commission_entries')
+      .update({ status: 'earned', earned_at: new Date().toISOString() })
+      .in('deal_id', dealIds)
+      .eq('kind', 'install')
+      .eq('status', 'pending')
+      .select('id');
+    return ripened?.length ?? 0;
+  } catch {
+    // Table missing (pre-0032) — the backstop is a nicety, not a gate.
+    return 0;
   }
 }
 

@@ -16,6 +16,9 @@ const FIELDS: { key: keyof PointConfig; i18n: string }[] = [
   { key: 'deal_won', i18n: 'dealWon' },
   { key: 'install_done', i18n: 'installDone' },
   { key: 'revisit', i18n: 'revisit' },
+  { key: 'trial_started', i18n: 'trialStarted' },
+  { key: 'trial_install_done', i18n: 'trialInstallDone' },
+  { key: 'retrieval_done', i18n: 'retrievalDone' },
 ];
 
 export function PointsEditor({ initial }: { initial: PointConfig }) {

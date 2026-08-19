@@ -4,7 +4,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { AI_MODELS } from '@/lib/ai/config';
 import { computeBoards, getPointConfig } from '@/lib/leaderboard/score';
-import { runCommissionSweep } from '@/lib/commissions/core';
+import { runCommissionSweep, accrueBackstopTechCommissions } from '@/lib/commissions/core';
 import { summarizeCheckins } from '@/lib/checkin/summary';
 import { loadOpenTasks } from '@/lib/tasks/queries';
 
@@ -66,6 +66,9 @@ export async function GET(request: Request) {
 
   // Commission accrual rides the daily run: earn due slices, expire dead ones.
   await runCommissionSweep(admin);
+  // Same daily pass: a technician waiting on a trial that has run past two
+  // months is paid whether or not the customer has decided.
+  await accrueBackstopTechCommissions(admin);
 
   const pts = await getPointConfig(admin);
 
@@ -659,6 +662,8 @@ export async function GET(request: Request) {
       points: 0,
       done: 0,
       revisits: 0,
+      trialInstalls: 0,
+      retrievals: 0,
       open: 0,
       completionPct: 0,
     });

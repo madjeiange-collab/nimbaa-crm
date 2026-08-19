@@ -299,7 +299,10 @@
     "installDone": "Installation terminée",
     "revisit": "Revisite",
     "saved": "Points enregistrés",
-    "error": "Valeurs invalides (0 à 1000)"
+    "error": "Valeurs invalides (0 à 1000)",
+    "trialStarted": "Essai lancé",
+    "trialInstallDone": "Pose d’essai terminée",
+    "retrievalDone": "Dépose effectuée"
   },
   "leaderboard": {
     "title": "Classement",
@@ -421,7 +424,29 @@
     "deleteConfirm": "Supprimer cette affaire ? Les chantiers et leurs passages seront supprimés avec elle.",
     "fromContact": "· défini sur la fiche client",
     "saveFailed": "Modification non enregistrée. Réessayez, ou demandez à un manager.",
-    "installOnWin": "Le chantier sera créé lorsque l’affaire passera à « Gagné (Client) »."
+    "installOnWin": "Le chantier sera créé lorsque l’affaire passera à « Gagné (Client) ».",
+    "trialTitle": "Essai en cours",
+    "trialLeft": "J-{n}",
+    "trialOverdue": "échu depuis {n, plural, one {# jour} other {# jours}}",
+    "trialNo": "Essai {n}",
+    "trialDays": "{n, plural, one {# jour} other {# jours}}",
+    "trialOutcome_converted": "converti en client",
+    "trialOutcome_declined": "sans suite",
+    "trialOutcome_superseded": "interrompu",
+    "trialExtendedTo": "prolongé au {date}",
+    "trialOnSite": "{n, plural, one {# jour} other {# jours}} de matériel sur place au total",
+    "trialConvert": "L’essai a convaincu",
+    "trialDecline": "Pas convaincu",
+    "trialDeclineWhy": "Pourquoi l’essai n’a pas convaincu ?",
+    "trialExtend": "Prolonger",
+    "trialExtendLocked": "Une deuxième prolongation demande un manager.",
+    "trialExtendNote": "Motif de la prolongation",
+    "trialExtendSave": "Prolonger l’essai",
+    "trialExtendCancel": "Annuler",
+    "err_manager_only_second_trial": "Un second essai ne peut être ouvert que par un manager.",
+    "err_manager_only_extension": "Une deuxième prolongation demande un manager.",
+    "err_date_must_move_forward": "La nouvelle date doit être postérieure à l’actuelle.",
+    "err_no_open_trial": "Aucun essai en cours sur cette affaire."
   },
   "installation": {
     "title": "Installation",
@@ -1053,5 +1078,15 @@
     "legendBaseline": "+3 / −2 · écart à la moyenne de la personne sur 14 jours",
     "baselineTip": "moyenne {n} passages sur {days} journées travaillées",
     "loggedNothingMany": "{n, plural, one {# personne n’a} other {# personnes n’ont}} rien enregistré"
+  },
+  "trials": {
+    "title": "Essais en cours",
+    "running": "essais en cours",
+    "endingSoon": "finissent cette semaine",
+    "overdue": "échus, sans décision",
+    "convertedRate": "essais → clients",
+    "lentOut": "matériel prêté",
+    "overdueHint": "Un essai échu est du matériel prêté par oubli.",
+    "overdueLink": "Voir le pipeline"
   }
 }

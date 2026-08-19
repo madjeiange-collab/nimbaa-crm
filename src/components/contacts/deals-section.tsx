@@ -23,6 +23,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  FREE_EXTENSIONS,
+  addDays,
+  daysBetween,
+  daysLeft,
+  daysOnSite,
+  isRunning,
+  todayKey,
+  type TrialRow,
+} from '@/lib/deals/trial';
+import { extendTrial, convertTrial, declineTrial } from '@/lib/deals/trial-actions';
 
 export interface DealInstall {
   id: string;
@@ -43,6 +54,8 @@ export interface DealCard {
   status: DealStatus;
   pipelineStageId: string | null;
   needsInstallation: boolean;
+  /** Every trial period this affaire has had, oldest first. */
+  trials: TrialRow[];
   contactPersonId: string | null;
   businessType: string | null;
   tags: string[];
@@ -271,6 +284,155 @@ function InstallRow({
   );
 }
 
+/**
+ * An affaire on trial: the periods it has had, how long the equipment has
+ * actually been out, and the three ways out.
+ *
+ * The headline number is days ON SITE, not days left. "J-4" on a second
+ * extension reads as nearly over when the honest figure is seventy-five days
+ * on someone's counter — and that figure is the one that decides whether a
+ * third extension is reasonable.
+ */
+function TrialPanel({
+  deal,
+  isManager,
+  isPending,
+  run,
+}: {
+  deal: DealCard;
+  isManager: boolean;
+  isPending: boolean;
+  run: (fn: () => Promise<unknown>) => void;
+}) {
+  const t = useTranslations('deals');
+  const [extending, setExtending] = useState(false);
+  const [to, setTo] = useState('');
+  const [note, setNote] = useState('');
+
+  const current = deal.trials.find(isRunning) ?? null;
+  const onSite = daysOnSite(deal.trials);
+  const left = current ? daysLeft(current) : null;
+  const used = current?.extensions?.length ?? 0;
+  const canExtend = isManager || used < FREE_EXTENSIONS;
+
+  const fmt = (d: string) =>
+    new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' }).format(
+      new Date(`${d}T12:00:00Z`),
+    );
+
+  return (
+    <div className="space-y-2 rounded-md border border-brand-amber/40 bg-brand-amber/5 p-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-medium">{t('trialTitle')}</span>
+        {current && (
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              left != null && left < 0
+                ? 'bg-destructive/10 text-destructive'
+                : 'bg-brand-amber/20 text-brand-brown'
+            }`}
+          >
+            {left != null && left < 0 ? t('trialOverdue', { n: -left }) : t('trialLeft', { n: left ?? 0 })}
+          </span>
+        )}
+      </div>
+
+      <ol className="space-y-0.5 text-xs text-muted-foreground">
+        {deal.trials.map((tr) => (
+          <li key={tr.id}>
+            <span className="font-medium text-foreground">{t('trialNo', { n: tr.seq })}</span>{' '}
+            {fmt(tr.started_on)} → {fmt(tr.ends_on)}{' '}
+            <span>({t('trialDays', { n: daysBetween(tr.started_on, tr.ended_on ?? tr.ends_on) })})</span>
+            {tr.outcome && <span> · {t(`trialOutcome_${tr.outcome}` as never)}</span>}
+            {(tr.extensions ?? []).map((e, i) => (
+              <span key={i} className="block pl-3">
+                ↳ {t('trialExtendedTo', { date: fmt(e.to) })}
+                {e.note ? ` — « ${e.note} »` : ''}
+              </span>
+            ))}
+          </li>
+        ))}
+      </ol>
+
+      {onSite > 0 && (
+        <p className="text-xs font-medium text-brand-brown">{t('trialOnSite', { n: onSite })}</p>
+      )}
+
+      {current && !extending && (
+        <div className="flex flex-wrap gap-2 pt-0.5">
+          <Button
+            type="button"
+            size="sm"
+            disabled={isPending}
+            onClick={() => run(() => convertTrial(deal.id))}
+          >
+            {t('trialConvert')}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={isPending}
+            className="text-destructive"
+            onClick={() => {
+              const why = window.prompt(t('trialDeclineWhy')) ?? '';
+              run(() => declineTrial(deal.id, why));
+            }}
+          >
+            {t('trialDecline')}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={isPending || !canExtend}
+            title={canExtend ? undefined : t('trialExtendLocked')}
+            onClick={() => {
+              setTo(addDays(current.ends_on > todayKey() ? current.ends_on : todayKey(), 15));
+              setExtending(true);
+            }}
+          >
+            {t('trialExtend')}
+            {!canExtend && ' 🔒'}
+          </Button>
+        </div>
+      )}
+
+      {!canExtend && !extending && (
+        <p className="text-xs text-muted-foreground">{t('trialExtendLocked')}</p>
+      )}
+
+      {current && extending && (
+        <div className="space-y-2 pt-0.5">
+          <Input type="date" value={to} min={addDays(todayKey(), 1)} onChange={(e) => setTo(e.target.value)} />
+          <Input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={t('trialExtendNote')}
+          />
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={isPending || !to}
+              onClick={() => {
+                run(() => extendTrial(deal.id, to, note));
+                setExtending(false);
+                setNote('');
+              }}
+            >
+              {t('trialExtendSave')}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setExtending(false)}>
+              {t('trialExtendCancel')}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DealRow({
   contactId,
   deal,
@@ -295,15 +457,21 @@ function DealRow({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState(deal.title ?? '');
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const KNOWN = new Set([
+    'manager_only_second_trial',
+    'manager_only_extension',
+    'date_must_move_forward',
+    'no_open_trial',
+  ]);
 
   // Every action on this card returns ActionResult. Discarding it meant a
   // refusal — no rights, row gone, save failed — was indistinguishable from a
   // dead control: the value simply snapped back on refresh with no message.
   function run(fn: () => Promise<unknown>) {
     startTransition(async () => {
-      const res = (await fn()) as { ok?: boolean } | undefined;
-      setFailed(res?.ok === false);
+      const res = (await fn()) as { ok?: boolean; error?: string } | undefined;
+      setFailed(res?.ok === false ? (res.error ?? 'save_failed') : null);
       router.refresh();
     });
   }
@@ -343,7 +511,11 @@ function DealRow({
         )}
       </div>
 
-      {failed && <p className="text-xs text-destructive">{t('saveFailed')}</p>}
+      {failed && (
+        <p className="text-xs text-destructive">
+          {KNOWN.has(failed) ? t(`err_${failed}` as never) : t('saveFailed')}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
@@ -517,8 +689,13 @@ function DealRow({
         />
         {t('needsInstallation')}
       </label>
-      {deal.needsInstallation && deal.status !== 'won' && (
-        <p className="pl-6 text-xs text-muted-foreground">{t('installOnWin')}</p>
+      {deal.trials.length > 0 ? (
+        <TrialPanel deal={deal} isManager={!!isManager} isPending={isPending} run={run} />
+      ) : (
+        deal.needsInstallation &&
+        deal.status !== 'won' && (
+          <p className="pl-6 text-xs text-muted-foreground">{t('installOnWin')}</p>
+        )
       )}
 
       {/* Installation(s) for a won + installable deal */}

@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation';
 import { requireUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { AppHeader } from '@/components/shared/app-header';
+import type { TrialRow } from '@/lib/deals/trial';
 import { ContactDetail } from '@/components/contacts/contact-detail';
 import { TaskList } from '@/components/tasks/task-list';
 import { loadContactTasks } from '@/lib/tasks/queries';
@@ -280,6 +281,18 @@ export default async function ContactDetailPage({
     ),
   );
 
+  const { data: trialRows } = await supabase
+    .from('deal_trials')
+    .select('id, deal_id, contact_id, seq, started_on, ends_on, ended_on, outcome, installation_id, extensions')
+    .eq('contact_id', id)
+    .order('seq', { ascending: true });
+  const trialsByDeal = new Map<string, TrialRow[]>();
+  for (const t of (trialRows ?? []) as unknown as TrialRow[]) {
+    const list = trialsByDeal.get(t.deal_id) ?? [];
+    list.push(t);
+    trialsByDeal.set(t.deal_id, list);
+  }
+
   const deals: DealCard[] = ((dealRows ?? []) as unknown as DealRow[]).map((d) => ({
     id: d.id,
     title: d.title,
@@ -292,6 +305,7 @@ export default async function ContactDetailPage({
     businessType: dealMeta.get(d.id)?.business_type ?? null,
     tags: dealMeta.get(d.id)?.tags ?? [],
     subscription: subByDeal.get(d.id) ?? null,
+    trials: trialsByDeal.get(d.id) ?? [],
     installs: (d.installations ?? []).map((i) => ({
       id: i.id,
       status: i.status,
