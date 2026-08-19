@@ -536,7 +536,8 @@
   <div class="txt">
     <h3>Convertir un prospect en client</h3>
     <p>Il n'y a <strong>pas de bouton « convertir »</strong> sur la fiche : c'est <strong>l'affaire qui décide</strong>. Un prospect devient client dès qu'<strong>une</strong> de ses affaires atteint l'étape <strong>Gagné (Client)</strong>. Le contact passe alors tout seul de l'onglet <em>Prospects</em> à l'onglet <em>Clients</em>.</p>
-    <p class="path">Nouveau → Contacté → Intéressé → RDV → Négociation → <strong>Gagné (Client)</strong></p>
+    <p class="path">Nouveau → Contacté → Intéressé → RDV → Négociation → <strong>Essai</strong> → <strong>Gagné (Client)</strong></p>
+    <p>L'étape <strong>Essai</strong> est facultative : elle sert quand on installe le matériel avant la vente, pour laisser le client juger sur pièce (5h).</p>
 
     <h4>Depuis la fiche — vente préparée</h4>
     <ol>
@@ -588,6 +589,45 @@
     <img src="/manuel/16-deal-stage.png" alt="Bloc Affaires : une affaire existante à barre ambre au-dessus du cadre en pointillés Nouvelle affaire" />
     <figcaption>Une affaire <strong>existante</strong> (barre ambre, « En cours ») au-dessus du cadre en pointillés qui sert à en <strong>créer</strong> une.</figcaption>
   </figure>
+</section>
+
+<!-- ---- 5h. L'essai ---- -->
+<section class="screen sub noshot" id="essai">
+  <div class="txt">
+    <h3>Laisser le client essayer avant d'acheter</h3>
+    <p>Sur ce marché, beaucoup de gérants veulent voir tourner l'appareil dans leur commerce avant de signer. L'étape <strong>Essai</strong>, entre Négociation et Gagné, décrit exactement cela : <strong>le matériel part, la vente n'est pas faite</strong>.</p>
+    <p>Le client reste donc un <strong>prospect</strong>. Aucun abonnement ne démarre, aucune commission commerciale n'est créée, et il n'entre dans aucun chiffre d'affaires. C'est tout l'objet de l'étape : sans elle, il fallait déclarer une vente qui n'existait pas pour obtenir une pose.</p>
+
+    <h4>Lancer l'essai</h4>
+    <ol>
+      <li>Sur l'affaire, choisissez l'étape <strong>Essai</strong>.</li>
+      <li>Si « Installation requise » est coché, un <strong>chantier de pose</strong> est créé aussitôt : le technicien le voit dans sa liste comme n'importe quelle installation.</li>
+      <li>La durée par défaut est de <strong>30 jours</strong> (réglable par l'administrateur). Une <strong>tâche « Fin d'essai »</strong> est posée à cette date sur votre liste <em>À faire</em>.</li>
+    </ol>
+    <p class="meta-note">C'est la seule tâche de l'application qui naît d'une <strong>date</strong> et non d'un passage. C'est délibéré : une fin d'essai n'est pas un déplacement, et c'est précisément ce que personne ne retient de tête.</p>
+
+    <h4>Les trois sorties</h4>
+    <div class="tablewrap"><table>
+      <tr><th>Bouton</th><th>Ce qui se passe</th></tr>
+      <tr><td><span class="btn-ref">L'essai a convaincu</span></td><td>L'affaire passe à <strong>Gagné</strong> : abonnement, commission commerciale, statut Client. La commission du technicien, jusque-là « à venir », devient <strong>acquise</strong>.</td></tr>
+      <tr><td><span class="btn-ref">Pas convaincu</span></td><td>L'affaire passe à <strong>Perdu</strong>, et une <strong>dépose</strong> est ouverte pour aller rechercher le matériel. La commission du technicien <strong>expire</strong>, comme les mensualités d'un abonnement résilié.</td></tr>
+      <tr><td><span class="btn-ref">Prolonger</span></td><td>Repousse la date de fin, avec un motif. La tâche « Fin d'essai » suit la nouvelle date.</td></tr>
+    </table></div>
+    <p>Si l'essai est annulé <strong>avant</strong> que quiconque ait posé quoi que ce soit, il n'y a pas de dépose — il n'y a rien à rechercher — et le chantier prévu est simplement retiré de la liste du technicien.</p>
+
+    <h4>Prolonger, et recommencer</h4>
+    <p>La <strong>première prolongation</strong> est du ressort du commercial. La <strong>deuxième</strong> demande un manager, et un <strong>second essai</strong> également. Le bouton reste visible, grisé, avec la raison : ce n'est pas une fonction cachée, c'est une décision qui remonte.</p>
+    <p>Le chiffre à lire n'est pas « J-4 » mais la ligne juste en dessous : <strong>le nombre de jours de matériel sur place</strong>, tous essais confondus. Un essai de 30 jours prolongé de 15 puis relancé pour 30 fait <strong>75 jours</strong>, et c'est ce nombre-là qui dit si une prolongation de plus est raisonnable.</p>
+
+    <div class="callout warn">
+      <span class="lbl">Un essai oublié est du matériel donné</span>
+      <p>Sur l'<strong>Espace manager</strong>, la tuile <strong>« échus, sans décision »</strong> compte les essais dont la date est passée sans que personne ait tranché. C'est le seul chiffre de ce bloc à ramener à zéro chaque semaine ; les autres — essais en cours, taux de conversion, valeur du matériel prêté — sont là pour le mettre en perspective.</p>
+    </div>
+    <div class="callout tip">
+      <span class="lbl">Le technicien n'attend pas dans le noir</span>
+      <p>Sa commission apparaît dès la pose dans <strong>« Mes commissions »</strong>, en <em>À venir</em> : il voit le montant qui se joue. Elle devient acquise à la conversion — ou, si l'essai s'éternise, <strong>automatiquement au bout de 60 jours</strong> sur place, parce qu'au-delà l'attente n'est plus son fait. Ses <strong>points</strong>, eux, tombent le jour de la pose : le classement mesure le travail de la semaine, pas la décision du client.</p>
+    </div>
+  </div>
 </section>
 
 <!-- ---- 5c. Agir depuis la fiche ---- -->
@@ -746,6 +786,7 @@
       <li><strong>Photo de fin</strong> en quittant le chantier (case orange <span class="btn-ref">FIN</span>), puis <span class="btn-ref">Enregistrer</span> — hors ligne si besoin, l'envoi se fera automatiquement.</li>
     </ol>
     <p>Comme pour les visites, la paire <strong>arrivée + fin</strong> est demandée à <strong>chaque passage</strong>, pas seulement au dernier : c'est ce qui mesure la durée réelle sur le chantier, passage par passage.</p>
+    <p>Deux chantiers se distinguent des autres dans votre liste : la <strong>pose d'essai</strong>, qui met le matériel chez un client qui n'a pas encore acheté (5h), et la <strong>dépose</strong>, qui va le rechercher quand l'essai n'aboutit pas. Ils se remplissent exactement comme une installation, et ils sont comptés à part dans vos statistiques — « installations terminées » ne mélange jamais les deux.</p>
     <div class="callout tip">
       <span class="lbl">Commission technicien</span>
       <p>Marquer une installation <strong>terminée</strong> déclenche la commission du technicien (taux propre à chaque produit). Elle apparaît immédiatement dans « Mes commissions ». La date de fin retenue est celle de la <strong>photo de fin</strong>.</p>
@@ -966,6 +1007,7 @@
     </ul>
     <p class="meta-note">Le <strong>pipeline des installations</strong> et l'<strong>audit de leurs photos</strong> ne sont pas ici : ils s'ouvrent depuis <strong>Statistiques techniciens</strong>, où ils sont à côté des chiffres qu'ils détaillent.</p>
     <p>Les listes se filtrent par <strong>secteur</strong>, <strong>type d'activité</strong>, <strong>tag</strong> et <strong>personne</strong> — les mêmes filtres que sur les statistiques.</p>
+    <p>Au-dessus, un bandeau <strong>Essais en cours</strong> apparaît dès qu'un essai tourne : combien courent, combien finissent cette semaine, combien sont <strong>échus sans décision</strong>, le taux d'essais devenus clients, et la valeur du matériel actuellement prêté (5h).</p>
   </div>
   <figure class="phone">
     <img src="/manuel/11-dashboard.png" alt="Espace manager : chiffres d'équipe et accès au pipeline, à l'audit photos et aux commissions" />
@@ -1228,7 +1270,7 @@
       <tr><td><strong>Import</strong></td><td>Import CSV de contacts en masse (modèle fourni).</td></tr>
       <tr><td><strong>Ne pas frapper</strong></td><td>Liste des adresses à exclure du porte-à-porte.</td></tr>
       <tr><td><strong>Étapes du pipeline</strong> · <strong>Dispositions</strong></td><td>Personnalisation des étapes d'affaire et des résultats de visite.</td></tr>
-      <tr><td><strong>Points</strong></td><td>Barème du classement (points par action).</td></tr>
+      <tr><td><strong>Points</strong></td><td>Barème du classement (points par action), <em>essai lancé</em>, <em>pose d'essai</em> et <em>dépose</em> compris.</td></tr>
       <tr><td><strong>Récap</strong></td><td>Heure d'envoi du brief quotidien (6 h 00 par défaut) et options.</td></tr>
       <tr><td><strong>Protocole</strong></td><td>Le script de vente / consignes terrain affichés à l'équipe.</td></tr>
     </table></div>
