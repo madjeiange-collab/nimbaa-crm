@@ -1,0 +1,3 @@
+# Racine de son propre espace pnpm : ce projet vit provisoirement dans un
+# sous-dossier de nimbaa-crm et ne doit pas être happé par ses dépendances.
+packages: []

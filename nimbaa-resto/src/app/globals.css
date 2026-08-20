@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-paper text-ink antialiased; }
+  /* Touch targets sized for a waiter standing up with one hand on a tray. */
+  button, a[role='button'], input, select { min-height: 44px; }
+}
