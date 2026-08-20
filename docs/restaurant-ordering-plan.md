@@ -44,11 +44,49 @@ project and every one of them lands inside `auth.uid() is not null`. Add
 Retrofitting tenant scoping onto thirty-five existing migrations is a bigger
 job than starting clean, and a riskier one, because the failure is silent.
 
-What gets **reused** (copied, not shared): the Next.js 14 App Router skeleton,
-`src/lib/supabase/*` client wrappers, the `next-intl` routing setup, the
-shadcn/ui kit and Tailwind config, the numbered-migration convention with
+### What is separate, and what is merely copied
+
+**Fully separate — no link of any kind:**
+
+| | Consequence |
+|---|---|
+| Git repository | Own history, branches, issues. Neither repo imports the other; this is not a monorepo and there is no shared package. |
+| **Supabase project** | A different Postgres server. Different `auth.users`, different API keys, storage, Realtime and backups. |
+| Accounts | A CRM login does not *exist* in the restaurant platform — there is no row to match it against, and no query can reach one from the other. |
+| Vercel project | Own domain, own environment variables, own deploy history. |
+| Runtime | Neither calls the other. An outage, a bad migration or a leaked key in one is invisible to the other. |
+
+The second row is the one that carries the security argument above. Because the
+databases are physically separate, an RLS mistake in this CRM **cannot** expose
+CRM data to a waiter in Kaloum — not because we were careful, but because there
+is no path. That is a structural guarantee rather than a maintained one, and it
+is the whole reason for the split.
+
+**Copied once at bootstrap, then diverging:** the Next.js 14 App Router
+skeleton, `src/lib/supabase/*` client wrappers, the `next-intl` routing setup,
+the shadcn/ui kit and Tailwind config, the numbered-migration convention with
 prose comments explaining *why* a table exists, the CRM's username-login trick
-(§5), and `public/manuel.html` as the model for end-user documentation.
+(§4.4), and `public/manuel.html` as the model for end-user documentation.
+
+These are **copies, not links**. Fixing a bug in the CRM's Supabase wrapper does
+not fix it in the restaurant platform; you fix it twice. That duplication is the
+price of the isolation, paid knowingly — the alternative buys deduplication with
+coupling, and coupling is exactly what the security argument rules out.
+
+**Shared only because both are yours:** the same GitHub account, and probably
+the same Supabase organisation and Vercel account. An organisation is a billing
+boundary, not a security one — projects inside it remain isolated databases.
+
+### If the two ever need to talk
+
+The CRM already classifies prospects by business type — `Restaurant`, `maquis`,
+`glacier`, `chawarma`. So selling the restaurant platform *through* the field
+sales CRM is a plausible future: a won deal in the CRM could provision a
+restaurant on the platform.
+
+That link, if it is ever built, is **an authenticated API call between two
+independent systems** — never a shared table, a shared database or a shared
+login. The separation survives the integration.
 
 Stack: Next.js 14 (App Router) · TypeScript · Tailwind + shadcn/ui ·
 Supabase (Postgres, Auth, Realtime, Storage) · Vercel · `zod` at every boundary.

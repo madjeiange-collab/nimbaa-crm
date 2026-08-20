@@ -510,6 +510,26 @@ git push -u origin main
 
 ---
 
+## Step 8b — Move the planning docs across · 1 min
+
+The plan and this runbook currently live in `nimbaa-crm/docs/`, which was
+convenient while there was nowhere else to put them. They belong to *this*
+project.
+
+```bash
+mkdir -p docs
+# from your nimbaa-crm checkout:
+cp ../nimbaa-crm/docs/restaurant-ordering-plan.md docs/plan.md
+cp ../nimbaa-crm/docs/bootstrap-new-repo.md       docs/bootstrap.md
+git add docs && git commit -m "Bring the plan and the runbook home"
+```
+
+Then delete them from `nimbaa-crm` — a plan for one product sitting in another
+product's repo is the kind of small untidiness that later reads as “these two
+things are related”, which is precisely what the split exists to deny.
+
+---
+
 ## Step 9 — Deploy to Vercel · 5 min
 
 1. [vercel.com](https://vercel.com) → **New Project** → import `nimbaa-resto`.
