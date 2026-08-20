@@ -1,6 +1,15 @@
 export const ROLES = ['owner', 'manager', 'waiter', 'kitchen', 'cashier'] as const;
 export type Role = (typeof ROLES)[number];
 
+/** What each role is called in French. The database keys are never shown. */
+export const ROLE_LABELS: Record<Role, string> = {
+  owner: 'patron',
+  manager: 'gérant',
+  waiter: 'serveur',
+  kitchen: 'cuisine',
+  cashier: 'caisse',
+};
+
 /** Where each role works. Owner and manager share the back office. */
 const SURFACES: Record<Role, { segment: string; label: string; hint: string }> = {
   waiter: { segment: 'service', label: 'Salle', hint: 'Prendre les commandes, servir' },

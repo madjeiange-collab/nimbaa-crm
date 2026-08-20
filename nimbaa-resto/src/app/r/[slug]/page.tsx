@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { requireStaff } from '@/lib/auth/guard';
-import { surfacesFor } from '@/lib/tenancy/roles';
+import { ROLE_LABELS, surfacesFor } from '@/lib/tenancy/roles';
 import { signOut } from './login/actions';
 
 export default async function RestaurantHome({ params }: { params: { slug: string } }) {
@@ -16,7 +16,7 @@ export default async function RestaurantHome({ params }: { params: { slug: strin
         Bonjour {ctx.displayName ?? ctx.username}
       </h1>
       <p className="mt-1 text-sm text-ink-faint">
-        {ctx.roles.join(' · ')}
+        {ctx.roles.map((r) => ROLE_LABELS[r]).join(' · ')}
       </p>
 
       <nav className="mt-8 flex flex-col gap-3">
