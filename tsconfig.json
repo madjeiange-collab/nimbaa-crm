@@ -19,5 +19,9 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  // nimbaa-resto is a separate Next app with its own tsconfig, deps and lockfile.
+  // Left in, its sources get type-checked against this project's "@/*" alias and
+  // this project's Supabase client, and every import fails on names that only
+  // exist here. It is built from its own directory, never from this one.
+  "exclude": ["node_modules", "nimbaa-resto"]
 }
