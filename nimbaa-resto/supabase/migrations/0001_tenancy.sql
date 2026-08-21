@@ -140,3 +140,17 @@ language sql volatile security definer set search_path = public as $$
      set must_change_password = false
    where user_id = auth.uid();
 $$;
+
+-- ---------------------------------------------------------------- droits
+-- Supabase accorde ces droits par défaut aux nouvelles tables de public ; on
+-- les écrit quand même, pour que la migration se suffise à elle-même et
+-- s'applique telle quelle sur un Postgres nu — en test, en CI, en local.
+--
+-- Large en apparence : c'est le modèle Supabase, où la barrière est RLS et non
+-- le GRANT. anon n'a aucune policy sur ces trois tables, donc anon ne lit rien.
+grant usage on schema public to anon, authenticated, service_role;
+grant all on restaurants, restaurant_members, staff_accounts
+  to anon, authenticated, service_role;
+grant execute on function is_member(uuid) to anon, authenticated, service_role;
+grant execute on function has_role(uuid, text[]) to anon, authenticated, service_role;
+grant execute on function clear_must_change_password() to anon, authenticated, service_role;
