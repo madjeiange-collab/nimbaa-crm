@@ -305,21 +305,53 @@ git diff --quiet HEAD^ HEAD -- apps/resto packages/
 
 ## 11. Migrating the CRM in
 
-Not now — §12 says when. The shape, for when it happens:
+**The CRM is sold to external organisations.** That is now settled, and it makes
+this section the largest piece of work on the platform — larger than it looks,
+because the problem is not only the 41 open policies.
 
-1. `core.organizations` gains one row: the existing company. Every CRM table
-   gains `org_id`, backfilled to it. Additive, no behaviour change.
-2. The 41 broad policies are rewritten to
-   `core.has_product(org_id, 'crm')`, table by table, each with its probe line.
-3. Tables move from `public` to the `crm` schema; the client sets
-   `.schema('crm')`.
-4. The existing `users` table folds into `core.org_members` +
-   `core.product_access`; `can_do_b2b` / `can_do_d2d` become CRM product roles.
+### The CRM cannot host two customers today
 
-Step 2 is the real work and the only risky part. It is also unavoidable under
-one login, whichever infrastructure you pick.
+Its configuration is **global**, with no owner column at all:
 
----
+| Table | Owner column | Consequence for a second customer |
+|---|---|---|
+| `pipeline_stages` | none | They share your first customer's sales stages |
+| `products` | none | They share the catalogue |
+| `install_protocol_steps` | none | They share the installation checklist |
+| `do_not_knock_list` | none | They share the do-not-knock addresses |
+| `app_settings` | none — **`key` is the primary key** | They **overwrite** each other's settings |
+
+That last row is the sharpest. `app_settings.key` being a global primary key
+means two customers cannot both hold a setting of the same name — the second
+write wins. It is not a leak that careful policies could contain; it is a hard
+collision, and it means **the CRM is architecturally single-customer right
+now**, quite apart from RLS.
+
+Which is good news of a sort: this is discovered before the second sale rather
+than after it.
+
+### The shape of the work
+
+1. **`org_id` on all 27 tables**, backfilled to a single organisation holding
+   every existing row. Additive, no behaviour change, safe to ship alone.
+2. **Composite keys where the key is global.** `app_settings` moves from
+   `primary key (key)` to `primary key (org_id, key)`. Same for any other
+   natural key that assumed one customer.
+3. **Config tables become per-organisation.** Each new customer needs their own
+   pipeline stages, products, protocol steps — which also means an onboarding
+   step that seeds sensible defaults, or the app is empty on day one.
+4. **83 policies reviewed, 41 rewritten** to
+   `core.has_product(org_id, 'crm')`. The other 42 are narrow already
+   (`auth.uid() = user_id` and similar) and are safe by accident rather than by
+   design — they still get read, and get `org_id` added where the table is
+   shared.
+5. **`users` folds into `core`.** `role` becomes a CRM product role;
+   `can_do_b2b` / `can_do_d2d` become product-level capabilities.
+6. **A probe line per table**, in the same commit as its migration.
+
+Step 3 is the one that is usually underestimated: it is product work, not
+plumbing. Somebody has to decide what a brand-new customer's pipeline looks
+like before they have configured anything.
 
 ## 12. What to build now, and what to leave alone
 
@@ -364,15 +396,19 @@ every policy. Everything else in this document can wait.
    three restaurants, say. The schema allows it; the interface then needs an
    organisation switcher, which is real work. Worth deciding before the
    accounts app is built.
-2. **Is the CRM sold to outside businesses, or is it your own sales tool?** If
-   it is yours alone, it is one organisation for ever and the retrofit is much
-   smaller.
-3. **Per-seat or per-organisation pricing?** Per-seat means counting
+2. ~~Is the CRM sold to outside businesses?~~ **Answered: yes.** See §11 —
+   this makes the CRM retrofit a real project, and it puts a deadline on it:
+   the work must land before the second customer, not after.
+3. **Who seeds a new customer's configuration?** Pipeline stages, products and
+   protocol steps are per-organisation once §11 lands. A blank CRM on day one
+   is a bad first impression, so either onboarding copies a template or a
+   human sets it up. This is product work and it is on the critical path.
+4. **Per-seat or per-organisation pricing?** Per-seat means counting
    `product_access` rows and enforcing a ceiling — cheap now, awkward to add
    once customers have unlimited seats by habit.
-4. **Trials** — self-serve or granted by hand? `trialing` already works; the
+5. **Trials** — self-serve or granted by hand? `trialing` already works; the
    question is who may create one.
-5. **Which product is sold first to a business that already has the other?**
+6. **Which product is sold first to a business that already has the other?**
    That sale is the trigger in §11, and knowing which direction it goes tells
    you which retrofit to rehearse.
 
