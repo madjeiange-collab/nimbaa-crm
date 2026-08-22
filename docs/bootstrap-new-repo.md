@@ -269,8 +269,12 @@ faire :
   base. Le rendu se fait
   côté serveur : si la fonction est en Virginie et la base à Paris, chaque page
   paie un aller-retour transatlantique **en plus** de celui du visiteur.
-- **`"ignoreCommand"`** — un commit qui ne touche que le CRM ne redéclenche pas
-  la construction du resto.
+Et le fait qu'un commit ne touchant que le CRM ne redéclenche pas la
+construction du resto ne vient pas de `vercel.json` mais du réglage
+*Build and Deployment → Skip deployments when there are no changes to the root
+directory or its dependencies*, activé par défaut. Il fait le même travail en
+mieux : il connaît les dépendances du dossier, là où un `git diff` sur le
+chemin ne voit que des fichiers.
 
 ### La branche de production
 
