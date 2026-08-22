@@ -44,6 +44,7 @@ export type Item = {
   available: boolean;
   category_id: string | null;
   prep_station_id: string | null;
+  photo_path: string | null;
 };
 
 export async function loadMenu(restaurantId: string) {
@@ -52,7 +53,7 @@ export async function loadMenu(restaurantId: string) {
     supabase.schema('resto').from('menu_categories')
       .select('id, name, sort, active').eq('restaurant_id', restaurantId).order('sort'),
     supabase.schema('resto').from('menu_items')
-      .select('id, name, description, price, available, category_id, prep_station_id')
+      .select('id, name, description, price, available, category_id, prep_station_id, photo_path')
       .eq('restaurant_id', restaurantId).order('sort'),
     supabase.schema('resto').from('prep_stations')
       .select('id, name').eq('restaurant_id', restaurantId).order('sort'),

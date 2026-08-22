@@ -74,6 +74,9 @@ export async function addItem(_p: ActionState, f: FormData): Promise<ActionState
       // Empty means no station — served straight from the counter. It is the
       // absence that carries the meaning, so there is no separate flag.
       prep_station_id: nullable(str(f, 'prep_station_id')),
+      // Uploaded by the client before submit; empty is fine, the fallback tile
+      // carries a dish with no photo rather than showing a grey square.
+      photo_path: nullable(str(f, 'photo_path')),
     });
     if (error) throw new Error(error.code === '23505' ? 'Ce plat existe déjà.' : error.message);
     return `« ${name} » ajouté à la carte.`;

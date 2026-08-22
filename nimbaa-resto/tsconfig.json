@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
+    // ES2020: les échappements de propriété Unicode (\p{L}) des initiales
+    // de tuile demandent ES2018 au minimum.
+    "target": "ES2020",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,

@@ -180,6 +180,56 @@ select pg_temp.as_user('f0000000-0000-4000-8000-00000000b001');
 select pg_temp.check('l''autre groupe ne voit pas cette carte',
        (select count(*)::text from resto.menu_items), '0');
 
+-- ------------------------------------------------------ les photos du seau
+-- Le premier dossier du chemin EST l'identifiant du restaurant, donc la policy
+-- sait à qui appartient la photo sans rien joindre. Reste à vérifier qu'elle
+-- refuse bien le dossier du voisin.
+--
+-- Sur un Postgres nu, storage n'existe pas : on saute plutôt que d'échouer.
+do $$
+declare a uuid := 'f0000000-0000-4000-8000-00000000c001';   -- A · Abidjan
+        b uuid := 'f0000000-0000-4000-8000-00000000d001';   -- B · Un
+        patron_a uuid := 'f0000000-0000-4000-8000-00000000a001';
+        serveur_a uuid := 'f0000000-0000-4000-8000-00000000a002';
+        verdict text;
+begin
+  if not exists (select 1 from information_schema.schemata where schema_name = 'storage') then
+    raise notice '  SAUTÉ · policies du seau (schéma storage absent)';
+    return;
+  end if;
+
+  perform set_config('request.jwt.claim.sub', patron_a::text, true);
+  execute 'set local role authenticated';
+
+  begin
+    insert into storage.objects (bucket_id, name) values ('menu', a::text || '/plat.webp');
+    verdict := 'accepté';
+  exception when insufficient_privilege then verdict := 'refusé';
+  end;
+  raise notice '%', (select case when verdict = 'accepté' then '  OK   ' else '  ÉCHEC' end
+    || ' · le patron dépose une photo chez lui — attendu accepté, obtenu ' || verdict);
+
+  begin
+    insert into storage.objects (bucket_id, name) values ('menu', b::text || '/vol.webp');
+    verdict := 'accepté';
+  exception when insufficient_privilege then verdict := 'refusé';
+  end;
+  raise notice '%', (select case when verdict = 'refusé' then '  OK   ' else '  ÉCHEC' end
+    || ' · mais pas chez le voisin — attendu refusé, obtenu ' || verdict);
+
+  perform set_config('request.jwt.claim.sub', serveur_a::text, true);
+  begin
+    insert into storage.objects (bucket_id, name) values ('menu', a::text || '/serveur.webp');
+    verdict := 'accepté';
+  exception when insufficient_privilege then verdict := 'refusé';
+  end;
+  raise notice '%', (select case when verdict = 'refusé' then '  OK   ' else '  ÉCHEC' end
+    || ' · ni le serveur de la maison — attendu refusé, obtenu ' || verdict);
+
+  -- Pas de reset role ici : on repasserait superutilisateur, RLS contourné, et
+  -- les assertions suivantes passeraient pour de mauvaises raisons.
+end $$;
+
 -- --------------------------------------------------------------- inconnu
 select pg_temp.as_user('f0000000-0000-4000-8000-000000000099');
 select pg_temp.check('inconnu → rien',
