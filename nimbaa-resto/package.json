@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:probe": "psql \"$DATABASE_URL\" -tA -f supabase/tests/probe.sql"
+    "db:probe": "psql \"$DATABASE_URL\" -tA -f supabase/tests/probe.sql",
+    "db:bundle": "node supabase/bundle.mjs",
+    "db:check": "node supabase/check.mjs",
+    "db:bootstrap": "node supabase/seed/bootstrap-owner.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

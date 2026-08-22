@@ -1,0 +1,95 @@
+# Le schéma et le build de nimbaa-resto, à chaque changement qui les touche.
+#
+# La sonde tourne sur un vrai Postgres avec de vraies policies : c'est le seul
+# endroit où l'on vérifie qu'un serveur ne réordonne pas la carte et qu'un
+# patron ne voit pas chez le voisin. Un typecheck ne dit rien de tout cela.
+name: Resto — schéma et build
+
+on:
+  push:
+    paths: ['nimbaa-resto/**', '.github/workflows/resto-ci.yml']
+  pull_request:
+    paths: ['nimbaa-resto/**', '.github/workflows/resto-ci.yml']
+  workflow_dispatch: {}
+
+defaults:
+  run:
+    working-directory: nimbaa-resto
+
+jobs:
+  schema:
+    name: Migrations et sonde RLS
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      PSQL: psql -h localhost -U postgres -v ON_ERROR_STOP=1
+    steps:
+      - uses: actions/checkout@v4
+
+      # Les doublures d'abord : sur un Postgres nu, auth et storage n'existent
+      # pas, et les migrations s'appuient sur les deux.
+      - name: Doublures Supabase
+        run: $PSQL -q -f supabase/tests/local-postgres.sql
+
+      - name: Migrations, dans l'ordre
+        run: |
+          for f in supabase/migrations/*.sql; do
+            echo "── $f"
+            $PSQL -q -f "$f"
+          done
+
+      # Le paquet du SQL Editor doit rester applicable : c'est par lui que passe
+      # la mise en service d'un nouveau client.
+      - name: Le paquet s'applique aussi, d'un bloc
+        run: |
+          node supabase/bundle.mjs
+          $PSQL -q -c 'create database bundle_check'
+          psql -h localhost -U postgres -d bundle_check -v ON_ERROR_STOP=1 -q \
+            -f supabase/tests/local-postgres.sql
+          psql -h localhost -U postgres -d bundle_check -v ON_ERROR_STOP=1 -q \
+            -f supabase/.bundle.sql
+
+      - name: La sonde
+        run: |
+          $PSQL -f supabase/tests/probe.sql 2>&1 | tee /tmp/probe.txt
+          if grep -q 'ÉCHEC' /tmp/probe.txt; then
+            echo "::error::la sonde a trouvé au moins une régression"
+            grep 'ÉCHEC' /tmp/probe.txt
+            exit 1
+          fi
+          echo "✅ $(grep -c 'OK    ·' /tmp/probe.txt) assertions vertes"
+
+  build:
+    name: Lint, types, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: nimbaa-resto/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: Build
+        # Des valeurs factices : rien n'est appelé à la construction, mais leur
+        # absence transformerait un manque de configuration en échec de build.
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci
+        run: pnpm build
