@@ -154,7 +154,28 @@ commit, pas après.
 
 ## 4. Créer le premier client, et s'y connecter · 10 min
 
-Une organisation, son abonnement, son premier restaurant, son patron :
+Une organisation, son abonnement, son premier restaurant, son patron. Deux
+chemins pour la même chose — prenez celui que vous avez sous la main.
+
+### a. Depuis le navigateur, sans terminal
+
+1. *Authentication → Users → Add user → Create new user*
+   - Email : `<identifiant>@<slug>.staff.nimbaa.app`, par exemple
+     `fatou@le-bambou.staff.nimbaa.app`
+   - Password : celui que vous lui direz de vive voix
+   - ☑ **Auto Confirm User**
+2. *SQL Editor* → collez **`nimbaa-resto/supabase/bootstrap.sql`**, ajustez le
+   bloc du bas, **Run**.
+
+L'adresse n'a pas besoin d'exister — elle n'est jamais lue, et l'employé ne la
+voit jamais. Mais sa **forme** compte : c'est exactement ce que l'application
+recompose à partir de l'identifiant tapé et du slug de l'URL.
+
+C'est aussi le chemin pour ouvrir un deuxième restaurant dans le même groupe :
+même `p_org_slug`, autre `p_resto_slug`, et l'abonnement n'est pas recréé.
+
+### b. Depuis un terminal
+
 
 ```bash
 pnpm db:bootstrap -- \
