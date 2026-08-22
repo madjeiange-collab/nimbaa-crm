@@ -57,7 +57,9 @@ oblige à détacher le dépôt.
 1. [supabase.com/dashboard](https://supabase.com/dashboard) → **New project**.
 2. Nom : **`nimbaa`**. Voir le §0.
 3. Mot de passe de la base : conservez-le, il n'est affiché qu'une fois.
-4. **Région : Europe (Paris `eu-west-3` ou Francfort).** Pas les États-Unis.
+4. **Région : Europe — Francfort `eu-central-1` ou Paris `eu-west-3`.** Pas les
+   États-Unis, et **la même que celle des fonctions Vercel** (`regions` dans
+   `nimbaa-resto/vercel.json`, aujourd'hui `fra1`, Francfort).
    Chaque commande écrite, chaque ticket de cuisine et chaque lecture de carte
    traverse ce lien, et depuis l'Afrique de l'Ouest les sauts européens sont
    nettement plus courts. **C'est le seul réglage de cette page qu'on ne peut
@@ -226,7 +228,8 @@ pnpm db:bootstrap -- --slug le-bambou --reset --user fatou --password "NouveauMo
 Deux réglages sont déjà dans `nimbaa-resto/vercel.json`, vous n'avez rien à
 faire :
 
-- **`"regions": ["cdg1"]`** — les fonctions tournent à Paris. Le rendu se fait
+- **`"regions": ["fra1"]`** — les fonctions tournent à Francfort, là où est la
+  base. Le rendu se fait
   côté serveur : si la fonction est en Virginie et la base à Paris, chaque page
   paie un aller-retour transatlantique **en plus** de celui du visiteur.
 - **`"ignoreCommand"`** — un commit qui ne touche que le CRM ne redéclenche pas
