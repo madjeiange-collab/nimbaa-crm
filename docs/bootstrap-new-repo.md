@@ -60,6 +60,11 @@ Vérifiez l'outillage si besoin : `node -v` (≥ 18.18), `pnpm -v` (≥ 9).
 5. Pas de PostGIS, contrairement au CRM : rien ici n'est géographique.
 6. Ne touchez pas à *Authentication → Providers*. La phase 1 a une seule porte,
    identifiant et mot de passe.
+7. *Authentication → Sessions* : **laissez « time-box user sessions » et
+   « inactivity timeout » sur jamais**, leurs valeurs par défaut. Une tablette
+   posée au passe est connectée une fois et doit le rester ; déconnecter la
+   cuisine un samedi à 3h du matin n'est pas une politique de sécurité, c'est
+   une panne.
 
 ### Appliquer le schéma
 

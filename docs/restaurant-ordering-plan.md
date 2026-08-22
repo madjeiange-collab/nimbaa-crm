@@ -317,6 +317,19 @@ line.prep_station_id is null      →  status 'to_serve'  → appears in the to-
 
 ### 5.2 Kitchen
 
+**The kitchen is a role, not a device.** `kitchen` is granted like any other, to
+as many people as the restaurant employs — Mamadou and Awa each have their own
+account, and either can mark a dish ready. No shared login, no special device
+account, and the same is true of every other role.
+
+**Sessions do not expire.** A tablet on the pass is signed in once and stays
+signed in: the auth cookie carries a 400-day lifetime, survives the device being
+switched off, and refreshes itself while the screen is open. Two Supabase
+settings must be left alone for that to hold — *Authentication → Sessions*,
+where *time-box user sessions* and *inactivity timeout* both default to never.
+Logging the kitchen out at 3am on a Saturday is not a security policy; it is an
+outage.
+
 One screen per station, subscribed to its own lines. Tickets grouped by order,
 oldest first, with an elapsed-time badge that turns amber then red. Two actions
 and no more: **start** (`queued → preparing`) and **ready** (`preparing →

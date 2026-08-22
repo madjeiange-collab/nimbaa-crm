@@ -47,7 +47,8 @@ export default async function PersonnelPage({ params }: { params: { slug: string
                         mot de passe à choisir
                       </span>
                     )}
-                    <span className="rounded-full bg-service-soft px-2 py-0.5 text-service">
+                    <span data-role={role ?? 'none'}
+                          className="rounded-full bg-service-soft px-2 py-0.5 text-service">
                       {role ? ROLE_LABELS[role] : '—'}
                     </span>
                   </span>
