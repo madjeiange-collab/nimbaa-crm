@@ -23,7 +23,10 @@ propres commandes ; la commande par QR code arrive plus tard.
 | ✅ | Premier mot de passe imposé à la première connexion |
 | ✅ | Accueil routé par rôle |
 | ✅ | `bootstrap-owner.mjs` — organisation, abonnement, restaurant, patron |
-| ⬜ | Carte et plan de salle · commandes · cuisine · encaissement |
+| ✅ | La carte : catégories, plats, prix, postes de préparation, interrupteur « 86 » |
+| ✅ | La salle : zones et tables |
+| ✅ | Le personnel : le patron crée les comptes de son équipe |
+| ⬜ | Commandes · cuisine · service · encaissement |
 
 ## Démarrer
 
@@ -59,7 +62,7 @@ node supabase/seed/bootstrap-owner.mjs --slug le-bambou --reset \
 
 ```bash
 pnpm typecheck && pnpm lint && pnpm build
-DATABASE_URL="postgresql://..." pnpm db:probe   # 15 lignes, toutes OK
+DATABASE_URL="postgresql://..." pnpm db:probe   # 24 lignes, toutes OK
 ```
 
 Les sondes de `supabase/tests/` tournent dans une transaction annulée : elles

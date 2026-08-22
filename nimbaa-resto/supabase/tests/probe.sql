@@ -115,6 +115,71 @@ select pg_temp.as_user('f0000000-0000-4000-8000-00000000a002');
 select pg_temp.check('membre de l''organisation, sans accès resto → rien',
        (select count(*)::text from resto.restaurants), '0');
 
+-- ---------------------------------------------------- la carte et la salle
+-- Un serveur lit la carte ; il ne la change pas. Un patron fait les deux.
+reset role;
+insert into core.product_access values
+  ('f0000000-0000-4000-8000-0000000aaaaa','f0000000-0000-4000-8000-00000000a002','resto','waiter',true,now())
+  on conflict do nothing;
+insert into resto.prep_stations (id, restaurant_id, name) values
+  ('f0000000-0000-4000-8000-00000000e001','f0000000-0000-4000-8000-00000000c001','Cuisine');
+insert into resto.menu_categories (id, restaurant_id, name) values
+  ('f0000000-0000-4000-8000-00000000e002','f0000000-0000-4000-8000-00000000c001','Plats');
+insert into resto.menu_items (restaurant_id, category_id, name, price, prep_station_id) values
+  ('f0000000-0000-4000-8000-00000000c001','f0000000-0000-4000-8000-00000000e002','Poisson braisé', 3500,
+   'f0000000-0000-4000-8000-00000000e001');
+insert into resto.menu_items (restaurant_id, category_id, name, price) values
+  ('f0000000-0000-4000-8000-00000000c001','f0000000-0000-4000-8000-00000000e002','Eau minérale', 500);
+insert into resto.areas (id, restaurant_id, name) values
+  ('f0000000-0000-4000-8000-00000000e003','f0000000-0000-4000-8000-00000000c001','Terrasse');
+insert into resto.tables (restaurant_id, area_id, label, seats) values
+  ('f0000000-0000-4000-8000-00000000c001','f0000000-0000-4000-8000-00000000e003','12', 4);
+set local role authenticated;
+
+select pg_temp.as_user('f0000000-0000-4000-8000-00000000a002');
+select pg_temp.check('le serveur lit la carte',
+       (select count(*)::text from resto.menu_items), '2');
+select pg_temp.check('le serveur lit la salle',
+       (select label from resto.tables), '12');
+select pg_temp.check('le poisson passe par un poste',
+       (select case when prep_station_id is null then 'direct' else 'poste' end
+          from resto.menu_items where name = 'Poisson braisé'), 'poste');
+select pg_temp.check('l''eau est servie directement',
+       (select case when prep_station_id is null then 'direct' else 'poste' end
+          from resto.menu_items where name = 'Eau minérale'), 'direct');
+
+-- Le serveur ne change pas les prix.
+update resto.menu_items set price = 1 where name = 'Poisson braisé';
+select pg_temp.check('le serveur ne change pas un prix (RLS filtre)',
+       (select price::text from resto.menu_items where name = 'Poisson braisé'), '3500');
+-- RLS ne se comporte pas pareil selon le verbe, et c'est important pour le
+-- code applicatif : SELECT, UPDATE et DELETE FILTRENT — zéro ligne, aucune
+-- erreur — tandis qu'INSERT LÈVE une erreur sur le with check. Un appel qui
+-- « réussit » sans rien faire et un appel qui explose ne se rattrapent pas de
+-- la même façon.
+create or replace function pg_temp.try_insert() returns text
+language plpgsql as $$ begin
+  insert into resto.menu_items (restaurant_id, name, price)
+    values ('f0000000-0000-4000-8000-00000000c001','Ajout interdit', 100);
+  return 'passé';
+exception when insufficient_privilege then return 'refusé';
+end $$;
+select pg_temp.check('le serveur n''ajoute pas de plat (INSERT lève)',
+       pg_temp.try_insert(), 'refusé');
+select pg_temp.check('et la carte n''a pas bougé',
+       (select count(*)::text from resto.menu_items), '2');
+
+-- Le patron, si.
+select pg_temp.as_user('f0000000-0000-4000-8000-00000000a001');
+update resto.menu_items set price = 4000 where name = 'Poisson braisé';
+select pg_temp.check('le patron change le prix',
+       (select price::text from resto.menu_items where name = 'Poisson braisé'), '4000');
+
+-- Et la carte de l'autre groupe reste invisible.
+select pg_temp.as_user('f0000000-0000-4000-8000-00000000b001');
+select pg_temp.check('l''autre groupe ne voit pas cette carte',
+       (select count(*)::text from resto.menu_items), '0');
+
 -- --------------------------------------------------------------- inconnu
 select pg_temp.as_user('f0000000-0000-4000-8000-000000000099');
 select pg_temp.check('inconnu → rien',

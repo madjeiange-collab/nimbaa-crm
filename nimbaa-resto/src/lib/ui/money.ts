@@ -16,3 +16,18 @@ export function formatMoney(
     maximumFractionDigits: decimals,
   }).format(amount / 10 ** decimals);
 }
+
+/**
+ * The reverse, for a form field. Accepts "3500", "3 500", "12,50" and "12.50",
+ * and returns minor units — or null if it is not a number at all.
+ *
+ * Rounding is the point: 12,507 € cannot be stored, and silently truncating it
+ * to 12,50 loses a centime on every line. It rounds, once, here.
+ */
+export function parseMoney(input: string, decimals: number): number | null {
+  const cleaned = input.replace(/\s| /g, '').replace(',', '.');
+  if (!/^\d*\.?\d*$/.test(cleaned) || cleaned === '' || cleaned === '.') return null;
+  const value = Number(cleaned);
+  if (!Number.isFinite(value) || value < 0) return null;
+  return Math.round(value * 10 ** decimals);
+}
