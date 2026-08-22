@@ -1,0 +1,499 @@
+# Nimbaa — Platform Architecture
+
+> How several products sell under one trademark, with one login for a person
+> and a separate subscription per app. Written in English like the other
+> planning documents; the products themselves stay French-first.
+>
+> This supersedes the "separate repository, separate Supabase project" advice
+> in `restaurant-ordering-plan.md` §02. That advice was right for two unrelated
+> products. It is wrong for one platform, and §09 says why.
+
+---
+
+## 0. What Nimbaa is becoming
+
+Not a CRM and, separately, a restaurant app. **One platform selling several
+products to businesses**, where a person signs in once and sees the apps their
+business pays for.
+
+That single sentence changes the architecture, because it makes three things
+first-class that neither product has today: the **organisation** that pays, the
+**subscription** that grants a product, and the **role** a person holds inside
+that product.
+
+---
+
+## 1. The access equation
+
+Every read and every write in every product answers the same three questions:
+
+```
+   the person belongs to the organisation
+   AND the organisation has a live subscription to this product
+   AND the person has a role in that product
+```
+
+Resto already has the first and the third. **The middle one is the new
+requirement, and it is the whole business model.** It is what lets you sell CRM
+to one restaurant, Resto to another, and both to a third, from one deployment.
+
+---
+
+## 2. The decision
+
+**One Supabase project. One `auth.users`. Products as Postgres schemas.**
+
+```
+core     organisations, subscriptions, memberships, product access
+crm      the field-sales tables, when they migrate in
+resto    restaurants, menu, orders, payments
+public   left empty apart from shared extensions
+```
+
+One identity store gives "one login" for nothing — no identity provider to
+build, run or pay for. And because entitlements live in the same database as
+the data they gate, the check is a local join rather than a network call, which
+means it can sit inside an RLS policy and be trusted.
+
+Schemas also solve a collision you already have: the CRM has a `subscriptions`
+table that tracks **rep commissions**, not billing. `core.subscriptions` and
+`crm.subscriptions` coexist. Two tables of that name in one namespace would
+not.
+
+> **One Supabase setting is easy to miss.** PostgREST only exposes schemas
+> listed in *Project Settings → API → Exposed schemas*. Add `core`, `crm` and
+> `resto`, and address them from the client as
+> `supabase.schema('resto').from('orders')`.
+
+---
+
+## 3. Why not a central identity provider with one project per product
+
+Because it does not save the work you would be buying it to avoid.
+
+Your CRM today has **83 RLS policies across 27 tables, 41 of them
+`using (auth.uid() is not null)`, and no tenant concept at all.** The moment a
+Resto user exists in the same identity system, those 41 policies are a hole —
+and that is true whether identity is central or local. **Both options require
+the same rewrite.**
+
+So the central-IdP option costs you an IdP to operate or a vendor to pay,
+entitlement data replicated across projects or fetched over the network, a
+warehouse for cross-product reporting, and n× the migrations — in exchange for
+nothing you were not already paying for.
+
+The one thing it genuinely buys is physical blast-radius separation. That is
+worth revisiting at a scale you do not have, and §12 names the trigger.
+
+---
+
+## 4. The core schema
+
+Verified: applied to Postgres 16, with the entitlement behaviour in §5 proven
+against it.
+
+```sql
+create schema if not exists core;
+create extension if not exists "uuid-ossp";
+
+create table if not exists core.organizations (
+  id                uuid primary key default uuid_generate_v4(),
+  slug              text not null unique,
+  name              text not null,
+  country           text,
+  currency          text not null default 'XOF',
+  currency_decimals smallint not null default 0,
+  status            text not null default 'active'
+                      check (status in ('active','suspended')),
+  created_at        timestamptz not null default now()
+);
+
+create table if not exists core.org_members (
+  org_id     uuid not null references core.organizations(id) on delete cascade,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  org_role   text not null check (org_role in ('owner','admin','member')),
+  active     boolean not null default true,
+  created_at timestamptz not null default now(),
+  primary key (org_id, user_id)
+);
+create index if not exists om_user_ix on core.org_members (user_id, org_id) where active;
+
+create table if not exists core.product_subscriptions (
+  id           uuid primary key default uuid_generate_v4(),
+  org_id       uuid not null references core.organizations(id) on delete cascade,
+  product      text not null check (product in ('crm','resto')),
+  plan         text not null default 'standard',
+  -- past_due donne encore accès : couper le service d'un restaurant à 20h
+  -- parce qu'une carte a été refusée est une faute, pas une politique.
+  status       text not null
+                 check (status in ('trialing','active','past_due','cancelled','suspended')),
+  period_start timestamptz not null default now(),
+  period_end   timestamptz,
+  grace_until  timestamptz,
+  created_at   timestamptz not null default now(),
+  unique (org_id, product)
+);
+create index if not exists ps_live_ix on core.product_subscriptions (org_id, product)
+```
+
+*(full file, including `core.product_access`, in §14)*
+
+**The organisation is the customer; a restaurant is a location.** A group with
+three sites is one organisation, three rows in `resto.restaurants`, one
+subscription. That distinction is why `org_id` and not `restaurant_id` is the
+thing subscriptions hang from.
+
+**`core.product_access` is foreign-keyed to `core.org_members`**, so product
+access cannot outlive membership. You do not keep a waiter in the kitchen of an
+organisation he has left.
+
+---
+
+## 5. The predicate every policy leans on
+
+```sql
+create or replace function core.has_product(org uuid, prod text) returns boolean
+language sql stable security definer set search_path = core, public as $$
+  select core.is_org_member(org)
+     and core.subscription_live(org, prod)
+     and exists (
+       select 1 from core.product_access a
+       where a.org_id = org and a.user_id = auth.uid()
+         and a.product = prod and a.active
+     );
+$$;
+```
+
+A product table then reads:
+
+```sql
+create policy resto_read on resto.restaurants for select
+  using (core.has_product(org_id, 'resto'));
+```
+
+**Cancel a subscription and access stops. No deploy, no feature flag, no code.**
+That is the property being bought, and it was tested rather than assumed:
+
+| Subscription state | What the owner sees |
+|---|---|
+| `active` | the restaurant |
+| `trialing` | the restaurant |
+| `past_due`, within grace | the restaurant |
+| `past_due`, grace expired | **nothing** |
+| `past_due`, no grace set | **nothing** |
+| `cancelled` | **nothing** |
+| `suspended` | **nothing** |
+| reactivated | the restaurant |
+
+Two negative cases matter as much: an **org member with no product access**
+sees nothing, and a **stranger** sees nothing.
+
+### The bug this already caught
+
+The first draft of `subscription_live` read:
+
+```sql
+and s.status in ('trialing','active','past_due')
+and (s.period_end is null or s.period_end > now()
+     or (s.status = 'past_due' and s.grace_until > now()))
+```
+
+`period_end is null` is true for every row until billing is wired, so the OR
+short-circuited and **the grace check was never consulted** — an unpaid
+subscription kept working indefinitely. A billing hole, in the first ten lines
+of the billing layer. It is now two explicit branches, and the table above is
+the regression test.
+
+**Every product migration ships its line in that table, in the same commit.**
+
+---
+
+## 6. Grace is a product decision, not a technicality
+
+`past_due` still grants access, deliberately. Cutting a restaurant's ability to
+take orders at 20:00 on a Friday because a card was refused is a fault, not a
+policy — and it costs you the customer you were trying to bill.
+
+Revocation should be an act someone takes: `cancelled` or `suspended`. Between
+those, grace.
+
+Worth adding when billing arrives: **past grace, read-only rather than dark.**
+Let them read and export their own data even when they cannot write. It is
+kinder, and it is the right answer on data portability.
+
+---
+
+## 7. Identity — one person, one account
+
+One login means a person is one row in `auth.users`, across every product.
+
+That sits awkwardly with Resto's synthetic address
+(`fatou@le-bambou.staff.nimbaa.app`), which was the right answer for floor staff
+who own no email. The resolution is that **the two are for different people**:
+
+| Who | Identity | Why |
+|---|---|---|
+| Floor staff — waiter, kitchen, cashier | username + synthetic address | They have no email. They will never touch a second product. |
+| Owner, manager, anyone spanning products | **their real email or phone** | One person, one account, every product they are entitled to. |
+
+The login form accepts either: an input containing `@` is treated as an email,
+anything else is resolved as a username against that restaurant. A floor-staff
+account that later needs cross-product access has its address changed to a real
+one — supported by Supabase Auth, and a one-row update.
+
+---
+
+## 8. What each product carries
+
+Every product table carries `org_id` **in clear**, never reachable by join, and
+every policy calls `core.has_product(org_id, '<product>')`.
+
+For Resto that is a small change now:
+
+- `resto.restaurants` gains `org_id`
+- `is_member()` becomes `core.has_product(org_id,'resto')` plus the restaurant
+  check
+- `staff_accounts` keeps its username alias; the identity moves up to `core`
+
+**One day of work now. A migration across every table later.**
+
+---
+
+## 9. Repository — a monorepo, reversing earlier advice
+
+```
+nimbaa-platform/
+  apps/
+    accounts/     one login, org switcher, billing later
+    crm/
+    resto/
+  packages/
+    core/         auth + entitlement client, shared by every app
+    ui/           the shadcn kit, shared
+  supabase/
+    migrations/   core, then per-product
+    tests/        the probe suite
+```
+
+Earlier in this project I recommended separate repositories, and for two
+unrelated products that was right. Under one platform it is wrong, and the
+deciding factor is `packages/core`.
+
+In separate repositories that package must be published and versioned, and it
+**will** drift. A drifted entitlement check is a billing bug — either a customer
+paying for nothing or using something free. Keeping it in one tree, compiled
+against every app on every commit, removes an entire failure class.
+
+---
+
+## 10. Deployment
+
+One Supabase project. One Vercel project **per app**, all from the monorepo,
+each with its own Root Directory (`apps/resto`, `apps/crm`) and its own domain.
+
+That is the same mechanism we already met on the Vercel import screen — except
+here it is the intended pattern rather than a way around a constraint.
+
+Set an **Ignored Build Step** per project so a CRM commit does not rebuild
+Resto:
+
+```bash
+git diff --quiet HEAD^ HEAD -- apps/resto packages/
+```
+
+---
+
+## 11. Migrating the CRM in
+
+Not now — §12 says when. The shape, for when it happens:
+
+1. `core.organizations` gains one row: the existing company. Every CRM table
+   gains `org_id`, backfilled to it. Additive, no behaviour change.
+2. The 41 broad policies are rewritten to
+   `core.has_product(org_id, 'crm')`, table by table, each with its probe line.
+3. Tables move from `public` to the `crm` schema; the client sets
+   `.schema('crm')`.
+4. The existing `users` table folds into `core.org_members` +
+   `core.product_access`; `can_do_b2b` / `can_do_d2d` become CRM product roles.
+
+Step 2 is the real work and the only risky part. It is also unavoidable under
+one login, whichever infrastructure you pick.
+
+---
+
+## 12. What to build now, and what to leave alone
+
+**Now** — the shape:
+
+- `core` schema, the four tables, the three predicates
+- Resto rebuilt on `core.has_product`
+- The entitlement table in §5 as a probe, in CI
+- Subscription rows written **by hand**
+
+**Not now** — the machinery. No Stripe, no plan picker, no self-serve signup,
+no dunning, no invoices, no proration. Setting a row by hand is entirely
+respectable at three organisations, and it writes to the same table billing
+will write to later.
+
+**Not now, with a named trigger** — splitting a product onto its own Supabase
+project. Do it when one product's load, compliance obligations or uptime needs
+genuinely diverge from the others. `org_id` on every row is what keeps that
+door open, because the data can be filtered out cleanly.
+
+The expensive-to-reverse decisions are `org_id` everywhere and the predicate in
+every policy. Everything else in this document can wait.
+
+---
+
+## 13. Risks
+
+| Risk | What it forces |
+|---|---|
+| **One database, one blast radius** | The probe suite in CI, PITR backups on, and `org_id` everywhere so a product can be lifted out later |
+| **An entitlement bug is a billing bug** | The §5 table as a regression test; a new line per product, per migration |
+| **A product policy forgets the entitlement check** | A test that enumerates policies and fails on any product table whose policy does not call `has_product` |
+| **Exposed-schema misconfiguration** | `core`, `crm`, `resto` in *Exposed schemas*; a smoke test that a client can actually read its own product |
+| **The CRM retrofit** | 41 policies, one at a time, each with its probe — not a weekend rewrite |
+| **Predicate cost in hot paths** | Wrap as `(select core.has_product(...))` so Postgres evaluates it once per query rather than per row; index `org_members(user_id, org_id)` and `product_subscriptions(org_id, product)` |
+
+---
+
+## 14. Open questions
+
+1. **Does a person ever belong to two organisations?** A consultant serving
+   three restaurants, say. The schema allows it; the interface then needs an
+   organisation switcher, which is real work. Worth deciding before the
+   accounts app is built.
+2. **Is the CRM sold to outside businesses, or is it your own sales tool?** If
+   it is yours alone, it is one organisation for ever and the retrofit is much
+   smaller.
+3. **Per-seat or per-organisation pricing?** Per-seat means counting
+   `product_access` rows and enforcing a ceiling — cheap now, awkward to add
+   once customers have unlimited seats by habit.
+4. **Trials** — self-serve or granted by hand? `trialing` already works; the
+   question is who may create one.
+5. **Which product is sold first to a business that already has the other?**
+   That sale is the trigger in §11, and knowing which direction it goes tells
+   you which retrofit to rehearse.
+
+---
+
+## 15. The core schema in full
+
+```sql
+-- core — la couche plateforme : qui est l'organisation, à quoi elle est
+-- abonnée, et qui chez elle a le droit d'ouvrir quel produit.
+--
+-- Trois faits doivent être vrais pour qu'une ligne soit visible :
+--   la personne appartient à l'organisation,
+--   l'organisation a un abonnement vivant au produit,
+--   la personne a un rôle dans ce produit.
+-- Le deuxième est ce qui rend un produit vendable séparément.
+
+create schema if not exists core;
+create extension if not exists "uuid-ossp";
+
+create table if not exists core.organizations (
+  id                uuid primary key default uuid_generate_v4(),
+  slug              text not null unique,
+  name              text not null,
+  country           text,
+  currency          text not null default 'XOF',
+  currency_decimals smallint not null default 0,
+  status            text not null default 'active'
+                      check (status in ('active','suspended')),
+  created_at        timestamptz not null default now()
+);
+
+create table if not exists core.org_members (
+  org_id     uuid not null references core.organizations(id) on delete cascade,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  org_role   text not null check (org_role in ('owner','admin','member')),
+  active     boolean not null default true,
+  created_at timestamptz not null default now(),
+  primary key (org_id, user_id)
+);
+create index if not exists om_user_ix on core.org_members (user_id, org_id) where active;
+
+create table if not exists core.product_subscriptions (
+  id           uuid primary key default uuid_generate_v4(),
+  org_id       uuid not null references core.organizations(id) on delete cascade,
+  product      text not null check (product in ('crm','resto')),
+  plan         text not null default 'standard',
+  -- past_due donne encore accès : couper le service d'un restaurant à 20h
+  -- parce qu'une carte a été refusée est une faute, pas une politique.
+  status       text not null
+                 check (status in ('trialing','active','past_due','cancelled','suspended')),
+  period_start timestamptz not null default now(),
+  period_end   timestamptz,
+  grace_until  timestamptz,
+  created_at   timestamptz not null default now(),
+  unique (org_id, product)
+);
+create index if not exists ps_live_ix on core.product_subscriptions (org_id, product)
+  where status in ('trialing','active','past_due');
+
+create table if not exists core.product_access (
+  org_id     uuid not null,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  product    text not null,
+  role       text not null,
+  active     boolean not null default true,
+  created_at timestamptz not null default now(),
+  primary key (org_id, user_id, product, role),
+  -- L'accès produit ne peut pas survivre à l'appartenance : on ne garde pas un
+  -- serveur dans la cuisine d'une organisation qu'il a quittée.
+  foreign key (org_id, user_id) references core.org_members(org_id, user_id) on delete cascade
+);
+
+-- ------------------------------------------------------------- prédicats
+create or replace function core.subscription_live(org uuid, prod text) returns boolean
+language sql stable security definer set search_path = core, public as $$
+  select exists (
+    select 1 from core.product_subscriptions s
+    where s.org_id = org and s.product = prod
+      and (
+        -- Payé ou en essai : vivant jusqu'à la fin de période.
+        (s.status in ('trialing','active')
+          and (s.period_end is null or s.period_end > now()))
+        or
+        -- En retard : vivant seulement pendant le délai de grâce. Un OR à plat
+        -- sur period_end laisserait passer un impayé indéfiniment, la période
+        -- n'étant renseignée qu'une fois la facturation branchée.
+        (s.status = 'past_due'
+          and s.grace_until is not null and s.grace_until > now())
+      )
+  );
+$$;
+
+create or replace function core.is_org_member(org uuid) returns boolean
+language sql stable security definer set search_path = core, public as $$
+  select exists (
+    select 1 from core.org_members m
+    where m.org_id = org and m.user_id = auth.uid() and m.active
+  );
+$$;
+
+-- Le prédicat que porte chaque policy produit.
+create or replace function core.has_product(org uuid, prod text) returns boolean
+language sql stable security definer set search_path = core, public as $$
+  select core.is_org_member(org)
+     and core.subscription_live(org, prod)
+     and exists (
+       select 1 from core.product_access a
+       where a.org_id = org and a.user_id = auth.uid()
+         and a.product = prod and a.active
+     );
+$$;
+
+create or replace function core.has_product_role(org uuid, prod text, roles text[])
+returns boolean
+language sql stable security definer set search_path = core, public as $$
+  select core.has_product(org, prod)
+     and exists (
+       select 1 from core.product_access a
+       where a.org_id = org and a.user_id = auth.uid()
+         and a.product = prod and a.active and a.role = any(roles)
+     );
+$$;
+```

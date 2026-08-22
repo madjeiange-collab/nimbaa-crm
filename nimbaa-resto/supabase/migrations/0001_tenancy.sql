@@ -25,10 +25,11 @@ create table if not exists restaurants (
   slug              text not null unique,
   name              text not null,
   timezone          text not null default 'Africa/Conakry',
-  -- Le GNF et le XOF n'ont pas de subdivision, l'EUR en a deux. Les montants
-  -- sont partout des entiers dans l'unité la plus petite ; ce champ ne sert
-  -- qu'à placer la virgule à l'affichage, jamais au calcul.
-  currency          text not null default 'GNF',
+  -- Le XOF n'a pas de subdivision, l'EUR en a deux. Les montants sont partout
+  -- des entiers dans l'unité la plus petite ; ce champ ne sert qu'à placer la
+  -- virgule à l'affichage, jamais au calcul. Défaut aligné sur le CRM, qui
+  -- compte en XOF de bout en bout.
+  currency          text not null default 'XOF',
   currency_decimals smallint not null default 0,
   service_charge_bp int  not null default 0,   -- points de base, 0 = aucun
   tax_mode          text not null default 'none'
