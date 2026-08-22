@@ -239,18 +239,27 @@ pnpm db:bootstrap -- --slug le-bambou --reset --user fatou --password "NouveauMo
    Root Directory »* **décoché**.
 4. Framework : **Next.js**, détecté. Gestionnaire : **pnpm**, détecté depuis
    `nimbaa-resto/pnpm-lock.yaml`.
-5. *Environment Variables* — **deux, pas trois** :
+5. *Environment Variables* — **les trois** :
 
    ```
    NEXT_PUBLIC_SUPABASE_URL
    NEXT_PUBLIC_SUPABASE_ANON_KEY
+   SUPABASE_SERVICE_ROLE_KEY
    ```
 
-   **N'ajoutez pas `SUPABASE_SERVICE_ROLE_KEY`.** Rien dans l'application
-   déployée ne s'en sert : elle n'existe que pour le script d'amorçage, qui
-   tourne sur votre machine. Une clé qui contourne RLS et qui n'a aucun usage
-   n'a rien à faire en production ; elle y sera ajoutée le jour où quelque
-   chose en aura besoin, pas avant.
+   > **Correction.** Ce document disait le contraire : « n'ajoutez pas la clé
+   > de service, rien dans l'application ne s'en sert ». C'était vrai quand
+   > l'application ne savait que connecter quelqu'un. L'écran *Personnel* est
+   > arrivé depuis, et créer un compte employé crée un utilisateur Auth — ce
+   > que seule la clé de service peut faire. Sans elle en production, « Ajouter
+   > un compte » échoue sur *Configuration incomplète*.
+
+   La clé de service contourne RLS entièrement, donc elle ne doit jamais
+   atteindre le navigateur. Ce qui l'en empêche n'est pas une convention de
+   nommage mais `import 'server-only'` en tête de `src/lib/supabase/admin.ts` :
+   l'importer depuis un composant client est une **erreur de compilation**, pas
+   une fuite qu'on découvre en production. C'est à cette condition qu'on la
+   dépose ici.
 6. **Deploy.**
 
 Deux réglages sont déjà dans `nimbaa-resto/vercel.json`, vous n'avez rien à
@@ -330,7 +339,8 @@ là-bas `auth` et `storage` existent déjà et sont tenus par Supabase.
 - [ ] Une photo de plat part et revient
 - [ ] `.env.local` n'apparaît pas dans `git status`
 - [ ] Déploiement Vercel vert, *Root Directory* = `nimbaa-resto`
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` **absente** des variables Vercel
+- [ ] Les **trois** variables sont dans Vercel, dont `SUPABASE_SERVICE_ROLE_KEY`
+      (l'écran *Personnel* en dépend) — et elle n'apparaît dans aucun bundle client
 - [ ] La CI est verte sur GitHub
 
 ---
@@ -345,6 +355,7 @@ là-bas `auth` et `storage` existent déjà et sont tenus par Supabase.
 | Boucle sans fin sur `/mot-de-passe` | `resto.clear_must_change_password()` absente — le schéma n'a pas été appliqué en entier |
 | `permission denied for table …` | Migration partielle : les `grant` sont en fin de fichier. Réappliquez le paquet. |
 | La photo ne part pas | Seau `menu` absent (*Storage*), ou compte sans rôle patron/gérant : l'écriture est tenue par `resto.can_manage()` |
+| *Configuration incomplète* en créant un compte employé | `SUPABASE_SERVICE_ROLE_KEY` absente des variables Vercel |
 | Les flèches ↑ ↓ ne font rien | Migration 0005 non appliquée — `pnpm db:check` a une ligne pour cela |
 | L'application marchait, puis plus rien après une facture impayée | C'est voulu : `past_due` sert pendant la grâce, puis coupe. Voir `core.subscription_live`. |
 | La CI échoue sur la sonde | Une policy a changé. Lisez la ligne `ÉCHEC` : elle nomme l'attendu et l'obtenu. |
