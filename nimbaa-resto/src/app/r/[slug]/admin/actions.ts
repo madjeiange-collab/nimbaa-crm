@@ -42,6 +42,105 @@ export async function addCategory(_p: ActionState, f: FormData): Promise<ActionS
   });
 }
 
+/** Rename. The dishes keep their category; only the label changes. */
+export async function renameCategory(_p: ActionState, f: FormData): Promise<ActionState> {
+  const slug = str(f, 'slug');
+  return run(slug, async () => {
+    await requireManager(slug);
+    const name = z.string().min(1).max(60).parse(str(f, 'name'));
+    const { error } = await createClient().schema('resto').from('menu_categories')
+      .update({ name }).eq('id', str(f, 'id'));
+    if (error) throw new Error(error.code === '23505' ? 'Ce nom est déjà pris.' : error.message);
+    return `Catégorie renommée « ${name} ».`;
+  });
+}
+
+/**
+ * Move one place up or down.
+ *
+ * Through an RPC rather than two updates: PostgREST opens a transaction per
+ * call, so the first of two writes would commit a duplicate position and be
+ * rejected. The function does both together, and carries its own permission
+ * check because SECURITY DEFINER puts it outside RLS.
+ *
+ * The refusal it raises has to arrive somewhere. An earlier version dropped
+ * the RPC's error on the floor: the arrow was tapped, nothing moved, and
+ * nothing said why — the exact failure the explicit check exists to prevent.
+ */
+async function move(kind: 'category' | 'item', f: FormData): Promise<ActionState> {
+  const slug = str(f, 'slug');
+  return run(slug, async () => {
+    await requireManager(slug);
+    const { error } = await createClient().schema('resto')
+      .rpc(kind === 'category' ? 'move_category' : 'move_item',
+           { p_id: str(f, 'id'), p_dir: Number(f.get('dir') ?? 1) });
+    if (error) throw new Error(error.message);
+    return 'Ordre modifié.';
+  });
+}
+
+export async function moveCategory(_p: ActionState, f: FormData): Promise<ActionState> {
+  return move('category', f);
+}
+export async function moveItem(_p: ActionState, f: FormData): Promise<ActionState> {
+  return move('item', f);
+}
+
+/**
+ * Hide, rather than delete. A seasonal category comes back; deleting it and
+ * retyping it every year loses the order the team has learned.
+ */
+export async function toggleCategory(_p: ActionState, f: FormData): Promise<ActionState> {
+  const slug = str(f, 'slug');
+  return run(slug, async () => {
+    await requireManager(slug);
+    const active = str(f, 'active') === 'true';
+    const { error } = await createClient().schema('resto').from('menu_categories')
+      .update({ active: !active }).eq('id', str(f, 'id'));
+    if (error) throw new Error(error.message);
+    return active ? 'Catégorie masquée en salle.' : 'Catégorie de nouveau en salle.';
+  });
+}
+
+/**
+ * Delete. The dishes survive: menu_items.category_id is ON DELETE SET NULL, so
+ * they fall into "sans catégorie" rather than disappearing with their heading.
+ * Losing a category must never lose the food.
+ */
+export async function deleteCategory(_p: ActionState, f: FormData): Promise<ActionState> {
+  const slug = str(f, 'slug');
+  return run(slug, async () => {
+    await requireManager(slug);
+    const { error } = await createClient().schema('resto').from('menu_categories')
+      .delete().eq('id', str(f, 'id'));
+    if (error) throw new Error(error.message);
+    return 'Catégorie supprimée. Ses plats sont maintenant sans catégorie.';
+  });
+}
+
+/**
+ * Set a photo, on a category or on a dish, in one tap.
+ *
+ * Called straight from the client once the upload has landed rather than
+ * through a form: taking the photo IS the intent, and asking for a second
+ * confirming tap on a screen where the photo is the whole content would be
+ * asking twice for the same thing.
+ *
+ * There was no way to fix a dish photo after creation — the carte would tell
+ * the patron "7 plats sans photo" and offer him nothing to do about it. On an
+ * image-first carte that is not a missing convenience, it is a dead end.
+ */
+export async function setPhoto(input: {
+  slug: string; target: 'category' | 'item'; id: string; path: string;
+}): Promise<void> {
+  await requireManager(input.slug);
+  const table = input.target === 'category' ? 'menu_categories' : 'menu_items';
+  const { error } = await createClient().schema('resto').from(table)
+    .update({ photo_path: input.path }).eq('id', input.id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/r/${input.slug}/admin`, 'layout');
+}
+
 export async function addStation(_p: ActionState, f: FormData): Promise<ActionState> {
   const slug = str(f, 'slug');
   return run(slug, async () => {
@@ -95,15 +194,6 @@ export async function toggleItem(_p: ActionState, f: FormData): Promise<ActionSt
     if (error) throw new Error(error.message);
     return available ? 'Plat retiré de la carte du jour.' : 'Plat de nouveau disponible.';
   });
-}
-
-/**
- * The same toggle, for a bare <form action={...}>. A form outside useFormState
- * wants a void-returning action; the button sits in a list where there is no
- * room for a message anyway — the struck-through name is the feedback.
- */
-export async function toggleItemForm(f: FormData): Promise<void> {
-  await toggleItem({}, f);
 }
 
 // ------------------------------------------------------------------ salle

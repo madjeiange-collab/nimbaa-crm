@@ -14,5 +14,7 @@ export function createAdminClient() {
 
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, {
     auth: { autoRefreshToken: false, persistSession: false },
+    // Same reason as the request client: no read of live data is cacheable.
+    global: { fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }) },
   });
 }

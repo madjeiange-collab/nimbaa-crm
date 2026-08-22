@@ -36,8 +36,17 @@ export async function requireManager(slug: string): Promise<StaffContext> {
   return ctx;
 }
 
+export type Category = {
+  id: string;
+  name: string;
+  sort: number;
+  active: boolean;
+  photo_path: string | null;
+};
+
 export type Item = {
   id: string;
+  sort: number;
   name: string;
   description: string | null;
   price: number;
@@ -47,19 +56,27 @@ export type Item = {
   photo_path: string | null;
 };
 
+/**
+ * The whole carte, in the order the restaurant decided.
+ *
+ * Inactive categories are returned, not filtered: this is what the back office
+ * reads, and a category the patron cannot see is a category he cannot bring
+ * back. **The floor screens must filter on `active` themselves** — hiding a
+ * category is what "masquer" means to the room.
+ */
 export async function loadMenu(restaurantId: string) {
   const supabase = createClient();
   const [{ data: categories }, { data: items }, { data: stations }] = await Promise.all([
     supabase.schema('resto').from('menu_categories')
-      .select('id, name, sort, active').eq('restaurant_id', restaurantId).order('sort'),
+      .select('id, name, sort, active, photo_path').eq('restaurant_id', restaurantId).order('sort'),
     supabase.schema('resto').from('menu_items')
-      .select('id, name, description, price, available, category_id, prep_station_id, photo_path')
+      .select('id, name, description, price, available, category_id, prep_station_id, photo_path, sort')
       .eq('restaurant_id', restaurantId).order('sort'),
     supabase.schema('resto').from('prep_stations')
       .select('id, name').eq('restaurant_id', restaurantId).order('sort'),
   ]);
   return {
-    categories: categories ?? [],
+    categories: (categories ?? []) as Category[],
     items: (items ?? []) as Item[],
     stations: stations ?? [],
   };

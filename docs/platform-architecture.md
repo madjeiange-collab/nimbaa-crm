@@ -301,6 +301,29 @@ Resto:
 git diff --quiet HEAD^ HEAD -- apps/resto packages/
 ```
 
+### Nothing a tenant reads is cacheable
+
+Next caches every `fetch` a Server Component makes, and with no `cache-control`
+coming back from PostgREST that default is *keep it forever*. Both products are
+live shared views of one business: the patron edits the carte on his phone
+while the waiter reads it on a tablet, and a CRM user changes a pipeline stage
+that a colleague is looking at. A cached read there is a plate ordered from a
+menu that no longer exists.
+
+So the Supabase clients — request-scoped and service-role alike — pass
+`cache: 'no-store'`, at the client, once:
+
+```ts
+global: { fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }) }
+```
+
+At the client and not on each page, because the failure mode of the per-page
+version is a **new page someone forgot to mark**, and that page will be serving
+one tenant's stale rows without anything looking wrong. This was found by a
+test that reordered two dishes and read the old order back after a full reload.
+
+---
+
 ---
 
 ## 11. Migrating the CRM in

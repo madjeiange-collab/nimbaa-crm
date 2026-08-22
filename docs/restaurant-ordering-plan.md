@@ -208,7 +208,7 @@ staff_accounts (
 Three tables, two predicates (`is_member`, `has_role`), RLS on all three. This
 migration has been applied to a scratch Postgres 16 and probed — see §6.
 
-### 0002 — menu and floor
+### 0002 — menu and floor · *written and verified*
 
 ```sql
 areas           (id, restaurant_id, name, sort)      -- salle, terrasse
@@ -228,6 +228,20 @@ Option groups with min/max selection and price deltas are real complexity and
 they can wait until a menu actually demands them.
 
 `tables` has no `qr_token` yet — in phase one a table is a label the waiter taps.
+
+**`sort` is not decoration.** It shipped as a column and stayed 0 everywhere,
+which meant Postgres broke ties as it pleased and the carte reordered itself
+between two page loads. On a screen designed so that position is what a member
+of staff remembers, that is a functional bug, not a cosmetic one. Migration
+0005 renumbers what exists, makes `(restaurant_id, sort)` unique on categories
+— **deferrable**, so a swap can pass through a duplicate inside one transaction
+— and adds `resto.move_category` / `resto.move_item`, which do both writes
+together. PostgREST opens one transaction per call, so two `.update()` calls
+would have been rejected at the first of the two.
+
+Those functions are `security definer`, so RLS does not apply inside them: each
+carries its own `resto.can_manage()` check and raises `42501`. A waiter is
+refused by the function, not merely filtered by a policy.
 
 ### 0003 — service
 
@@ -420,7 +434,7 @@ One developer with AI assistance. Each phase ends in something demonstrable.
 | # | Phase | Ships | ~Size |
 |---|---|---|---|
 | **P1** | Foundations & staff | Repo, Supabase project, 0001 + probe, `bootstrap-owner.mjs`, staff login at `/r/<slug>/login`, forced password change, owner creates staff, role routing | 1w |
-| **P2** | Menu & floor | Admin CRUD: categories, items, stations, areas, tables | 0.5w |
+| **P2** | Menu & floor · *done* | Admin CRUD: categories, items, stations, areas, tables; photo per dish and per category, taken at the camera and compressed before upload; the carte's order (rename, ↑↓, hide, delete) | 0.5w |
 | **P3** | **Order → kitchen → serve** | Table map, staff cart, rounds on a session, the fan-out, kitchen screen, to-serve list, realtime, `order_events` | 1.5w |
 | **P4** | Bill & cash | Session bill, discount, partial payments, cash, close, HTML receipt | 1w |
 | **P5** | Pilot hardening | Day view, service times, retry queue, the rough edges a real service finds | 1w |

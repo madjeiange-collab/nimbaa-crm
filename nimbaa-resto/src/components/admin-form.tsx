@@ -22,16 +22,18 @@ function Submit({ label }: { label: string }) {
  * feedback in the same place each time.
  */
 export function AdminForm({
-  action, slug, submit, children,
+  action, slug, submit, name, children,
 }: {
   action: (p: ActionState, f: FormData) => Promise<ActionState>;
   slug: string;
   submit: string;
+  /** Names the form so a test can address it without counting siblings. */
+  name?: string;
   children: React.ReactNode;
 }) {
   const [state, formAction] = useFormState<ActionState, FormData>(action, {});
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form action={formAction} data-form={name} className="flex flex-col gap-3">
       <input type="hidden" name="slug" value={slug} />
       {children}
       <div className="flex items-center gap-3">

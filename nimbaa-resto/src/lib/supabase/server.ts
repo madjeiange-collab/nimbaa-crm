@@ -13,6 +13,16 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // Next caches every fetch a Server Component makes, and with no
+      // cache-control from the API that default is "keep it forever". A
+      // restaurant is a live shared view: the patron edits the carte on his
+      // phone while the waiter reads it on a tablet, and each read that comes
+      // from a cache is a plate ordered from a menu that no longer exists.
+      // Nothing this client fetches is ever cacheable.
+      global: {
+        fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+          fetch(input, { ...init, cache: 'no-store' }),
+      },
       cookies: {
         getAll() {
           return cookieStore.getAll();

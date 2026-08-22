@@ -8,20 +8,30 @@
  * of identical grey squares, which is worse than the text it replaced.
  */
 export function tileColour(name: string): { bg: string; fg: string } {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+  let a = 0;
+  for (let i = 0; i < name.length; i++) a = (a * 31 + name.charCodeAt(i)) >>> 0;
 
-  // Skip the band around the service green (~157°). A tile that colour reads as
-  // a status rather than as a dish, and status is the one thing colour must
-  // mean unambiguously in this interface. Folding the band onto its edges keeps
-  // the mapping stable — the same dish is always the same colour.
-  const FORBIDDEN = { from: 128, to: 186 };
-  if (h >= FORBIDDEN.from && h <= FORBIDDEN.to) {
-    h = h < (FORBIDDEN.from + FORBIDDEN.to) / 2 ? FORBIDDEN.from - 1 : FORBIDDEN.to + 1;
-  }
+  // Keep clear of the service green (155°). A tile that colour reads as a
+  // status rather than as a dish, and status is the one thing colour must mean
+  // unambiguously here.
+  //
+  // Folding the band onto its own edges was worse than not excluding it at all:
+  // every name inside the band landed on one of the two boundary hues, so the
+  // two commonest tile colours became the two nearest the accent — "Plats" came
+  // out green. Remapping into the surviving arc keeps the spread even.
+  const BAND = { from: 100, to: 200 };
+  const width = BAND.to - BAND.from + 1;
+  let h = a % (360 - width);
+  if (h >= BAND.from) h += width;
 
-  // Mid lightness, modest saturation: readable under both themes.
-  return { bg: `hsl(${h} 34% 46%)`, fg: 'hsl(0 0% 100%)' };
+  // Hue alone collides: 259 usable degrees over a hash means two dishes side by
+  // side can come out the same colour, which is exactly where the colour was
+  // supposed to help. Tone varies with the same hash, so a collision in hue is
+  // still two different tiles.
+  const s = 28 + ((a >>> 9) % 3) * 9;
+  const l = 38 + ((a >>> 17) % 3) * 6;
+
+  return { bg: `hsl(${h} ${s}% ${l}%)`, fg: 'hsl(0 0% 100%)' };
 }
 
 /** The two letters shown on the tile. Skips articles so "Le Poulet" gives PO. */

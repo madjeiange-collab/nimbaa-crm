@@ -180,6 +180,79 @@ select pg_temp.as_user('f0000000-0000-4000-8000-00000000b001');
 select pg_temp.check('l''autre groupe ne voit pas cette carte',
        (select count(*)::text from resto.menu_items), '0');
 
+-- ------------------------------------------------------------ l'ordre
+-- « La position est une mémoire » : si l'ordre bouge, la mémoire spatiale de
+-- l'équipe ne vaut plus rien. On vérifie donc qu'il se contrôle et qu'il tient.
+reset role;
+insert into resto.menu_categories (restaurant_id, name) values
+  ('f0000000-0000-4000-8000-00000000c001','Boissons'),
+  ('f0000000-0000-4000-8000-00000000c001','Desserts');
+set local role authenticated;
+-- Reprendre l'identité du patron de A : le bloc précédent s'est terminé sur le
+-- patron de B, pour qui cette carte n'existe pas.
+select pg_temp.as_user('f0000000-0000-4000-8000-00000000a001');
+
+select pg_temp.check('les catégories se rangent à la suite',
+       (select string_agg(name, ' → ' order by sort) from resto.menu_categories
+         where restaurant_id = 'f0000000-0000-4000-8000-00000000c001'),
+       'Plats → Boissons → Desserts');
+
+select pg_temp.as_user('f0000000-0000-4000-8000-00000000a001');   -- patron
+select resto.move_category(
+  (select id from resto.menu_categories where name = 'Desserts'), -1);
+select pg_temp.check('le patron remonte une catégorie',
+       (select string_agg(name, ' → ' order by sort) from resto.menu_categories
+         where restaurant_id = 'f0000000-0000-4000-8000-00000000c001'),
+       'Plats → Desserts → Boissons');
+
+select resto.move_category(
+  (select id from resto.menu_categories where name = 'Plats'), -1);
+select pg_temp.check('en tête de liste, monter ne fait rien',
+       (select string_agg(name, ' → ' order by sort) from resto.menu_categories
+         where restaurant_id = 'f0000000-0000-4000-8000-00000000c001'),
+       'Plats → Desserts → Boissons');
+
+-- move_category est SECURITY DEFINER : RLS ne s'applique PAS à l'intérieur, et
+-- c'est son contrôle explicite qui protège. Donc on lui passe un identifiant
+-- connu plutôt que de le chercher — sinon on testerait la visibilité, qui
+-- n'est pas ce qui garde la porte ici.
+create temporary table probe_ids as
+  select id from resto.menu_categories where name = 'Plats';
+
+create or replace function pg_temp.try_move() returns text
+language plpgsql as $$ begin
+  perform resto.move_category((select id from probe_ids), 1);
+  return 'passé';
+exception
+  when insufficient_privilege then return 'refusé';
+  when others then return 'erreur:' || sqlstate;
+end $$;
+
+select pg_temp.as_user('f0000000-0000-4000-8000-00000000a002');   -- serveur
+select pg_temp.check('le serveur ne réordonne pas la carte', pg_temp.try_move(), 'refusé');
+select pg_temp.check('et l''ordre n''a pas bougé',
+       (select string_agg(name, ' → ' order by sort) from resto.menu_categories
+         where restaurant_id = 'f0000000-0000-4000-8000-00000000c001'),
+       'Plats → Desserts → Boissons');
+
+-- Le patron d'un autre groupe connaît l'identifiant — il ne passe pas non plus.
+select pg_temp.as_user('f0000000-0000-4000-8000-00000000b001');
+select pg_temp.check('ni le patron d''un autre groupe, identifiant en main',
+       pg_temp.try_move(), 'refusé');
+
+-- Supprimer une catégorie ne supprime pas ce qu'elle contenait.
+reset role;
+delete from resto.menu_categories where name = 'Plats';
+set local role authenticated;
+select pg_temp.as_user('f0000000-0000-4000-8000-00000000a001');
+select pg_temp.check('supprimer une catégorie garde ses plats',
+       (select count(*)::text from resto.menu_items
+         where restaurant_id = 'f0000000-0000-4000-8000-00000000c001'), '2');
+select pg_temp.check('...qui se retrouvent sans catégorie',
+       (select count(*)::text from resto.menu_items
+         where restaurant_id = 'f0000000-0000-4000-8000-00000000c001'
+           and category_id is null), '2');
+
 -- ------------------------------------------------------ les photos du seau
 -- Le premier dossier du chemin EST l'identifiant du restaurant, donc la policy
 -- sait à qui appartient la photo sans rien joindre. Reste à vérifier qu'elle

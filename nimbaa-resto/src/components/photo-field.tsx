@@ -71,7 +71,7 @@ export function PhotoField({
         {label}
       </span>
       <input ref={input} type="file" accept="image/*" capture="environment"
-             onChange={onPick} className="hidden" data-photo-input />
+             onChange={onPick} className="hidden" data-photo-input="new" />
       <input type="hidden" name={name} value={path} />
 
       <button

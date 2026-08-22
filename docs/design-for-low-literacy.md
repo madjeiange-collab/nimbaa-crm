@@ -56,6 +56,14 @@ lu. Cela interdit deux habitudes courantes :
   premier » détruit la mémoire spatiale) ;
 - **ne rien cacher derrière un menu** — ce qui est masqué est perdu.
 
+Cela impose une contrainte qui n'est pas évidente : **un ordre stable doit être
+un ordre décidé**. Tant que `sort` valait 0 partout, Postgres départageait les
+ex æquo comme il voulait et la carte bougeait toute seule — pour quelqu'un qui
+navigue à la position plutôt qu'à la lecture, c'est pire que pas d'ordre du
+tout. D'où, en base : une position par catégorie et par plat, unique dans le
+restaurant, et un échange de deux positions dans **une seule** transaction
+(`resto.move_category`, `resto.move_item`).
+
 ### La couleur est un canal, jamais le seul
 
 Un homme sur douze distingue mal le rouge du vert. La couleur double
@@ -113,6 +121,39 @@ décimales sur une monnaie qui n'en a pas. C'est précisément ce que
 `core.currencies` empêche — le nombre de décimales vient de la monnaie, jamais
 d'un format écrit en dur. Chez nous ce sera `5 000 F`, et `12,50 €` à Paris,
 sans que personne ait à y penser.
+
+### 3.1b Ranger la carte
+
+Les catégories sont décidées par le patron ou le gérant, et l'ordre qu'ils
+choisissent est celui que la salle verra. Chaque catégorie est donc une ligne
+qui porte tout ce qu'on peut lui faire, au même endroit :
+
+| | |
+|---|---|
+| **Sa photo** | prise à la caméra, d'un seul geste — l'onglet se reconnaît avant de se lire |
+| **Son nom** | modifiable sur place, sans écran intermédiaire |
+| **↑ ↓** | monter, descendre ; la flèche est éteinte en bout de liste plutôt qu'absente |
+| **🚫 masquer** | la retirer de la salle sans la perdre |
+| **🗑 supprimer** | en deux gestes, et sans emporter les plats |
+
+Deux règles qui découlent directement du §1 :
+
+**Masquer plutôt que supprimer.** Une carte de saison revient l'année suivante ;
+la supprimer et la retaper fait perdre la place que l'équipe avait apprise.
+`active = false` la retire de la salle et garde sa position.
+
+**Supprimer une catégorie ne supprime jamais la nourriture.** Les plats
+retombent dans « sans catégorie » (`on delete set null`). Perdre un intitulé ne
+doit pas faire disparaître vingt plats.
+
+Et la confirmation est un **dépli**, pas une boîte de dialogue. Une modale de
+prose est précisément ce qu'une personne qui lit mal ne peut pas survoler, et
+elle s'ouvre loin de la chose visée ; ici la question est posée sur place, en
+rouge, à l'endroit du bouton.
+
+L'appareil photo, enfin, est sur la vignette elle-même — pas seulement dans le
+formulaire de création. Sans cela la carte annonçait « 7 plats sans photo » et
+n'offrait rien pour y remédier : un reproche sans issue.
 
 ### 3.2 La prise de commande
 
@@ -240,17 +281,27 @@ et leurs comptes valent plus cher.
   orales : les traduire n'aide pas quelqu'un qui ne lit pas. **Plus d'images
   vaut mieux que plus de traductions.**
 - **Des icônes « universelles ».** Voir §1.
+- **Un bouton qui se réécrit lui-même pour demander confirmation.** Le réflexe
+  — un bouton dont le `type` passe de `button` à `submit` au premier appui — se
+  déclenche **au premier appui** : React applique le changement pendant que le
+  clic est encore en cours, et le navigateur lit le nouveau type au moment
+  d'agir. Une catégorie a été supprimée sans que rien ne soit demandé. Un
+  `<details>` fait la même chose nativement, et se comporte pareil avant et
+  après hydratation — avant, du côté sûr.
 
 ---
 
 ## 7. Ordre de marche
 
-**Tout de suite** — la fondation, sans laquelle le reste ne peut pas exister :
+**Fait** — la fondation, sans laquelle le reste ne peut pas exister :
 
-1. `photo_path` sur `menu_items` (oublié dans la migration 0003 alors que le
-   plan le prévoyait).
-2. Prise de photo à la caméra dans l'écran carte, compression avant envoi.
+1. `photo_path` sur `menu_items` puis sur `menu_categories` (migrations 0004 et
+   0005 ; oublié dans la 0003 alors que le plan le prévoyait).
+2. Prise de photo à la caméra dans l'écran carte, compression avant envoi —
+   1 892 Ko mesurés à l'entrée, 40 Ko envoyés.
 3. La tuile de repli colorée, et le vocabulaire d'états du §2.
+4. L'ordre de la carte : positions explicites, échange transactionnel, et la
+   ligne de gestion du §3.1b.
 
 **En P3** — la prise de commande, la cuisine et les tables se construisent
 directement en visuel. Les refaire ensuite coûterait deux fois.
