@@ -49,16 +49,21 @@ jobs:
             $PSQL -q -f "$f"
           done
 
-      # Le paquet du SQL Editor doit rester applicable : c'est par lui que passe
-      # la mise en service d'un nouveau client.
-      - name: Le paquet s'applique aussi, d'un bloc
+      # schema.sql est un fichier engendré et versionné : versionné pour qu'on
+      # puisse le coller sans installer Node, engendré donc capable de dériver.
+      # Cette étape est ce qui l'en empêche.
+      - name: schema.sql correspond bien aux migrations
+        run: node supabase/bundle.mjs --check
+
+      # Et il doit rester applicable d'un bloc : c'est par lui que passe la
+      # mise en service de chaque nouveau client.
+      - name: Le schéma complet s'applique d'un bloc
         run: |
-          node supabase/bundle.mjs
-          $PSQL -q -c 'create database bundle_check'
-          psql -h localhost -U postgres -d bundle_check -v ON_ERROR_STOP=1 -q \
+          $PSQL -q -c 'create database schema_check'
+          psql -h localhost -U postgres -d schema_check -v ON_ERROR_STOP=1 -q \
             -f supabase/tests/local-postgres.sql
-          psql -h localhost -U postgres -d bundle_check -v ON_ERROR_STOP=1 -q \
-            -f supabase/.bundle.sql
+          psql -h localhost -U postgres -d schema_check -v ON_ERROR_STOP=1 -q \
+            -f supabase/schema.sql
 
       - name: La sonde
         run: |

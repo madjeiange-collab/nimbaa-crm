@@ -77,14 +77,21 @@ Pas de PostGIS, contrairement au CRM : rien ici n'est géographique.
 
 ### Appliquer le schéma
 
-Cinq migrations doivent passer dans l'ordre. Rassemblez-les en un seul bloc :
+Cinq migrations doivent passer dans l'ordre, et elles sont déjà rassemblées en
+un seul fichier versionné : **`nimbaa-resto/supabase/schema.sql`**.
 
-```bash
-pnpm db:bundle
+Ouvrez-le, copiez **tout**, collez dans *SQL Editor → New query* → **Run**.
+Depuis GitHub, sans rien installer :
+
+```
+https://raw.githubusercontent.com/madjeiange-collab/nimbaa-crm/claude/restaurant-ordering-platform-7xz3p8/nimbaa-resto/supabase/schema.sql
 ```
 
-→ `supabase/.bundle.sql`. Ouvrez-le, copiez **tout**, collez dans *SQL Editor →
-New query* → **Run**.
+C'est un fichier engendré **et** versionné, ce qui n'est pas l'habitude : mettre
+en service une base ne doit pas exiger d'avoir Node et pnpm installés d'abord.
+Le risque du doublon — dériver de sa source — est tenu par la CI, qui compare
+`schema.sql` aux migrations à chaque changement. Après avoir touché une
+migration : `pnpm db:bundle`, et on committe le résultat.
 
 Le paquet est enveloppé dans une transaction : **ou tout s'applique, ou rien**.
 Un schéma à moitié appliqué est le pire des trois états — l'application démarre
@@ -265,7 +272,8 @@ variables d'environnement.
 | Étape | Ce qu'elle attrape |
 |---|---|
 | Migrations appliquées dans l'ordre sur un Postgres 16 neuf | Une migration qui ne passe que sur *votre* base |
-| Le paquet du SQL Editor appliqué d'un bloc | Le chemin de mise en service d'un nouveau client, qui casserait sans qu'on le sache |
+| `schema.sql` comparé aux migrations | Le fichier engendré qui dérive de sa source — la rançon habituelle d'un doublon versionné |
+| `schema.sql` appliqué d'un bloc | Le chemin de mise en service d'un nouveau client, qui casserait sans qu'on le sache |
 | **La sonde : 35 assertions RLS** | Qu'un serveur ne réordonne pas la carte, qu'un patron ne voie pas chez le voisin, qu'un abonnement résilié ferme l'application |
 | lint, types, build | Le reste |
 

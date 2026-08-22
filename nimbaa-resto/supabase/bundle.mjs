@@ -2,14 +2,18 @@
  * Rassemble les migrations en un seul fichier, dans l'ordre, pour le SQL
  * Editor de Supabase.
  *
- *   node supabase/bundle.mjs
- *
- * Pourquoi un fichier engendré plutôt qu'un fichier versionné : un doublon
- * versionné dérive. Celui-ci est produit à la demande depuis les migrations
- * elles-mêmes, donc il ne peut pas être en retard sur elles.
+ *   node supabase/bundle.mjs          engendre supabase/schema.sql
+ *   node supabase/bundle.mjs --check  échoue s'il n'est plus à jour (CI)
  *
  * Cinq collages dans un éditeur web, c'est cinq occasions de se tromper
  * d'ordre ou de n'en coller que la moitié. Un seul, il n'y en a plus.
+ *
+ * Le fichier est VERSIONNÉ, alors qu'un fichier engendré ne devrait pas
+ * l'être : mettre en service une base ne doit pas exiger d'avoir Node et pnpm
+ * installés d'abord. On ouvre schema.sql sur GitHub, on copie, on colle. Le
+ * risque du doublon — dériver de sa source — est tenu par --check en
+ * intégration continue : modifier une migration sans réengendrer fait rougir
+ * la CI, ce qui est exactement la protection qu'on aurait perdue.
  */
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -26,8 +30,10 @@ if (files.length === 0) {
 
 const parts = [
   '-- Nimbaa — schéma complet, engendré par supabase/bundle.mjs.',
-  '-- Ne pas modifier ici : modifier la migration, puis réengendrer.',
+  '-- NE PAS MODIFIER ICI : modifiez la migration, puis « pnpm db:bundle ».',
   `-- ${files.length} migrations : ${files.join(', ')}`,
+  '--',
+  '-- À coller dans Supabase → SQL Editor → New query → Run.',
   '',
   '-- Une transaction : ou tout est appliqué, ou rien. Si le SQL Editor ouvre',
   '-- déjà la sienne, un avertissement « there is already a transaction in',
@@ -39,14 +45,23 @@ for (const f of files) {
   parts.push(`-- ${'='.repeat(70)}`, `-- ${f}`, `-- ${'='.repeat(70)}`, '');
   parts.push(readFileSync(join(dir, f), 'utf8').trimEnd(), '');
 }
-// Une transaction, donc : ou tout est appliqué, ou rien ne l'est. Un schéma à
-// moitié appliqué est le pire des trois états — l'application démarre et
-// échoue plus tard, loin de la cause.
 parts.push('commit;', '');
 
-const out = join(here, '.bundle.sql');
-writeFileSync(out, parts.join('\n'));
+const out = join(here, 'schema.sql');
+const built = parts.join('\n');
 
-const lines = parts.join('\n').split('\n').length;
-console.log(`✅ ${files.length} migrations rassemblées → supabase/.bundle.sql (${lines} lignes)`);
-console.log('   Ouvrez ce fichier, copiez tout, collez dans Supabase → SQL Editor → Run.');
+if (process.argv.includes('--check')) {
+  let current = null;
+  try { current = readFileSync(out, 'utf8'); } catch { /* absent */ }
+  if (current === built) {
+    console.log(`✅ supabase/schema.sql est à jour (${files.length} migrations).`);
+    process.exit(0);
+  }
+  console.error('❌ supabase/schema.sql ne correspond plus aux migrations.');
+  console.error('   Lancez « pnpm db:bundle » et committez le résultat.');
+  process.exit(1);
+}
+
+writeFileSync(out, built);
+console.log(`✅ ${files.length} migrations rassemblées → supabase/schema.sql (${built.split('\n').length} lignes)`);
+console.log('   Committez-le : c\'est ce fichier qu\'on colle dans le SQL Editor.');
