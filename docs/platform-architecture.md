@@ -337,9 +337,10 @@ than after it.
 2. **Composite keys where the key is global.** `app_settings` moves from
    `primary key (key)` to `primary key (org_id, key)`. Same for any other
    natural key that assumed one customer.
-3. **Config tables become per-organisation.** Each new customer needs their own
-   pipeline stages, products, protocol steps — which also means an onboarding
-   step that seeds sensible defaults, or the app is empty on day one.
+3. **Config tables become per-organisation, and the organisation owns them.**
+   Each customer defines their own pipeline stages, products and protocol
+   steps — Nimbaa does not impose a template. See §11.2, because an empty CRM
+   on day one is not an acceptable answer either.
 4. **83 policies reviewed, 41 rewritten** to
    `core.has_product(org_id, 'crm')`. The other 42 are narrow already
    (`auth.uid() = user_id` and similar) and are safe by accident rather than by
@@ -350,17 +351,73 @@ than after it.
 6. **A probe line per table**, in the same commit as its migration.
 
 Step 3 is the one that is usually underestimated: it is product work, not
-plumbing. Somebody has to decide what a brand-new customer's pipeline looks
-like before they have configured anything.
+plumbing.
+
+### 11.1 Currency is baked into the CRM's column names
+
+Each organisation choosing its own currency collides with how the CRM stores
+money today:
+
+| What | Count | Problem |
+|---|---|---|
+| Columns named `*_xof` | **15** — `value_xof` ×8, `base_xof` ×3, `monthly_price_xof` ×2, `price_xof`, `amount_xof` | A column called `monthly_price_xof` is a lie for a EUR organisation |
+| `"FCFA"` hardcoded in `src/` | **33** | The symbol is a literal, not a lookup |
+| `toLocaleString('fr-FR')` | 21 | Groups digits; knows nothing of currency or decimals |
+| Currency formatting helper | **0** | There is nowhere to fix it once |
+
+The good news is that the hard part is already right: **every money column is
+`bigint`**, so amounts are integers and no float has ever touched them. XOF has
+no subdivision, so today's integers happen to be whole units — a EUR
+organisation needs the same integers read as hundredths.
+
+So the retrofit is naming and presentation, not arithmetic:
+
+1. Rename the 15 columns to drop the currency (`value_xof` → `value_amount`),
+   with the minor-unit contract in a comment.
+2. **One `formatMoney(amount, org)` helper**, driven by
+   `core.organizations.currency` and `currency_decimals`, replacing all 33
+   literals and the bare `toLocaleString`.
+3. `Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: decimals })`.
+
+**Currency lives on `core.organizations`, and only there.** Resto currently
+carries its own `restaurants.currency`; it moves up when Resto is rebuilt on
+`core`. One organisation, one currency — a group with three restaurants prices
+them all the same way.
+
+### 11.2 Somebody has to fill the CRM before it is useful
+
+The organisation decides its own configuration. That is the right answer, and
+it leaves a hole: a brand-new customer signs in to a CRM with no pipeline, no
+products and no protocol, which is not a product — it is a blank database with
+a login.
+
+The resolution is that **offering is not imposing**:
+
+- Onboarding presents a **starter set** — a conventional pipeline, an empty
+  catalogue, a default protocol — that the owner may apply, edit, or skip
+  entirely.
+- Nothing is created behind their back, and everything applied is editable
+  afterwards.
+- The setup flow is part of onboarding, not an admin screen they must go
+  looking for.
+
+This is product work and it sits on the critical path: without it, the CRM
+cannot be handed to a second customer even once every policy is correct.
 
 ## 12. What to build now, and what to leave alone
 
 **Now** — the shape:
 
 - `core` schema, the four tables, the three predicates
-- Resto rebuilt on `core.has_product`
+- Resto rebuilt on `core.has_product`, dropping its own `currency` column in
+  favour of the organisation's
 - The entitlement table in §5 as a probe, in CI
 - Subscription rows written **by hand**
+
+**Before the CRM's second customer** — not optional, and not plumbing:
+
+- The currency retrofit of §11.1
+- The onboarding starter set of §11.2
 
 **Not now** — the machinery. No Stripe, no plan picker, no self-serve signup,
 no dunning, no invoices, no proration. Setting a row by hand is entirely
@@ -399,10 +456,11 @@ every policy. Everything else in this document can wait.
 2. ~~Is the CRM sold to outside businesses?~~ **Answered: yes.** See §11 —
    this makes the CRM retrofit a real project, and it puts a deadline on it:
    the work must land before the second customer, not after.
-3. **Who seeds a new customer's configuration?** Pipeline stages, products and
-   protocol steps are per-organisation once §11 lands. A blank CRM on day one
-   is a bad first impression, so either onboarding copies a template or a
-   human sets it up. This is product work and it is on the critical path.
+3. ~~Who seeds a new customer's configuration?~~ **Answered: the organisation
+   does.** It also chooses its own currency. See §11.1 and §11.2 — the first
+   makes the CRM's `*_xof` columns and 33 hardcoded `FCFA` a retrofit of their
+   own; the second makes an onboarding starter set a prerequisite for the
+   second sale.
 4. **Per-seat or per-organisation pricing?** Per-seat means counting
    `product_access` rows and enforcing a ceiling — cheap now, awkward to add
    once customers have unlimited seats by habit.
