@@ -16,11 +16,13 @@ propres commandes ; la commande par QR code arrive plus tard.
 
 | | |
 |---|---|
-| ✅ | Socle multi-restaurant : `restaurants`, `restaurant_members`, `staff_accounts`, RLS |
+| ✅ | Socle plateforme `core` : organisations, abonnements, accès produit, monnaies |
+| ✅ | Accès conditionné à l'abonnement — résilier ferme l'application, sans déploiement |
+| ✅ | Monnaie par organisation, surchargeable par restaurant (`NULL` = héritée) |
 | ✅ | Connexion identifiant + mot de passe, par restaurant |
 | ✅ | Premier mot de passe imposé à la première connexion |
 | ✅ | Accueil routé par rôle |
-| ✅ | `bootstrap-owner.mjs` — créer un restaurant et son patron |
+| ✅ | `bootstrap-owner.mjs` — organisation, abonnement, restaurant, patron |
 | ⬜ | Carte et plan de salle · commandes · cuisine · encaissement |
 
 ## Démarrer
@@ -30,11 +32,16 @@ pnpm install
 cp .env.local.example .env.local     # puis renseigner les clés Supabase
 ```
 
-Appliquer `supabase/migrations/0001_tenancy.sql` (SQL Editor ou `supabase db push`),
-puis créer le premier restaurant et son patron :
+Appliquer les migrations dans l'ordre — `0001_core.sql` puis `0002_resto.sql`
+(SQL Editor ou `supabase db push`). Dans Supabase, exposer les schémas `core` et
+`resto` : *Project Settings → API → Exposed schemas*.
+
+Puis créer l'organisation, son abonnement, son restaurant et son patron :
 
 ```bash
-node supabase/seed/bootstrap-owner.mjs le-bambou "Le Bambou" fatou "MotDePasseFort"
+node supabase/seed/bootstrap-owner.mjs \
+  --org "Le Bambou SARL" --slug le-bambou --resto "Le Bambou Plateau" \
+  --user fatou --password "MotDePasseFort" --name "Fatou Camara"
 pnpm dev
 ```
 
@@ -44,14 +51,15 @@ propre mot de passe à la première connexion, puis crée le reste de l'équipe.
 Mot de passe perdu :
 
 ```bash
-node supabase/seed/bootstrap-owner.mjs le-bambou --reset fatou "NouveauMotDePasse"
+node supabase/seed/bootstrap-owner.mjs --slug le-bambou --reset \
+  --user fatou --password "NouveauMotDePasse"
 ```
 
 ## Vérifier
 
 ```bash
 pnpm typecheck && pnpm lint && pnpm build
-DATABASE_URL="postgresql://..." pnpm db:probe   # 13 lignes, toutes OK
+DATABASE_URL="postgresql://..." pnpm db:probe   # 15 lignes, toutes OK
 ```
 
 Les sondes de `supabase/tests/` tournent dans une transaction annulée : elles
@@ -64,4 +72,5 @@ gagne sa ligne dans une sonde, dans le même commit que sa migration.**
 - Interface en français uniquement pour l'instant.
 - Lectures via RLS, écritures via route handler ou server action : un employé
   authentifié reste un client non fiable.
-- Montants : entiers dans l'unité la plus petite, jamais de flottant.
+- Montants : entiers dans l'unité la plus petite, jamais de flottant. Le nombre
+  de décimales vient de `core.currencies`, jamais d'une hypothèse.

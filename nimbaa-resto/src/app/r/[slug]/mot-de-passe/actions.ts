@@ -48,7 +48,9 @@ export async function changePassword(
   // here on every request, for ever. clear_must_change_password() is SECURITY
   // DEFINER and touches one column of auth.uid()'s own row, which is exactly
   // the permission needed and nothing more.
-  const { error: flagError } = await supabase.rpc('clear_must_change_password');
+  const { error: flagError } = await supabase
+    .schema('resto')
+    .rpc('clear_must_change_password');
   if (flagError) return { error: 'Mot de passe changé, mais le compte reste à mettre à jour.' };
 
   redirect(`/r/${slug}`);

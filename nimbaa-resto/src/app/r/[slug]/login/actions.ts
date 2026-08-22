@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { staffEmail } from '@/lib/auth/staff';
+import { loginEmail } from '@/lib/auth/staff';
 
 const Credentials = z.object({
   slug: z.string().min(1).max(64),
@@ -24,7 +24,7 @@ export async function signIn(_prev: LoginState, formData: FormData): Promise<Log
   const { slug, username, password } = parsed.data;
   const supabase = createClient();
   const { error } = await supabase.auth.signInWithPassword({
-    email: staffEmail(username, slug),
+    email: loginEmail(username, slug),
     password,
   });
 

@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:probe": "psql \"$DATABASE_URL\" -tA -f supabase/tests/0001_tenancy_probe.sql -f supabase/tests/0002_staff_context_probe.sql"
+    "db:probe": "psql \"$DATABASE_URL\" -tA -f supabase/tests/probe.sql"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

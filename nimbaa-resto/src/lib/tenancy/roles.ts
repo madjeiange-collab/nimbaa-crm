@@ -20,19 +20,16 @@ const SURFACES: Record<Role, { segment: string; label: string; hint: string }> =
 };
 
 /**
- * The surfaces a set of roles unlocks, deduplicated — an owner who is also a
- * waiter gets two entries, not three.
+ * The surface a role unlocks. `core.product_access` is keyed on
+ * (org, user, product), so a person holds exactly one role per product.
  */
-export function surfacesFor(roles: Role[]) {
-  const seen = new Set<string>();
-  return roles
-    .map((r) => SURFACES[r])
-    .filter((s) => s && !seen.has(s.segment) && seen.add(s.segment));
+export function surfaceFor(role: Role) {
+  return SURFACES[role];
 }
 
-/** Only an owner may create a manager or another owner — mirrors the rm_grant policy. */
-export function grantableRoles(roles: Role[]): Role[] {
-  if (roles.includes('owner')) return [...ROLES];
-  if (roles.includes('manager')) return ['waiter', 'kitchen', 'cashier'];
+/** Only an owner may create a manager or another owner. */
+export function grantableRoles(role: Role): Role[] {
+  if (role === 'owner') return [...ROLES];
+  if (role === 'manager') return ['waiter', 'kitchen', 'cashier'];
   return [];
 }

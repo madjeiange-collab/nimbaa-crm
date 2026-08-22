@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import { requireStaff } from '@/lib/auth/guard';
-import { ROLE_LABELS, surfacesFor } from '@/lib/tenancy/roles';
+import { ROLE_LABELS, surfaceFor } from '@/lib/tenancy/roles';
 import { signOut } from './login/actions';
 
 export default async function RestaurantHome({ params }: { params: { slug: string } }) {
   const ctx = await requireStaff(params.slug);
-  const surfaces = surfacesFor(ctx.roles);
+  const surface = surfaceFor(ctx.role);
 
   return (
     <main className="mx-auto max-w-lg px-6 py-10">
@@ -16,20 +16,17 @@ export default async function RestaurantHome({ params }: { params: { slug: strin
         Bonjour {ctx.displayName ?? ctx.username}
       </h1>
       <p className="mt-1 text-sm text-ink-faint">
-        {ctx.roles.map((r) => ROLE_LABELS[r]).join(' · ')}
+        {ROLE_LABELS[ctx.role]}
       </p>
 
       <nav className="mt-8 flex flex-col gap-3">
-        {surfaces.map((s) => (
-          <Link
-            key={s.segment}
-            href={`/r/${params.slug}/${s.segment}`}
-            className="rounded-lg border border-rule bg-white px-5 py-4 transition-colors hover:border-service"
-          >
-            <span className="block font-medium">{s.label}</span>
-            <span className="block text-sm text-ink-faint">{s.hint}</span>
-          </Link>
-        ))}
+        <Link
+          href={`/r/${params.slug}/${surface.segment}`}
+          className="rounded-lg border border-rule bg-white px-5 py-4 transition-colors hover:border-service"
+        >
+          <span className="block font-medium">{surface.label}</span>
+          <span className="block text-sm text-ink-faint">{surface.hint}</span>
+        </Link>
       </nav>
 
       <form
